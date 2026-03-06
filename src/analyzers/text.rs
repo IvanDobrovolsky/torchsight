@@ -3,82 +3,140 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use super::patterns;
 use crate::llm::OllamaClient;
 use crate::report::{FileFinding, Severity};
 
-const MAX_TEXT_READ: usize = 10 * 1024 * 1024; // 10MB for pattern scan
-const LLM_CONTEXT_LIMIT: usize = 4000; // chars to send to LLM
+const MAX_TEXT_READ: usize = 10 * 1024 * 1024; // 10MB
+const LLM_CONTEXT_LIMIT: usize = 6000; // chars to send to LLM
 
-pub fn analyze_text_file(path: &Path) -> Result<Vec<FileFinding>> {
-    let content = read_text_safe(path)?;
-    let pattern_matches = patterns::scan_text(&content);
-
-    let findings: Vec<FileFinding> = pattern_matches
-        .into_iter()
-        .map(|m| FileFinding {
-            category: m.category,
-            description: m.description,
-            evidence: m.matched_text,
-            severity: m.severity,
-            source: "pattern".to_string(),
-            extracted_data: HashMap::new(),
-        })
-        .collect();
-
-    Ok(findings)
-}
-
-pub async fn analyze_text_with_llm(
+pub async fn analyze_text_file(
     path: &Path,
     ollama: &OllamaClient,
 ) -> Result<Vec<FileFinding>> {
     let content = read_text_safe(path)?;
+
+    if content.trim().is_empty() {
+        return Ok(vec![FileFinding {
+            category: "safe".to_string(),
+            description: "Empty file.".to_string(),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "scanner".to_string(),
+            extracted_data: HashMap::new(),
+        }]);
+    }
+
     let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
+    let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
+
+    let file_name = path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
 
     let prompt = format!(
-        r#"You are a cybersecurity and content safety forensics analyst. Analyze this file for THREE categories:
+        r#"You are a cybersecurity forensics analyst performing a deep security assessment of a file.
 
-=== CATEGORY 1: SENSITIVE DATA ===
-Extract ALL sensitive data with exact values into "extracted_data":
-- "full_name", "first_name", "last_name": names
-- "date_of_birth": DOB
-- "address", "city", "state", "zip_code": address parts
-- "ssn": social security number
-- "phone": phone number
-- "email": email address
-- "credit_card": credit card number
-- "bank_account": bank account
-- "driver_license": license number
-- "username", "password": credentials
-- "api_key", "token", "secret": secrets/keys
-- "connection_string": database connection strings
-- "document_type": type of document
-- Add any other fields you find
-
-=== CATEGORY 2: CONTENT MODERATION ===
-Flag any profanity, slurs, hate speech, threats, harassment, extremist content, or inappropriate language.
-Use category "inappropriate" with extracted_data: {{"content_type": "profanity|hate_speech|threats|harassment", "flagged_text": "the exact problematic text", "risk_level": "low|medium|high"}}
-
-=== CATEGORY 3: SAFE CONTENT ===
-If nothing sensitive or inappropriate is found, return:
-category "safe", severity "info", description of what the file contains.
-extracted_data: {{"document_type": "config|code|readme|data|etc", "summary": "brief summary"}}
+File name: "{}"
+File size: {} bytes{}
 
 File content:
 ---
 {}
 ---
 
-Respond ONLY with this exact JSON (no other text):
-[{{"category": "pii|credentials|financial|medical|confidential|inappropriate|safe", "description": "detailed description", "severity": "critical|warning|info", "extracted_data": {{"field": "value"}}}}]
+Perform a thorough analysis:
 
-IMPORTANT: Put ACTUAL VALUES in extracted_data. Group related data per person/record. Every file MUST produce at least one finding."#,
+=== TASK 1: DOCUMENT CLASSIFICATION ===
+What is this file? Examples:
+- Configuration file with secrets (database credentials, API keys, tokens)
+- Data file with PII (customer records, employee data, user databases)
+- Source code with hardcoded credentials
+- Log file with sensitive information
+- Medical/health records
+- Financial records (transactions, invoices, tax documents)
+- Legal documents (contracts, NDAs)
+- Communication (emails, chat logs)
+- Content with profanity, hate speech, threats, or inappropriate language
+- Clean configuration, documentation, or code with no sensitive data
+
+=== TASK 2: SENSITIVE DATA EXTRACTION ===
+Extract EVERY piece of sensitive data with exact values from the file.
+Group related data per person or record.
+Use these fields in extracted_data (only include what is actually present):
+- "document_type": what kind of file this is
+- "full_name", "first_name", "last_name": person names
+- "date_of_birth": DOB
+- "address", "city", "state", "zip_code": address
+- "ssn": social security numbers
+- "phone": phone numbers
+- "email": email addresses
+- "credit_card": credit card numbers
+- "bank_account": bank account numbers
+- "driver_license": license numbers
+- "username", "password": credentials (exact values)
+- "api_key": API keys (exact values)
+- "token": auth tokens (exact values)
+- "secret": secrets (exact values)
+- "connection_string": database connection strings (exact values)
+- "private_key": private key content
+- "ip_address": IP addresses
+- "organization": company names
+- Add any other sensitive fields you find
+
+=== TASK 3: CONTENT MODERATION ===
+Flag any profanity, slurs, hate speech, threats, harassment, extremist content, or inappropriate language in the file.
+If found: category = "inappropriate", severity = "critical"
+Include: "content_type", "flagged_text" (exact text), "risk_level"
+
+=== TASK 4: COMPLIANCE ===
+Note which regulations this data falls under:
+- GDPR (EU personal data)
+- HIPAA (US health data)
+- PCI-DSS (payment card data)
+- SOX (financial records)
+- FERPA (education records)
+Include as "compliance" in extracted_data if applicable.
+
+=== TASK 5: SAFETY VERDICT ===
+If nothing sensitive or inappropriate: category = "safe", severity = "info"
+Include: "document_type", "summary" (brief description of file content)
+
+Respond ONLY with a JSON array (no other text):
+[{{"category": "pii|credentials|financial|medical|confidential|inappropriate|safe", "description": "detailed explanation", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value from file"}}}}]
+
+CRITICAL RULES:
+- Extract EXACT values from the file, not descriptions
+- One finding per person/record for PII (group their fields together)
+- One finding per credential/secret found
+- Multiple findings are expected for files with multiple issues
+- Every file MUST produce at least one finding"#,
+        file_name,
+        content.len(),
+        if was_truncated { " (truncated for analysis)" } else { "" },
         truncated
     );
 
     let response = ollama.generate(&prompt).await?;
-    parse_llm_findings(&response)
+    let mut findings = parse_llm_findings(&response)?;
+
+    // If LLM returned nothing, mark as analyzed but unclear
+    if findings.is_empty() {
+        findings.push(FileFinding {
+            category: "safe".to_string(),
+            description: "File analyzed, no sensitive data or concerns detected.".to_string(),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "llm".to_string(),
+            extracted_data: {
+                let mut m = HashMap::new();
+                m.insert("document_type".to_string(), "unknown".to_string());
+                m
+            },
+        });
+    }
+
+    Ok(findings)
 }
 
 fn parse_llm_findings(response: &str) -> Result<Vec<FileFinding>> {

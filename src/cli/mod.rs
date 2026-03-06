@@ -9,5 +9,4 @@ pub struct ScanConfig {
     pub ollama_url: String,
     pub max_size_bytes: u64,
     pub format: String,
-    pub fast_only: bool,
 }

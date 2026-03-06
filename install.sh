@@ -46,7 +46,35 @@ else
     ok "Rust installed ($(rustc --version))"
 fi
 
-# ── 3. Install Ollama if needed ────────────────────────────────────────────
+# ── 3. Install Tesseract OCR ────────────────────────────────────────────────
+
+if command -v tesseract &>/dev/null; then
+    ok "Tesseract OCR already installed ($(tesseract --version 2>&1 | head -1))"
+else
+    info "Installing Tesseract OCR..."
+
+    case "$PM" in
+        pacman)
+            sudo pacman -S --noconfirm tesseract tesseract-data-eng
+            ;;
+        apt)
+            sudo apt install -y tesseract-ocr tesseract-ocr-eng
+            ;;
+        dnf)
+            sudo dnf install -y tesseract tesseract-langpack-eng
+            ;;
+        brew)
+            brew install tesseract
+            ;;
+        *)
+            warn "Install tesseract manually: https://github.com/tesseract-ocr/tesseract"
+            ;;
+    esac
+
+    ok "Tesseract OCR installed"
+fi
+
+# ── 4. Install Ollama if needed ────────────────────────────────────────────
 
 if command -v ollama &>/dev/null; then
     ok "Ollama already installed ($(ollama --version 2>/dev/null || echo 'installed'))"

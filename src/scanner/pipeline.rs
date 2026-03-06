@@ -22,6 +22,15 @@ pub async fn run_scan(
             .progress_chars("##-"),
     );
 
+    // Check OCR availability once
+    let ocr_available = analyzers::ocr::is_available();
+    if !ocr_available {
+        pb.println(format!(
+            "  {} Tesseract not found. Image text extraction disabled. Install: pacman -S tesseract tesseract-data-eng",
+            style("[WARN]").yellow()
+        ));
+    }
+
     let mut report = ScanReport::new();
 
     for (i, file) in files.iter().enumerate() {
@@ -35,47 +44,42 @@ pub async fn run_scan(
 
         let findings = match file.kind {
             FileKind::Text => {
-                let mut results = analyzers::text::analyze_text_file(&file.path)?;
-
-                if !config.fast_only {
-                    if let Ok(llm_findings) =
-                        analyzers::text::analyze_text_with_llm(&file.path, ollama).await
-                    {
-                        results.extend(llm_findings);
+                match analyzers::text::analyze_text_file(&file.path, ollama).await {
+                    Ok(results) => results,
+                    Err(e) => {
+                        pb.println(format!(
+                            "  {} Failed to analyze {}: {}",
+                            style("[WARN]").yellow(),
+                            filename,
+                            e
+                        ));
+                        vec![]
                     }
                 }
-
-                results
             }
             FileKind::Image => {
-                if config.fast_only {
-                    vec![]
-                } else {
-                    match analyzers::image::analyze_image(&file.path, ollama).await {
-                        Ok(findings) => findings,
-                        Err(e) => {
-                            pb.println(format!(
-                                "  {} Failed to analyze {}: {}",
-                                style("[WARN]").yellow(),
-                                filename,
-                                e
-                            ));
-                            vec![]
-                        }
+                match analyzers::image::analyze_image(&file.path, ollama).await {
+                    Ok(findings) => findings,
+                    Err(e) => {
+                        pb.println(format!(
+                            "  {} Failed to analyze {}: {}",
+                            style("[WARN]").yellow(),
+                            filename,
+                            e
+                        ));
+                        vec![]
                     }
                 }
             }
             FileKind::Unknown => vec![],
         };
 
-        // Always add the file to the report, even if clean
         report.add_file_findings(
             file.path.to_string_lossy().to_string(),
             file.kind.clone(),
             file.size,
             findings,
         );
-
     }
 
     pb.set_position(total);

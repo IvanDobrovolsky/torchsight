@@ -1,3 +1,3 @@
 pub mod image;
-pub mod patterns;
+pub mod ocr;
 pub mod text;

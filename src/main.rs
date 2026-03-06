@@ -30,10 +30,6 @@ struct Args {
     /// Output report format (json, markdown)
     #[arg(long, default_value = "json")]
     format: String,
-
-    /// Skip LLM analysis, only run pattern matching
-    #[arg(long)]
-    fast_only: bool,
 }
 
 #[tokio::main]
@@ -58,30 +54,45 @@ async fn main() -> Result<()> {
     match ollama.health_check().await {
         Ok(true) => {
             println!(
-                "   {} Ollama connected (model: {})\n",
+                "   {} Ollama connected (model: {})",
                 style("[OK]").green().bold(),
                 style(&args.model).cyan()
             );
         }
         _ => {
             println!(
-                "   {} Ollama not reachable at {}",
-                style("[WARN]").yellow().bold(),
+                "   {} Ollama not reachable at {}. LLM analysis requires Ollama.",
+                style("[ERR]").red().bold(),
                 &args.ollama_url
             );
             println!(
-                "   {} Pattern-based scanning will still work.\n",
-                style(">>").dim()
+                "   {} Install: ollama serve && ollama pull {}\n",
+                style(">>").dim(),
+                &args.model
             );
         }
     }
+
+    // Check Tesseract
+    if analyzers::ocr::is_available() {
+        println!(
+            "   {} Tesseract OCR available",
+            style("[OK]").green().bold()
+        );
+    } else {
+        println!(
+            "   {} Tesseract not found. Install: pacman -S tesseract tesseract-data-eng",
+            style("[WARN]").yellow().bold()
+        );
+    }
+
+    println!();
 
     let config = cli::ScanConfig {
         model: args.model,
         ollama_url: args.ollama_url,
         max_size_bytes: args.max_size_mb * 1024 * 1024,
         format: args.format,
-        fast_only: args.fast_only,
     };
 
     cli::repl::run(config, ollama, args.path).await

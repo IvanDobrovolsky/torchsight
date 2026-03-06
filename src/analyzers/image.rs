@@ -3,59 +3,154 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+use super::ocr;
 use crate::llm::OllamaClient;
 use crate::report::{FileFinding, Severity};
 
 pub async fn analyze_image(path: &Path, ollama: &OllamaClient) -> Result<Vec<FileFinding>> {
     let image_bytes = fs::read(path)?;
+    let mut findings: Vec<FileFinding> = Vec::new();
 
-    // Step 1: Describe what's in the image first
-    let describe_prompt = r#"Describe this image in detail. What do you see? Be specific about:
-1. Is this a document, ID card, photo of a person, screenshot, or something else?
-2. If there is text visible, what does it say?
-3. Who or what is depicted?
-4. Are there any logos, symbols, or identifying marks?"#;
+    // ── Stage 1: OCR — extract all text from the image ──
+    let ocr_text = match ocr::extract_text(path) {
+        Ok(result) if !result.text.is_empty() => {
+            Some((result.text, result.confidence))
+        }
+        _ => None,
+    };
 
-    let description = ollama.analyze_image(describe_prompt, &image_bytes).await?;
+    // ── Stage 2: Vision — describe what the image shows ──
+    let vision_prompt = r#"Look at this image carefully. Describe in detail:
+1. What type of image is this? (photo, document, ID card, screenshot, medical record, etc.)
+2. What is the main subject?
+3. Describe any text you can see.
+4. Describe any people, faces, symbols, logos, or markings.
+5. Is there anything inappropriate, offensive, or hateful in this image?
+Be specific and thorough."#;
 
-    // Step 2: Analyze the description for security/content concerns
-    let analyze_prompt = format!(
-        r#"You are a cybersecurity and content safety analyst. Based on this image description, classify the image and extract data.
+    let vision_description = ollama.analyze_image(vision_prompt, &image_bytes).await
+        .unwrap_or_else(|_| "Could not analyze image visually.".to_string());
 
-Image description:
+    // ── Stage 3: LLM deep analysis — combine OCR text + vision description ──
+    let ocr_section = match &ocr_text {
+        Some((text, confidence)) => format!(
+            "=== TEXT EXTRACTED BY OCR (confidence: {:.0}%) ===\n{}\n=== END OCR TEXT ===",
+            confidence, text
+        ),
+        None => "=== NO TEXT DETECTED BY OCR ===".to_string(),
+    };
+
+    let analysis_prompt = format!(
+        r#"You are a cybersecurity forensics analyst performing a deep security assessment of an image file.
+
+You have TWO sources of information about this image:
+
+1. VISUAL DESCRIPTION (what the image looks like):
 "{}"
 
-Answer these questions and respond with JSON:
+2. OCR TEXT EXTRACTION (text read from the image):
+{}
 
-1. SENSITIVE DATA: Does it contain personal information (names, SSN, addresses, phone numbers, emails, credit cards, driver's license numbers, passwords, API keys)? If yes, extract EVERY field with its EXACT value.
+Based on BOTH sources, perform a complete analysis:
 
-2. INAPPROPRIATE CONTENT: Does it depict any of these?
-   - Adolf Hitler, Nazi symbols, swastikas, SS imagery, fascist propaganda
-   - Any dictator, war criminal, or hate figure
-   - Violence, gore, weapons used threateningly
-   - Profanity, slurs, hate speech
-   - Sexually explicit content, nudity
-   - Drug use, illegal activity
-   If yes, category MUST be "inappropriate" and severity MUST be "critical".
+=== TASK 1: DOCUMENT CLASSIFICATION ===
+What type of document or image is this? Examples:
+- Government ID (driver's license, passport, national ID)
+- Financial document (bank statement, credit card, check, invoice)
+- Medical record (prescription, lab results, insurance card)
+- Legal document (contract, NDA, court filing)
+- Screenshot of sensitive system (terminal, admin panel, database)
+- Personal photo, artwork, landscape, etc.
+- Propaganda, hate imagery, extremist content
 
-3. SAFE: If none of the above, it is safe.
+=== TASK 2: SENSITIVE DATA EXTRACTION ===
+Extract EVERY piece of sensitive information. Use the OCR text to get exact values.
+Return extracted_data with these fields (only include fields that are actually present):
+- "document_type": what this document is
+- "full_name": complete name of any person
+- "first_name", "last_name": name parts
+- "date_of_birth": DOB
+- "address": street address
+- "city", "state", "zip_code": address parts
+- "ssn": social security number
+- "phone": phone number
+- "email": email address
+- "credit_card": credit card number
+- "bank_account": bank account number
+- "driver_license": driver's license number
+- "passport_number": passport number
+- "id_number": any identification number
+- "expiration_date": expiration date
+- "issue_date": issue date
+- "username", "password": credentials
+- "api_key", "token", "secret": secrets
+- "organization": company or agency name
+- Add any other fields you find
 
-Respond ONLY with JSON array (no other text):
-[{{"category": "pii|credentials|financial|inappropriate|safe", "description": "what the image shows and why it is flagged or safe", "severity": "critical|warning|info", "extracted_data": {{"field": "value"}}}}]
+=== TASK 3: CONTENT MODERATION ===
+Flag if the image contains:
+- Adolf Hitler, Nazi symbols, swastikas, SS insignia, fascist imagery
+- Any dictator, war criminal, terrorist figure
+- Violence, weapons, gore
+- Sexually explicit content, nudity
+- Profanity, hate speech, racial slurs
+- Drug paraphernalia, illegal activity
+If flagged: category = "inappropriate", severity = "critical"
+Include in extracted_data: "content_type", "subject", "risk_level"
 
-Rules:
-- If document/ID: category "pii", severity "critical", extract ALL visible fields (full_name, address, driver_license, date_of_birth, etc)
-- If hate/offensive content: category "inappropriate", severity "critical", extracted_data must include "content_type" and "subject"
-- If safe (like a pet photo, landscape, artwork): category "safe", severity "info", extracted_data: {{"content_type": "photo", "subject": "brief description"}}
-- Put EXACT values, not descriptions like "a name is visible""#,
-        description
+=== TASK 4: SAFETY VERDICT ===
+If the image is completely safe (no sensitive data, no inappropriate content):
+category = "safe", severity = "info"
+Include in extracted_data: "content_type" (photo/illustration/etc), "subject" (what it shows)
+
+Respond ONLY with a JSON array (no other text):
+[{{"category": "pii|credentials|financial|medical|confidential|inappropriate|safe", "description": "detailed explanation of what was found and why it matters", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value"}}}}]
+
+CRITICAL RULES:
+- Use the OCR text for exact values, not approximations
+- Every image MUST produce at least one finding
+- Multiple findings are OK (e.g., PII + inappropriate in same image)
+- Put REAL VALUES in extracted_data, never "a name was visible""#,
+        vision_description, ocr_section
     );
 
-    let response = ollama.generate(&analyze_prompt).await?;
-    parse_image_findings(&response)
+    let response = ollama.generate(&analysis_prompt).await?;
+
+    // Parse LLM response
+    let llm_findings = parse_findings(&response)?;
+    findings.extend(llm_findings);
+
+    // If LLM returned nothing, add a basic finding from what we have
+    if findings.is_empty() {
+        if let Some((text, _)) = &ocr_text {
+            findings.push(FileFinding {
+                category: "unclassified".to_string(),
+                description: "Image contains text but could not be fully analyzed by LLM.".to_string(),
+                evidence: text.chars().take(200).collect(),
+                severity: Severity::Warning,
+                source: "ocr".to_string(),
+                extracted_data: {
+                    let mut m = HashMap::new();
+                    m.insert("ocr_text".to_string(), text.clone());
+                    m
+                },
+            });
+        } else {
+            findings.push(FileFinding {
+                category: "safe".to_string(),
+                description: "No text or sensitive content detected.".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "llm-vision".to_string(),
+                extracted_data: HashMap::new(),
+            });
+        }
+    }
+
+    Ok(findings)
 }
 
-fn parse_image_findings(response: &str) -> Result<Vec<FileFinding>> {
+fn parse_findings(response: &str) -> Result<Vec<FileFinding>> {
     let trimmed = response.trim();
 
     let start = trimmed.find('[');
@@ -91,7 +186,7 @@ fn parse_image_findings(response: &str) -> Result<Vec<FileFinding>> {
                 "warning" => Severity::Warning,
                 _ => Severity::Info,
             },
-            source: "llm-vision".to_string(),
+            source: "llm-vision+ocr".to_string(),
             extracted_data: f
                 .extracted_data
                 .into_iter()
