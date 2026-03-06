@@ -9,7 +9,8 @@ RED='\033[0;31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-MODEL="${TORCHSIGHT_MODEL:-llava}"
+TEXT_MODEL="${TORCHSIGHT_TEXT_MODEL:-mistral}"
+VISION_MODEL="${TORCHSIGHT_VISION_MODEL:-llama3.2-vision}"
 
 info()  { echo -e "  ${CYAN}>>>${RESET} $1"; }
 ok()    { echo -e "  ${GREEN}[OK]${RESET} $1"; }
@@ -137,14 +138,24 @@ fi
 
 # ── 5. Pull the LLM model ─────────────────────────────────────────────────
 
-info "Checking for model: ${BOLD}$MODEL${RESET}"
+info "Checking for text model: ${BOLD}$TEXT_MODEL${RESET}"
 
-if ollama list 2>/dev/null | grep -q "$MODEL"; then
-    ok "Model '$MODEL' already available"
+if ollama list 2>/dev/null | grep -q "$TEXT_MODEL"; then
+    ok "Model '$TEXT_MODEL' already available"
 else
-    info "Pulling model '$MODEL' (this may take a few minutes)..."
-    ollama pull "$MODEL"
-    ok "Model '$MODEL' ready"
+    info "Pulling model '$TEXT_MODEL' (this may take a few minutes)..."
+    ollama pull "$TEXT_MODEL"
+    ok "Model '$TEXT_MODEL' ready"
+fi
+
+info "Checking for vision model: ${BOLD}$VISION_MODEL${RESET}"
+
+if ollama list 2>/dev/null | grep -q "$VISION_MODEL"; then
+    ok "Model '$VISION_MODEL' already available"
+else
+    info "Pulling model '$VISION_MODEL' (this may take a few minutes)..."
+    ollama pull "$VISION_MODEL"
+    ok "Model '$VISION_MODEL' ready"
 fi
 
 # ── 6. Build TorchSight ───────────────────────────────────────────────────

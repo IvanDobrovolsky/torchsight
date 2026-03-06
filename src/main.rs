@@ -15,9 +15,13 @@ struct Args {
     /// Path to scan (if not provided, interactive mode)
     path: Option<String>,
 
-    /// Ollama model to use
+    /// Text analysis model (fast reasoning)
+    #[arg(long, default_value = "mistral")]
+    text_model: String,
+
+    /// Vision model (image understanding)
     #[arg(long, default_value = "llama3.2-vision")]
-    model: String,
+    vision_model: String,
 
     /// Ollama server URL
     #[arg(long, default_value = "http://localhost:11434")]
@@ -49,14 +53,15 @@ async fn main() -> Result<()> {
         style("On-Premise Security Scanner | Fully Local | No Cloud").dim()
     );
 
-    let ollama = llm::OllamaClient::new(&args.ollama_url, &args.model);
+    let ollama = llm::OllamaClient::new(&args.ollama_url, &args.text_model, &args.vision_model);
 
     match ollama.health_check().await {
         Ok(true) => {
             println!(
-                "   {} Ollama connected (model: {})",
+                "   {} Ollama connected (text: {}, vision: {})",
                 style("[OK]").green().bold(),
-                style(&args.model).cyan()
+                style(ollama.text_model()).cyan(),
+                style(ollama.vision_model()).cyan()
             );
         }
         _ => {
@@ -66,9 +71,10 @@ async fn main() -> Result<()> {
                 &args.ollama_url
             );
             println!(
-                "   {} Install: ollama serve && ollama pull {}\n",
+                "   {} Install: ollama serve && ollama pull {} && ollama pull {}\n",
                 style(">>").dim(),
-                &args.model
+                &args.text_model,
+                &args.vision_model
             );
         }
     }
@@ -89,7 +95,8 @@ async fn main() -> Result<()> {
     println!();
 
     let config = cli::ScanConfig {
-        model: args.model,
+        text_model: args.text_model,
+        vision_model: args.vision_model,
         ollama_url: args.ollama_url,
         max_size_bytes: args.max_size_mb * 1024 * 1024,
         format: args.format,

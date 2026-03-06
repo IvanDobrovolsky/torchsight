@@ -28,7 +28,7 @@ pub async fn analyze_image(path: &Path, ollama: &OllamaClient) -> Result<Vec<Fil
 5. Is there anything inappropriate, offensive, or hateful in this image?
 Be specific and thorough."#;
 
-    let vision_description = ollama.analyze_image(vision_prompt, &image_bytes).await
+    let vision_description = ollama.describe_image(vision_prompt, &image_bytes).await
         .unwrap_or_else(|_| "Could not analyze image visually.".to_string());
 
     // ── Stage 3: LLM deep analysis — combine OCR text + vision description ──
