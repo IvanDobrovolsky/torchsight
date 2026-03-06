@@ -68,7 +68,12 @@ L4  Compliance    — applicable regulations (multi-label)
 | `confidential.classified` | Government/military classifications | classification_level, codeword, handling_instructions | CIA FOIA, Synthetic |
 | `confidential.internal` | Corporate internal-only documents | classification, department, distribution_list | Enron, Synthetic |
 | `confidential.legal` | Legal privilege or restricted docs | document_type, parties, effective_date, jurisdiction | CourtListener, EDGAR, Synthetic |
-| `confidential.military` | Military/defense content | operation_name, unit, coordinates, classification | Synthetic only |
+| `confidential.military` | Military operations and defense content | operation_name, unit, coordinates, classification, force_disposition | Synthetic only |
+| `confidential.military_comms` | Military communications and signals intelligence | message_type (OPORD/FRAGO/SITREP/INTREP), classification, dtg (date-time group), originator, recipients | Synthetic only |
+| `confidential.weapons_systems` | Weapons systems specifications and technical data | system_name, system_type (missile/aircraft/naval/cyber), specifications, export_control | Synthetic only |
+| `confidential.intelligence` | Intelligence reports and assessments | report_type (HUMINT/SIGINT/IMINT/OSINT/MASINT), source_reliability, information_credibility, classification | Synthetic, CIA FOIA |
+| `confidential.geospatial` | Military maps, coordinates, and targeting data | coordinates (MGRS/lat-lon), target_type, datum, imagery_source, resolution | Synthetic only |
+| `confidential.nuclear` | Nuclear-related information (CNWDI, RD, FRD) | category (RD/FRD/CNWDI/NNPI), handling_caveats, sigma_level | Synthetic only |
 | `confidential.education` | FERPA-protected student records | student_id, gpa, enrollment_status, disciplinary | Synthetic only |
 
 ### malicious.*
@@ -124,6 +129,10 @@ L4  Compliance    — applicable regulations (multi-label)
 ### Severity Assignment Rules
 - Any **full SSN, credit card, or active credential** → `critical`
 - Any **malicious payload or exploit** → `critical`
+- Any **military operations data, coordinates, or weapons specs** → `critical`
+- Any **intelligence report (HUMINT/SIGINT/IMINT)** → `critical`
+- Any **nuclear-related data (RD/FRD/CNWDI)** → `critical`
+- Any **classified or TOP SECRET markings with content** → `critical`
 - Any **prompt injection or supply chain attack** → `critical`
 - Any **reverse shell, C2 beacon, or steganographic payload** → `critical`
 - **Cloud config with IAM keys or terraform state secrets** → `critical`
@@ -148,8 +157,13 @@ L4  Compliance    — applicable regulations (multi-label)
 | `SOX` | Sarbanes-Oxley Act | Financial records of public companies |
 | `FERPA` | Family Educational Rights & Privacy Act | Student records, grades, enrollment data |
 | `CCPA` | California Consumer Privacy Act | PII of California residents |
-| `ITAR` | International Traffic in Arms Regulations | Military/defense technical data |
-| `EAR` | Export Administration Regulations | Dual-use technology |
+| `ITAR` | International Traffic in Arms Regulations | Military/defense technical data, weapons systems |
+| `EAR` | Export Administration Regulations | Dual-use technology, encryption |
+| `NIST-800-53` | NIST Security Controls | Government/military information systems |
+| `NIST-800-171` | CUI Protection | Controlled Unclassified Information in non-federal systems |
+| `EO-13526` | Classified National Security Information | Any document with classification markings (TS/S/C) |
+| `DoD-5220.22-M` | National Industrial Security Program | Cleared contractor handling of classified info |
+| `10-CFR-1045` | Nuclear Classification (DOE) | Restricted Data (RD), Formerly Restricted Data (FRD) |
 
 ### Compliance Assignment Rules
 - PII of any kind → `GDPR` (unless clearly non-EU)
@@ -158,7 +172,14 @@ L4  Compliance    — applicable regulations (multi-label)
 - Credit card / payment → `PCI-DSS`
 - Financial records of corporations → `SOX`
 - Student data → `FERPA`
-- Military/defense → `ITAR`
+- Military/defense technical data → `ITAR`
+- Weapons systems specifications → `ITAR` + `EO-13526`
+- Intelligence reports → `EO-13526` + `NIST-800-53`
+- Military communications (OPORD/SITREP) → `EO-13526` + `NIST-800-53`
+- Geospatial/targeting data → `ITAR` + `EO-13526`
+- Nuclear information (RD/FRD/CNWDI) → `10-CFR-1045` + `EO-13526`
+- Classified markings (TOP SECRET/SECRET/CONFIDENTIAL) → `EO-13526` + `DoD-5220.22-M`
+- Controlled Unclassified Information (CUI) → `NIST-800-171`
 - Dual-use tech → `EAR`
 
 ---
