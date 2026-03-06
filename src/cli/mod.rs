@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScanConfig {
-    pub model: String,
+    pub text_model: String,
+    pub vision_model: String,
     pub ollama_url: String,
     pub max_size_bytes: u64,
     pub format: String,
