@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo.svg" width="180" alt="TorchSight">
+  <img src="assets/logo.svg" width="180" alt="TorchSight">
 </p>
 
 <h1 align="center">TorchSight</h1>

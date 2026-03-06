@@ -22,7 +22,7 @@ from weasyprint import HTML
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 TEMPLATE_DIR = SCRIPT_DIR
-LOGO_PATH = SCRIPT_DIR.parent / "public" / "logo.svg"
+LOGO_PATH = SCRIPT_DIR.parent / "assets" / "logo.svg"
 
 
 def human_size(size_bytes: int) -> str:
