@@ -16,7 +16,7 @@ struct Args {
     path: Option<String>,
 
     /// Ollama model to use
-    #[arg(long, default_value = "llava")]
+    #[arg(long, default_value = "llama3.2-vision")]
     model: String,
 
     /// Ollama server URL

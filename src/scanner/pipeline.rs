@@ -24,13 +24,14 @@ pub async fn run_scan(
 
     let mut report = ScanReport::new();
 
-    for file in &files {
+    for (i, file) in files.iter().enumerate() {
+        pb.set_position(i as u64);
         let filename = file
             .path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
-        pb.set_message(filename.to_string());
+        pb.set_message(format!("{} ({}/{})", filename, i + 1, total));
 
         let findings = match file.kind {
             FileKind::Text => {
@@ -75,9 +76,9 @@ pub async fn run_scan(
             findings,
         );
 
-        pb.inc(1);
     }
 
+    pb.set_position(total);
     pb.finish_with_message("done");
 
     Ok(report)

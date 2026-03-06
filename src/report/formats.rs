@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
-use genpdf::elements::{Break, Paragraph, TableLayout};
+use genpdf::elements::{Break, Paragraph};
 use genpdf::fonts;
 use genpdf::style::Style;
 use genpdf::{Alignment, Document, Element};
@@ -136,31 +136,24 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
     );
     doc.push(Break::new(0.8));
 
-    // ── Executive Summary Table ──
-    doc.push(Paragraph::new("Executive Summary").styled(section_style));
+    // ── Executive Summary ──
+    doc.push(Paragraph::new("EXECUTIVE SUMMARY").styled(section_style));
+    doc.push(Break::new(0.2));
+    doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
     doc.push(Break::new(0.3));
 
-    let mut summary_table = TableLayout::new(vec![2, 1]);
-    summary_table
-        .set_cell_decorator(genpdf::elements::FrameCellDecorator::new(true, true, false));
-
-    let summary_rows = [
-        ("Total Findings", report.total_findings().to_string()),
-        ("Critical", report.critical_count().to_string()),
-        ("Warning", report.warning_count().to_string()),
-        ("Informational", report.info_count().to_string()),
-        (
-            "Inappropriate Content",
-            report.inappropriate_count().to_string(),
-        ),
+    let summary_lines = [
+        format!("Total Findings .............. {}", report.total_findings()),
+        format!("  Critical .................. {}", report.critical_count()),
+        format!("  Warning ................... {}", report.warning_count()),
+        format!("  Informational ............. {}", report.info_count()),
+        format!("  Inappropriate Content ..... {}", report.inappropriate_count()),
     ];
-    for (label, value) in &summary_rows {
-        let mut row = summary_table.row();
-        row.push_element(Paragraph::new(*label).styled(normal_style));
-        row.push_element(Paragraph::new(value.as_str()).styled(bold_style));
-        row.push()?;
+    for line in &summary_lines {
+        doc.push(Paragraph::new(line.as_str()).styled(normal_style));
     }
-    doc.push(summary_table);
+    doc.push(Break::new(0.2));
+    doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
     doc.push(Break::new(1.0));
 
     // ── Flagged Files (detailed) ──
@@ -226,34 +219,22 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
                     );
                 }
 
-                // Extracted data table
                 if !finding.extracted_data.is_empty() {
                     doc.push(Break::new(0.1));
-
-                    let mut table = TableLayout::new(vec![2, 5]);
-                    table.set_cell_decorator(genpdf::elements::FrameCellDecorator::new(
-                        true, true, false,
-                    ));
-
-                    let mut header = table.row();
-                    header.push_element(Paragraph::new("Field").styled(field_label_style));
-                    header.push_element(Paragraph::new("Extracted Value").styled(field_label_style));
-                    header.push()?;
+                    doc.push(Paragraph::new("Extracted Data:").styled(field_label_style));
 
                     let mut keys: Vec<&String> = finding.extracted_data.keys().collect();
                     keys.sort();
 
                     for key in keys {
                         let value = &finding.extracted_data[key];
-                        let mut row = table.row();
-                        row.push_element(
-                            Paragraph::new(titlecase(key)).styled(field_label_style),
+                        let label = titlecase(key);
+                        let dots: String = ".".repeat(30usize.saturating_sub(label.len()));
+                        doc.push(
+                            Paragraph::new(format!("    {} {} {}", label, dots, value))
+                                .styled(field_value_style),
                         );
-                        row.push_element(Paragraph::new(value).styled(field_value_style));
-                        row.push()?;
                     }
-
-                    doc.push(table);
                 }
 
                 doc.push(Break::new(0.3));
@@ -272,36 +253,43 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
 
     if !clean_files.is_empty() {
         doc.push(Break::new(0.5));
-        doc.push(Paragraph::new("Clean Files").styled(section_style));
+        doc.push(Paragraph::new("CLEAN FILES").styled(section_style));
+        doc.push(Break::new(0.1));
+        doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
+        doc.push(Break::new(0.2));
         doc.push(
-            Paragraph::new("The following files were scanned and no security concerns were found.")
+            Paragraph::new("No security concerns found in the following files:")
                 .styled(small_style),
         );
-        doc.push(Break::new(0.3));
-
-        let mut clean_table = TableLayout::new(vec![5, 1, 2]);
-        clean_table
-            .set_cell_decorator(genpdf::elements::FrameCellDecorator::new(true, true, false));
-
-        let mut header = clean_table.row();
-        header.push_element(Paragraph::new("File Path").styled(field_label_style));
-        header.push_element(Paragraph::new("Type").styled(field_label_style));
-        header.push_element(Paragraph::new("Size").styled(field_label_style));
-        header.push()?;
+        doc.push(Break::new(0.2));
 
         for file in &clean_files {
-            let mut row = clean_table.row();
-            row.push_element(Paragraph::new(&file.path).styled(field_value_style));
-            row.push_element(
-                Paragraph::new(format!("{}", file.kind)).styled(field_value_style),
+            let summary = file
+                .findings
+                .iter()
+                .find(|f| f.category == "safe")
+                .and_then(|f| {
+                    f.extracted_data
+                        .get("summary")
+                        .or(f.extracted_data.get("subject"))
+                })
+                .map(|s| format!(" - {}", s))
+                .unwrap_or_default();
+
+            doc.push(
+                Paragraph::new(format!(
+                    "  [OK]  {} ({}, {}){}",
+                    file.path,
+                    file.kind,
+                    human_size(file.size),
+                    summary
+                ))
+                .styled(field_value_style),
             );
-            row.push_element(
-                Paragraph::new(human_size(file.size)).styled(field_value_style),
-            );
-            row.push()?;
         }
 
-        doc.push(clean_table);
+        doc.push(Break::new(0.2));
+        doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
     }
 
     // ── Footer ──
