@@ -12,18 +12,16 @@ import Layout from '../layouts/Layout.astro';
     <img
       src="/logo.svg"
       alt="TorchSight"
-      class="w-64 h-64 md:w-80 md:h-80 mt-32 mb-8 drop-shadow-[0_0_40px_rgba(139,92,246,0.15)]"
+      class="w-64 h-64 md:w-80 md:h-80 mt-16 mb-6 drop-shadow-[0_0_40px_rgba(139,92,246,0.15)]"
     />
 
-    <!-- Description -->
-    <p class="text-text-muted text-sm md:text-base max-w-2xl text-center leading-loose mb-10">
-      Open-source, on-premise security scanner powered by local LLMs.
-      Scans files for <span class="text-text-secondary">PII</span>, <span class="text-text-secondary">credentials</span>, <span class="text-text-secondary">classified data</span>, <span class="text-text-secondary">malicious payloads</span>, and <span class="text-text-secondary">compliance violations</span>.
-      Everything runs on your machine — nothing leaves, nothing transmits.
+    <!-- One-liner -->
+    <p class="text-text-muted text-sm mb-10">
+      Open-source security scanner powered by local LLMs. Nothing leaves your machine.
     </p>
 
     <!-- Feature pills -->
-    <div class="flex flex-wrap justify-center gap-2 mb-12 max-w-2xl">
+    <div class="flex flex-wrap justify-center gap-2 mb-12 max-w-lg">
       {[
         'PII Detection',
         'Credentials & Secrets',
