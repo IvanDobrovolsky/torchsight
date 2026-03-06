@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <!-- Cosmic beam - teal to purple to white -->
+    <linearGradient id="beamOuter" x1="0%" y1="100%" x2="30%" y2="0%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.6"/>
+      <stop offset="30%" stop-color="#6366F1" stop-opacity="0.4"/>
+      <stop offset="60%" stop-color="#38BDF8" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#E0F2FE" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <linearGradient id="beamInner" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#C084FC" stop-opacity="0.5"/>
+      <stop offset="35%" stop-color="#818CF8" stop-opacity="0.35"/>
+      <stop offset="65%" stop-color="#7DD3FC" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    </linearGradient>
+
+    <!-- Central streak - hot white to teal -->
+    <linearGradient id="streakV" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="25%" stop-color="#E9D5FF" stop-opacity="0.5"/>
+      <stop offset="55%" stop-color="#A5B4FC" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Horizontal flare - magenta to white to teal -->
+    <linearGradient id="flareH" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0"/>
+      <stop offset="25%" stop-color="#C084FC" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="75%" stop-color="#38BDF8" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Nebula haze - multi color -->
+    <radialGradient id="hazeOuter" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#7C3AED" stop-opacity="0.1"/>
+      <stop offset="50%" stop-color="#6366F1" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0EA5E9" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="hazeInner" cx="50%" cy="55%" r="25%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Source point glow -->
+    <radialGradient id="sourceGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="25%" stop-color="#E9D5FF" stop-opacity="0.8"/>
+      <stop offset="55%" stop-color="#A855F7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Second outer cone with different angle for nebula effect -->
+    <linearGradient id="beamShift" x1="100%" y1="100%" x2="70%" y2="0%">
+      <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.4"/>
+      <stop offset="40%" stop-color="#38BDF8" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#A5B4FC" stop-opacity="0.03"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+    <filter id="medGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+    </filter>
+    <filter id="wideGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10"/>
+    </filter>
+    <filter id="ultraGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18"/>
+    </filter>
+    <filter id="megaGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="25"/>
+    </filter>
+  </defs>
+
+  <!-- Background - slightly warmer dark -->
+  <rect width="800" height="800" fill="#07060F" rx="40"/>
+
+  <!-- Deep nebula haze layers -->
+  <ellipse cx="400" cy="330" rx="250" ry="230" fill="url(#hazeOuter)"/>
+  <ellipse cx="400" cy="360" rx="150" ry="140" fill="url(#hazeInner)"/>
+  
+  <!-- Subtle purple nebula cloud left -->
+  <ellipse cx="340" cy="300" rx="80" ry="60" fill="#7C3AED" opacity="0.04" filter="url(#megaGlow)"/>
+  <!-- Subtle teal nebula cloud right -->
+  <ellipse cx="460" cy="280" rx="70" ry="55" fill="#06B6D4" opacity="0.04" filter="url(#megaGlow)"/>
+
+  <!-- Crosshair ring -->
+  <circle cx="400" cy="320" r="125" fill="none" stroke="#1A1328" stroke-width="1.5"/>
+  <circle cx="400" cy="320" r="126" fill="none" stroke="#8B5CF6" stroke-width="0.6" stroke-opacity="0.2"/>
+  <circle cx="400" cy="320" r="127" fill="none" stroke="#06B6D4" stroke-width="0.4" stroke-opacity="0.1"/>
+  
+  <!-- Crosshair ticks -->
+  <line x1="400" y1="172" x2="400" y2="205" stroke="#1A1328" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="400" y1="435" x2="400" y2="468" stroke="#1A1328" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="252" y1="320" x2="285" y2="320" stroke="#1A1328" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="515" y1="320" x2="548" y2="320" stroke="#1A1328" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Corner brackets - gradient feel -->
+  <path d="M 308 235 L 308 218 L 325 218" fill="none" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.3"/>
+  <path d="M 492 235 L 492 218 L 475 218" fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.3"/>
+  <path d="M 308 405 L 308 422 L 325 422" fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.3"/>
+  <path d="M 492 405 L 492 422 L 475 422" fill="none" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.3"/>
+
+  <!-- === COSMIC LIGHT BEAM === -->
+
+  <!-- Ultra wide bloom at source -->
+  <ellipse cx="400" cy="395" rx="70" ry="18" fill="#A855F7" opacity="0.1" filter="url(#megaGlow)"/>
+  <ellipse cx="400" cy="395" rx="50" ry="12" fill="#6366F1" opacity="0.12" filter="url(#ultraGlow)"/>
+
+  <!-- Outer cone - purple side -->
+  <polygon points="362,395 315,195 478,195 438,395" fill="url(#beamOuter)" opacity="0.45"/>
+  
+  <!-- Outer cone - teal side (offset for nebula color split) -->
+  <polygon points="368,395 322,200 485,200 432,395" fill="url(#beamShift)" opacity="0.3"/>
+
+  <!-- Inner brighter cone -->
+  <polygon points="378,395 345,210 455,210 422,395" fill="url(#beamInner)" opacity="0.5"/>
+
+  <!-- Central bright streak -->
+  <rect x="395" y="190" width="10" height="205" fill="url(#streakV)" opacity="0.7" filter="url(#softGlow)"/>
+  
+  <!-- Wider soft streak -->
+  <rect x="387" y="200" width="26" height="195" fill="url(#streakV)" opacity="0.2" filter="url(#medGlow)"/>
+
+  <!-- Source point glow layers -->
+  <ellipse cx="400" cy="395" rx="35" ry="9" fill="#C084FC" opacity="0.25" filter="url(#wideGlow)"/>
+  <ellipse cx="400" cy="395" rx="18" ry="7" fill="#E9D5FF" opacity="0.5" filter="url(#medGlow)"/>
+  <ellipse cx="400" cy="395" rx="7" ry="4" fill="#FFFFFF" opacity="0.95" filter="url(#softGlow)"/>
+  <ellipse cx="400" cy="395" rx="3" ry="2" fill="#FFFFFF"/>
+
+  <!-- Horizontal lens flare - asymmetric cosmic colors -->
+  <rect x="310" y="393" width="180" height="3" fill="url(#flareH)" opacity="0.6" filter="url(#softGlow)"/>
+  <rect x="280" y="393.5" width="240" height="2" fill="url(#flareH)" opacity="0.2" filter="url(#medGlow)"/>
+
+  <!-- Diagonal flare spikes -->
+  <line x1="383" y1="408" x2="360" y2="430" stroke="#C084FC" stroke-width="1.2" stroke-linecap="round" opacity="0.25" filter="url(#softGlow)"/>
+  <line x1="417" y1="408" x2="440" y2="430" stroke="#22D3EE" stroke-width="1.2" stroke-linecap="round" opacity="0.25" filter="url(#softGlow)"/>
+  <line x1="380" y1="382" x2="355" y2="365" stroke="#A78BFA" stroke-width="0.8" stroke-linecap="round" opacity="0.15" filter="url(#softGlow)"/>
+  <line x1="420" y1="382" x2="445" y2="365" stroke="#67E8F9" stroke-width="0.8" stroke-linecap="round" opacity="0.15" filter="url(#softGlow)"/>
+
+  <!-- Particles in beam - mixed cosmic colors -->
+  <circle cx="390" cy="235" r="2" fill="#FFFFFF" opacity="0.8" filter="url(#softGlow)"/>
+  <circle cx="414" cy="260" r="1.5" fill="#C084FC" opacity="0.7" filter="url(#softGlow)"/>
+  <circle cx="382" cy="290" r="1.8" fill="#67E8F9" opacity="0.6" filter="url(#softGlow)"/>
+  <circle cx="420" cy="315" r="1.3" fill="#A78BFA" opacity="0.65" filter="url(#softGlow)"/>
+  <circle cx="393" cy="350" r="1.6" fill="#FFFFFF" opacity="0.6" filter="url(#softGlow)"/>
+  <circle cx="408" cy="220" r="1.2" fill="#22D3EE" opacity="0.65" filter="url(#softGlow)"/>
+  <circle cx="386" cy="375" r="1.1" fill="#E9D5FF" opacity="0.5" filter="url(#softGlow)"/>
+  <circle cx="416" cy="280" r="1.7" fill="#FFFFFF" opacity="0.5" filter="url(#softGlow)"/>
+  <circle cx="396" cy="305" r="1.1" fill="#818CF8" opacity="0.5" filter="url(#softGlow)"/>
+  <circle cx="405" cy="340" r="1.4" fill="#67E8F9" opacity="0.45" filter="url(#softGlow)"/>
+  <circle cx="398" cy="245" r="0.9" fill="#F0ABFC" opacity="0.55" filter="url(#softGlow)"/>
+
+  <!-- Cosmic dust outside beam - more color variety -->
+  <circle cx="345" cy="250" r="1.1" fill="#C084FC" opacity="0.35" filter="url(#softGlow)"/>
+  <circle cx="458" cy="268" r="0.9" fill="#22D3EE" opacity="0.35" filter="url(#softGlow)"/>
+  <circle cx="335" cy="320" r="1" fill="#67E8F9" opacity="0.25" filter="url(#softGlow)"/>
+  <circle cx="468" cy="340" r="1.2" fill="#A78BFA" opacity="0.28" filter="url(#softGlow)"/>
+  <circle cx="328" cy="370" r="0.9" fill="#F0ABFC" opacity="0.2" filter="url(#softGlow)"/>
+  <circle cx="472" cy="305" r="0.8" fill="#22D3EE" opacity="0.25" filter="url(#softGlow)"/>
+  <circle cx="320" cy="285" r="0.7" fill="#818CF8" opacity="0.22" filter="url(#softGlow)"/>
+  <circle cx="480" cy="380" r="0.9" fill="#C084FC" opacity="0.18" filter="url(#softGlow)"/>
+  <circle cx="350" cy="385" r="0.6" fill="#67E8F9" opacity="0.15" filter="url(#softGlow)"/>
+  <circle cx="455" cy="230" r="0.8" fill="#A78BFA" opacity="0.2" filter="url(#softGlow)"/>
+
+  <!-- Torch handle -->
+  <rect x="393" y="400" width="14" height="48" rx="2.5" fill="#110E1C"/>
+  <rect x="393" y="400" width="14" height="48" rx="2.5" fill="#8B5CF6" opacity="0.05"/>
+  
+  <line x1="395.5" y1="414" x2="404.5" y2="414" stroke="#1A1328" stroke-width="1" stroke-linecap="round"/>
+  <line x1="395.5" y1="420" x2="404.5" y2="420" stroke="#1A1328" stroke-width="1" stroke-linecap="round"/>
+  <line x1="395.5" y1="426" x2="404.5" y2="426" stroke="#1A1328" stroke-width="1" stroke-linecap="round"/>
+  <line x1="395.5" y1="432" x2="404.5" y2="432" stroke="#1A1328" stroke-width="1" stroke-linecap="round"/>
+  <line x1="395.5" y1="438" x2="404.5" y2="438" stroke="#1A1328" stroke-width="1" stroke-linecap="round"/>
+
+  <rect x="387" y="446" width="26" height="5" rx="2" fill="#110E1C"/>
+
+  <!-- Text - gradient feel via two-tone -->
+  <text x="400" y="560" text-anchor="middle" font-family="'Fira Code'" font-size="54" font-weight="bold" letter-spacing="8" fill="#C8C2D6">TORCH</text>
+  
+  <!-- SIGHT with a teal-purple vibe -->
+  <text x="400" y="620" text-anchor="middle" font-family="'Fira Code'" font-size="54" font-weight="bold" letter-spacing="8" fill="#A78BFA">SIGHT</text>
+
+</svg>
