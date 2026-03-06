@@ -111,6 +111,65 @@ def download():
     print(f"[OK] {downloaded} CRS defense reports saved to {OUTPUT_DIR}")
 
 
+def download_pdfs():
+    """Download actual PDF content for existing CRS metadata files."""
+    pdf_dir = os.path.join(OUTPUT_DIR, "pdfs")
+    os.makedirs(pdf_dir, exist_ok=True)
+
+    json_files = [f for f in os.listdir(OUTPUT_DIR) if f.endswith(".json") and not f.startswith("_")]
+    if not json_files:
+        print("[WARN] No CRS metadata files found. Run download() first.")
+        return
+
+    downloaded = 0
+    skipped = 0
+    failed = 0
+
+    for jf in sorted(json_files):
+        report_id = jf.replace(".json", "")
+        pdf_path = os.path.join(pdf_dir, f"{report_id}.pdf")
+
+        if os.path.exists(pdf_path):
+            skipped += 1
+            continue
+
+        try:
+            with open(os.path.join(OUTPUT_DIR, jf)) as f:
+                data = json.load(f)
+        except Exception:
+            continue
+
+        # Find PDF URL in latest version
+        versions = data.get("versions", [])
+        if not versions:
+            continue
+
+        pdf_url = None
+        for fmt in versions[0].get("formats", []):
+            if fmt.get("format") == "PDF" and fmt.get("url"):
+                pdf_url = fmt["url"]
+                break
+
+        if not pdf_url:
+            continue
+
+        try:
+            req = urllib.request.Request(pdf_url)
+            req.add_header("User-Agent", "TorchSight-Research/1.0 (academic)")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                with open(pdf_path, "wb") as out:
+                    out.write(resp.read())
+            downloaded += 1
+            if downloaded % 10 == 0:
+                print(f"     Downloaded {downloaded} PDFs...")
+            time.sleep(0.5)
+        except Exception as e:
+            failed += 1
+
+    print(f"[OK] CRS PDFs: {downloaded} downloaded, {skipped} already existed, {failed} failed")
+    print(f"     Saved to {pdf_dir}")
+
+
 def _save_fallback():
     """Save a curated list of known defense CRS report numbers."""
     known = [
@@ -131,4 +190,9 @@ def _save_fallback():
 
 
 if __name__ == "__main__":
-    download()
+    import sys
+    if "--pdfs" in sys.argv:
+        download_pdfs()
+    else:
+        download()
+        download_pdfs()
