@@ -1,0 +1,122 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use crate::scanner::classifier::FileKind;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Severity {
+    Critical,
+    Warning,
+    Info,
+}
+
+impl std::fmt::Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Severity::Critical => write!(f, "CRITICAL"),
+            Severity::Warning => write!(f, "WARNING"),
+            Severity::Info => write!(f, "INFO"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileFinding {
+    pub category: String,
+    pub description: String,
+    pub evidence: String,
+    pub severity: Severity,
+    pub source: String,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub extracted_data: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileResult {
+    pub path: String,
+    pub kind: FileKind,
+    pub size: u64,
+    pub findings: Vec<FileFinding>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScanReport {
+    pub timestamp: DateTime<Utc>,
+    pub files: Vec<FileResult>,
+}
+
+impl ScanReport {
+    pub fn new() -> Self {
+        Self {
+            timestamp: Utc::now(),
+            files: Vec::new(),
+        }
+    }
+
+    pub fn add_file_findings(
+        &mut self,
+        path: String,
+        kind: FileKind,
+        size: u64,
+        findings: Vec<FileFinding>,
+    ) {
+        self.files.push(FileResult {
+            path,
+            kind,
+            size,
+            findings,
+        });
+    }
+
+    pub fn total_findings(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.category != "safe")
+            .count()
+    }
+
+    pub fn flagged_count(&self) -> usize {
+        self.files
+            .iter()
+            .filter(|f| f.findings.iter().any(|finding| finding.category != "safe"))
+            .count()
+    }
+
+    pub fn clean_count(&self) -> usize {
+        self.files.len() - self.flagged_count()
+    }
+
+    pub fn inappropriate_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.category == "inappropriate")
+            .count()
+    }
+
+    pub fn critical_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.severity == Severity::Critical)
+            .count()
+    }
+
+    pub fn warning_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.severity == Severity::Warning)
+            .count()
+    }
+
+    pub fn info_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.severity == Severity::Info)
+            .count()
+    }
+}
