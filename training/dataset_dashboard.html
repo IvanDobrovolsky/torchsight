@@ -40,7 +40,7 @@
 <body>
 
 <h1>TorchSight Dataset Dashboard</h1>
-<p class="subtitle">84,706 samples across 49 subcategories — all categories at 500+ minimum</p>
+<p class="subtitle">89,468 samples across 49 subcategories — all license-verified, all at 500+ minimum</p>
 
 <div class="stats-row" id="stats-row"></div>
 
@@ -68,15 +68,15 @@
 
 <script>
 const data = {
-  "confidential.military": { real: 109, synthetic: 500 },
-  "confidential.intelligence": { real: 65, synthetic: 500 },
-  "confidential.weapons_systems": { real: 50, synthetic: 500 },
-  "confidential.nuclear": { real: 10, synthetic: 500 },
   "confidential.classified": { real: 0, synthetic: 600 },
   "confidential.education": { real: 0, synthetic: 500 },
   "confidential.geospatial": { real: 0, synthetic: 500 },
+  "confidential.intelligence": { real: 65, synthetic: 500 },
   "confidential.internal": { real: 1701, synthetic: 0 },
+  "confidential.military": { real: 109, synthetic: 500 },
   "confidential.military_comms": { real: 0, synthetic: 500 },
+  "confidential.nuclear": { real: 10, synthetic: 500 },
+  "confidential.weapons_systems": { real: 50, synthetic: 500 },
   "credentials.api_key": { real: 0, synthetic: 600 },
   "credentials.cicd": { real: 0, synthetic: 500 },
   "credentials.cloud_config": { real: 0, synthetic: 500 },
@@ -84,7 +84,7 @@ const data = {
   "credentials.container": { real: 0, synthetic: 500 },
   "credentials.password": { real: 683, synthetic: 0 },
   "credentials.private_key": { real: 0, synthetic: 500 },
-  "credentials.token": { real: 180, synthetic: 500 },
+  "credentials.token": { real: 4858, synthetic: 500 },
   "financial.bank_account": { real: 0, synthetic: 500 },
   "financial.credit_card": { real: 0, synthetic: 600 },
   "financial.tax": { real: 0, synthetic: 500 },
@@ -93,15 +93,15 @@ const data = {
   "malicious.exploit": { real: 44118, synthetic: 0 },
   "malicious.injection": { real: 11299, synthetic: 0 },
   "malicious.malware": { real: 785, synthetic: 0 },
-  "malicious.phishing": { real: 1738, synthetic: 500 },
+  "malicious.phishing": { real: 0, synthetic: 2000 },
   "malicious.prompt_injection": { real: 263, synthetic: 500 },
   "malicious.prototype_pollution": { real: 30, synthetic: 500 },
   "malicious.redos": { real: 30, synthetic: 500 },
-  "malicious.shell": { real: 139, synthetic: 500 },
+  "malicious.shell": { real: 175, synthetic: 500 },
   "malicious.ssrf": { real: 153, synthetic: 500 },
-  "malicious.steganography": { real: 0, synthetic: 500 },
   "malicious.ssti": { real: 43, synthetic: 500 },
-  "malicious.supply_chain": { real: 720, synthetic: 500 },
+  "malicious.steganography": { real: 0, synthetic: 500 },
+  "malicious.supply_chain": { real: 5720, synthetic: 500 },
   "malicious.xxe": { real: 56, synthetic: 500 },
   "medical.diagnosis": { real: 1542, synthetic: 0 },
   "medical.insurance": { real: 0, synthetic: 500 },
@@ -120,16 +120,16 @@ const data = {
 };
 
 const sourceData = {
-  "NVD (CVEs)": { count: 50000, color: "#ef4444" },
-  "GitHub Advisories (GHSA)": { count: 3000, color: "#fb923c" },
-  "SecLists (Payloads)": { count: 3229, color: "#f97316" },
-  "Enron (Emails)": { count: 2000, color: "#eab308" },
-  "MTSamples (Medical)": { count: 2000, color: "#22c55e" },
-  "Phishing Emails (HF)": { count: 1738, color: "#a3e635" },
-  "MITRE ATT&CK": { count: 1620, color: "#3b82f6" },
-  "Prompt Injection (HF)": { count: 263, color: "#818cf8" },
-  "CRS Reports (Defense)": { count: 156, color: "#8b5cf6" },
-  "Synthetic Generated": { count: 20700, color: "#22d3ee" },
+  "NVD (CVEs)": { count: 50000, color: "#ef4444", license: "Public Domain" },
+  "OSSF Malicious Pkgs": { count: 5000, color: "#f43f5e", license: "Apache-2.0" },
+  "GitHub Advisories": { count: 3000, color: "#fb923c", license: "CC-BY-4.0" },
+  "SecLists (Payloads)": { count: 3229, color: "#f97316", license: "MIT" },
+  "Enron (Emails)": { count: 2000, color: "#eab308", license: "Public Domain" },
+  "MTSamples (Medical)": { count: 2000, color: "#22c55e", license: "CC0" },
+  "MITRE ATT&CK": { count: 1620, color: "#3b82f6", license: "Apache-2.0" },
+  "Prompt Injection": { count: 263, color: "#818cf8", license: "Apache-2.0" },
+  "CRS Reports": { count: 156, color: "#8b5cf6", license: "Public Domain" },
+  "Synthetic Generated": { count: 22200, color: "#22d3ee", license: "Generated" },
 };
 
 // Stats
@@ -239,10 +239,11 @@ const srcMax = Math.max(...Object.values(sourceData).map(s => s.count));
 const srcCapped = 10000;
 document.getElementById("sources").innerHTML = Object.entries(sourceData)
   .sort((a, b) => b[1].count - a[1].count)
-  .map(([name, { count, color }]) => {
+  .map(([name, { count, color, license }]) => {
     const w = Math.min(count / srcCapped * 100, 100);
+    const licBadge = license ? `<span style="font-size:9px;color:#6b7280;margin-left:6px">${license}</span>` : '';
     return `<div class="bar-row">
-      <div class="bar-label">${name}</div>
+      <div class="bar-label">${name}${licBadge}</div>
       <div class="bar-track">
         <div class="bar-fill-real" style="width:${w}%;background:${color}"></div>
       </div>
