@@ -14,21 +14,26 @@ OUTPUT_DIR = os.path.join(RAW_DIR, "nvd")
 
 # NVD 2.0 API — paginated, 2000 per page, no key needed (6 req/min limit)
 BASE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-MAX_PAGES = 5  # ~10K CVEs, enough for training data
+MAX_PAGES = 25  # ~50K CVEs — covers 1988-2026 range
+MIN_PAGES = 5   # Original default
 
 
 def download():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     existing = [f for f in os.listdir(OUTPUT_DIR) if f.endswith(".json")]
-    if existing:
-        print(f"[OK] NVD data already exists ({len(existing)} files)")
+    if len(existing) >= MAX_PAGES:
+        print(f"[OK] NVD data already complete ({len(existing)} files)")
         return
 
-    print("[>>] Downloading NVD CVE data via API...")
+    # Resume from where we left off
+    page = len(existing)
+    start_index = page * 2000
 
-    start_index = 0
-    page = 0
+    if existing:
+        print(f"[>>] Resuming NVD download from page {page + 1} ({len(existing)} existing)")
+    else:
+        print("[>>] Downloading NVD CVE data via API...")
 
     while page < MAX_PAGES:
         url = f"{BASE_URL}?startIndex={start_index}&resultsPerPage=2000"
