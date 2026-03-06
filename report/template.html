@@ -12,8 +12,8 @@
 
   body {
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-    background: #0B0A14;
-    color: #C8C2D6;
+    background: #FFFFFF;
+    color: #1E1E2E;
     font-size: 10px;
     line-height: 1.5;
   }
@@ -21,7 +21,7 @@
   .page {
     width: 210mm;
     min-height: 297mm;
-    padding: 32mm 24mm 24mm 24mm;
+    padding: 28mm 24mm 24mm 24mm;
     page-break-after: always;
     position: relative;
   }
@@ -46,26 +46,14 @@
   }
 
   .cover-logo {
-    width: 120px;
-    height: 120px;
-    margin-bottom: 20px;
-  }
-
-  .cover h1 {
-    font-size: 42px;
-    font-weight: 800;
-    letter-spacing: 6px;
-    color: #E2DFF0;
-    margin-bottom: 4px;
-  }
-
-  .cover h1 span {
-    color: #A78BFA;
+    width: 320px;
+    height: 320px;
+    margin-bottom: 32px;
   }
 
   .cover .subtitle {
     font-size: 14px;
-    color: #6B6580;
+    color: #8B83A3;
     letter-spacing: 3px;
     text-transform: uppercase;
     margin-bottom: 48px;
@@ -73,21 +61,21 @@
 
   .cover-meta {
     font-size: 11px;
-    color: #5B5573;
+    color: #6B6580;
     line-height: 2;
   }
 
   .cover-meta strong {
-    color: #8B83A3;
+    color: #3D3755;
   }
 
   .cover-badge {
     margin-top: 48px;
     padding: 8px 24px;
-    border: 1px solid #1E1A2E;
+    border: 1px solid #E5E2EE;
     border-radius: 20px;
     font-size: 9px;
-    color: #6B6580;
+    color: #8B83A3;
     letter-spacing: 1px;
   }
 
@@ -100,8 +88,8 @@
 
   .stat-card {
     flex: 1;
-    background: #111020;
-    border: 1px solid #1E1A2E;
+    background: #F8F7FC;
+    border: 1px solid #E5E2EE;
     border-radius: 8px;
     padding: 14px 16px;
     text-align: center;
@@ -115,34 +103,34 @@
 
   .stat-card .label {
     font-size: 9px;
-    color: #6B6580;
+    color: #8B83A3;
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-top: 6px;
   }
 
-  .stat-critical .number { color: #EF4444; }
-  .stat-warning .number { color: #F59E0B; }
-  .stat-info .number { color: #6B6580; }
-  .stat-files .number { color: #A78BFA; }
-  .stat-clean .number { color: #34D399; }
+  .stat-critical .number { color: #DC2626; }
+  .stat-warning .number { color: #D97706; }
+  .stat-info .number { color: #8B83A3; }
+  .stat-files .number { color: #7C3AED; }
+  .stat-clean .number { color: #059669; }
 
   /* ── Sections ── */
   .section-title {
     font-size: 14px;
     font-weight: 700;
-    color: #E2DFF0;
+    color: #1E1E2E;
     letter-spacing: 2px;
     text-transform: uppercase;
     margin: 28px 0 16px 0;
     padding-bottom: 8px;
-    border-bottom: 1px solid #1E1A2E;
+    border-bottom: 1px solid #E5E2EE;
   }
 
   /* ── File cards ── */
   .file-card {
-    background: #111020;
-    border: 1px solid #1E1A2E;
+    background: #F8F7FC;
+    border: 1px solid #E5E2EE;
     border-radius: 8px;
     margin-bottom: 14px;
     overflow: hidden;
@@ -150,7 +138,7 @@
 
   .file-header {
     padding: 12px 16px;
-    border-bottom: 1px solid #1E1A2E;
+    border-bottom: 1px solid #E5E2EE;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -159,20 +147,20 @@
   .file-path {
     font-size: 11px;
     font-weight: 600;
-    color: #C8C2D6;
+    color: #1E1E2E;
     word-break: break-all;
   }
 
   .file-meta {
     font-size: 9px;
-    color: #5B5573;
+    color: #8B83A3;
     white-space: nowrap;
     margin-left: 12px;
   }
 
   .finding {
     padding: 12px 16px;
-    border-bottom: 1px solid #151324;
+    border-bottom: 1px solid #EEEDF5;
   }
 
   .finding:last-child {
@@ -196,21 +184,21 @@
   }
 
   .severity-critical {
-    background: rgba(239, 68, 68, 0.15);
-    color: #EF4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
   }
 
   .severity-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #F59E0B;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: #FFFBEB;
+    color: #D97706;
+    border: 1px solid #FDE68A;
   }
 
   .severity-info {
-    background: rgba(107, 101, 128, 0.15);
+    background: #F8F7FC;
     color: #8B83A3;
-    border: 1px solid rgba(107, 101, 128, 0.3);
+    border: 1px solid #E5E2EE;
   }
 
   .category-badge {
@@ -218,14 +206,14 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
-    background: rgba(167, 139, 250, 0.1);
-    color: #A78BFA;
-    border: 1px solid rgba(167, 139, 250, 0.2);
+    background: #F3F0FF;
+    color: #7C3AED;
+    border: 1px solid #DDD6FE;
   }
 
   .finding-desc {
     font-size: 10px;
-    color: #9B95AD;
+    color: #4A4660;
     margin-bottom: 8px;
     line-height: 1.5;
   }
@@ -237,7 +225,7 @@
   }
 
   .data-grid tr {
-    border-bottom: 1px solid #151324;
+    border-bottom: 1px solid #EEEDF5;
   }
 
   .data-grid tr:last-child {
@@ -251,7 +239,7 @@
 
   .data-label {
     font-size: 9px;
-    color: #5B5573;
+    color: #8B83A3;
     text-transform: capitalize;
     width: 140px;
     padding-right: 12px;
@@ -259,7 +247,7 @@
 
   .data-value {
     font-size: 9px;
-    color: #E2DFF0;
+    color: #1E1E2E;
     font-weight: 500;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     word-break: break-all;
@@ -275,7 +263,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 0;
-    border-bottom: 1px solid #151324;
+    border-bottom: 1px solid #EEEDF5;
     font-size: 10px;
   }
 
@@ -284,18 +272,18 @@
   }
 
   .clean-check {
-    color: #34D399;
+    color: #059669;
     font-weight: 700;
     font-size: 11px;
   }
 
   .clean-path {
-    color: #6B6580;
+    color: #4A4660;
     word-break: break-all;
   }
 
   .clean-summary {
-    color: #5B5573;
+    color: #8B83A3;
     margin-left: auto;
     white-space: nowrap;
   }
@@ -313,9 +301,9 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
-    background: rgba(56, 189, 248, 0.1);
-    color: #38BDF8;
-    border: 1px solid rgba(56, 189, 248, 0.2);
+    background: #F0F9FF;
+    color: #0284C7;
+    border: 1px solid #BAE6FD;
     letter-spacing: 0.5px;
   }
 
@@ -323,15 +311,15 @@
   .footer {
     margin-top: 40px;
     padding-top: 16px;
-    border-top: 1px solid #1E1A2E;
+    border-top: 1px solid #E5E2EE;
     text-align: center;
     font-size: 8px;
-    color: #3D3755;
+    color: #8B83A3;
     line-height: 1.8;
   }
 
   .footer .brand {
-    color: #5B5573;
+    color: #7C3AED;
     font-weight: 600;
   }
 </style>
@@ -341,7 +329,6 @@
 <!-- ══════════ COVER PAGE ══════════ -->
 <div class="cover page">
   <img src="{{ logo_path }}" class="cover-logo" alt="TorchSight">
-  <h1>TORCH<span>SIGHT</span></h1>
   <div class="subtitle">Security Scan Report</div>
 
   <div class="cover-meta">
