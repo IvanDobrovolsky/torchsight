@@ -60,6 +60,9 @@ What type of document or image is this? Examples:
 - Medical record (prescription, lab results, insurance card)
 - Legal document (contract, NDA, court filing)
 - Screenshot of sensitive system (terminal, admin panel, database)
+- Military/defense document (OPORD, SITREP, intelligence report, weapons specs)
+- Classified document with markings (TOP SECRET, SECRET, CONFIDENTIAL)
+- Satellite imagery, military maps, or targeting data
 - Personal photo, artwork, landscape, etc.
 
 === TASK 2: SENSITIVE DATA EXTRACTION ===
@@ -84,6 +87,12 @@ Return extracted_data with these fields (only include fields that are actually p
 - "username", "password": credentials
 - "api_key", "token", "secret": secrets
 - "organization": company or agency name
+- "classification_level": security classification markings
+- "codeword": SCI/SAP compartments
+- "operation_name": military operation names
+- "unit": military unit designations
+- "coordinates": MGRS or lat/lon coordinates
+- "system_name": weapons system names
 - Add any other fields you find
 
 === TASK 3: SECURITY THREATS ===

@@ -57,6 +57,9 @@ What is this file? Examples:
 - Financial records (transactions, invoices, tax documents)
 - Legal documents (contracts, NDAs)
 - Communication (emails, chat logs)
+- Military/defense documents (OPORDs, FRAGOs, SITREPs, intelligence reports, weapons specs)
+- Nuclear-related information (RD, FRD, CNWDI markings)
+- Geospatial/targeting data (MGRS coordinates, target packages)
 - Clean configuration, documentation, or code with no sensitive data
 
 === TASK 2: SENSITIVE DATA EXTRACTION ===
@@ -81,6 +84,14 @@ Use these fields in extracted_data (only include what is actually present):
 - "private_key": private key content
 - "ip_address": IP addresses
 - "organization": company names
+- "classification_level": security classification (TOP SECRET, SECRET, CONFIDENTIAL, CUI)
+- "codeword": SCI codewords or compartments (e.g., //SCI, //NOFORN, //REL TO)
+- "operation_name": military operation names
+- "unit": military unit designations
+- "coordinates": MGRS or lat/lon coordinates
+- "dtg": date-time group (military format)
+- "system_name": weapons system names
+- "report_type": intelligence report type (HUMINT, SIGINT, IMINT, OSINT)
 - Add any other sensitive fields you find
 
 === TASK 3: SECURITY THREATS ===
@@ -105,7 +116,26 @@ Detect any malicious or dangerous content in this file:
 - Cloud/Infrastructure secrets (AWS credentials in env vars, terraform state with secrets, .kube/config, docker-compose secrets)
 - CI/CD pipeline leaks (GitHub Actions with hardcoded secrets, Jenkins credentials, GitLab CI tokens in .gitlab-ci.yml)
 - Container secrets (Dockerfile ENV with passwords, K8s Secret manifests in plaintext, Helm values with credentials)
-If found: category = "malicious", severity = "critical"
+
+=== TASK 3b: MILITARY / DEFENSE / CLASSIFIED ===
+Detect military or classified content:
+- Classification markings (TOP SECRET, SECRET, CONFIDENTIAL, UNCLASSIFIED, CUI, FOUO)
+- SCI/SAP compartments (//SCI, //NOFORN, //REL TO, //ORCON, //PROPIN)
+- Military communications (OPORD, FRAGO, SITREP, INTREP, SALUTE reports)
+- Date-Time Groups (e.g., 061430ZMAR2026)
+- MGRS coordinates (e.g., 38SMB4488), military grid references
+- Unit designations (e.g., 1st BCT, 3/75 Ranger, JSOC, SOCOM)
+- Weapons systems specifications or technical data
+- Intelligence report formats (HUMINT, SIGINT, IMINT, MASINT, OSINT)
+- Source reliability ratings (A-F) and information credibility (1-6)
+- Nuclear information markers (RESTRICTED DATA, FORMERLY RESTRICTED DATA, CNWDI, NNPI)
+- NATO classification markings (NATO CONFIDENTIAL, COSMIC TOP SECRET)
+- Defense contractor sensitive information or export-controlled data
+If found: category = "confidential", severity = "critical"
+Include in extracted_data: "classification_level", "codeword", "operation_name", "unit", "coordinates", "report_type", "system_name"
+Include in compliance: "ITAR", "EO-13526", "NIST-800-53" as applicable
+
+For malicious/threat findings from TASK 3:
 Include in extracted_data: "threat_type", "payload" (exact malicious content), "attack_vector", "risk_level"
 
 === TASK 4: FILE METADATA CHECK ===
