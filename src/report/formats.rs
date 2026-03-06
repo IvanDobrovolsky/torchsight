@@ -147,7 +147,6 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
         format!("  Critical .................. {}", report.critical_count()),
         format!("  Warning ................... {}", report.warning_count()),
         format!("  Informational ............. {}", report.info_count()),
-        format!("  Inappropriate Content ..... {}", report.inappropriate_count()),
     ];
     for line in &summary_lines {
         doc.push(Paragraph::new(line.as_str()).styled(normal_style));
@@ -191,11 +190,7 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
                     continue;
                 }
 
-                let severity_label = if finding.category == "inappropriate" {
-                    "FLAGGED".to_string()
-                } else {
-                    finding.severity.to_string()
-                };
+                let severity_label = finding.severity.to_string();
 
                 doc.push(
                     Paragraph::new(format!(
@@ -406,13 +401,10 @@ fn format_terminal(report: &ScanReport) -> String {
                 continue;
             }
 
-            let severity_str = match (&finding.severity, finding.category.as_str()) {
-                (_, "inappropriate") => {
-                    format!("{}", style("FLAGGED").magenta().bold())
-                }
-                (Severity::Critical, _) => format!("{}", style("CRITICAL").red().bold()),
-                (Severity::Warning, _) => format!("{}", style("WARNING").yellow().bold()),
-                (Severity::Info, _) => format!("{}", style("INFO").dim()),
+            let severity_str = match finding.severity {
+                Severity::Critical => format!("{}", style("CRITICAL").red().bold()),
+                Severity::Warning => format!("{}", style("WARNING").yellow().bold()),
+                Severity::Info => format!("{}", style("INFO").dim()),
             };
 
             out.push_str(&format!(
@@ -433,11 +425,7 @@ fn format_terminal(report: &ScanReport) -> String {
                 for key in keys {
                     let label = key.replace('_', " ");
                     let value = &finding.extracted_data[key];
-                    let colored_value = if finding.category == "inappropriate" {
-                        format!("{}", style(value).magenta())
-                    } else {
-                        format!("{}", style(value).yellow())
-                    };
+                    let colored_value = format!("{}", style(value).yellow());
                     out.push_str(&format!(
                         "           {}: {}\n",
                         style(label).dim(),

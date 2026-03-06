@@ -21,11 +21,11 @@ pub async fn analyze_image(path: &Path, ollama: &OllamaClient) -> Result<Vec<Fil
 
     // ── Stage 2: Vision — describe what the image shows ──
     let vision_prompt = r#"Look at this image carefully. Describe in detail:
-1. What type of image is this? (photo, document, ID card, screenshot, medical record, etc.)
+1. What type of image/document is this? (photo, driver's license, passport, bank statement, medical record, screenshot, etc.)
 2. What is the main subject?
-3. Describe any text you can see.
-4. Describe any people, faces, symbols, logos, or markings.
-5. Is there anything inappropriate, offensive, or hateful in this image?
+3. Describe any text, numbers, dates, or codes you can see.
+4. Describe any logos, seals, watermarks, barcodes, or official markings.
+5. If this is an ID or official document, describe its layout and fields.
 Be specific and thorough."#;
 
     let vision_description = ollama.describe_image(vision_prompt, &image_bytes).await
@@ -61,7 +61,6 @@ What type of document or image is this? Examples:
 - Legal document (contract, NDA, court filing)
 - Screenshot of sensitive system (terminal, admin panel, database)
 - Personal photo, artwork, landscape, etc.
-- Propaganda, hate imagery, extremist content
 
 === TASK 2: SENSITIVE DATA EXTRACTION ===
 Extract EVERY piece of sensitive information. Use the OCR text to get exact values.
@@ -87,29 +86,37 @@ Return extracted_data with these fields (only include fields that are actually p
 - "organization": company or agency name
 - Add any other fields you find
 
-=== TASK 3: CONTENT MODERATION ===
-Flag if the image contains:
-- Adolf Hitler, Nazi symbols, swastikas, SS insignia, fascist imagery
-- Any dictator, war criminal, terrorist figure
-- Violence, weapons, gore
-- Sexually explicit content, nudity
-- Profanity, hate speech, racial slurs
-- Drug paraphernalia, illegal activity
-If flagged: category = "inappropriate", severity = "critical"
-Include in extracted_data: "content_type", "subject", "risk_level"
+=== TASK 3: SECURITY THREATS ===
+If the image contains code, terminal output, or screenshots, check for:
+- Injection payloads (SQL injection, XSS, command injection)
+- Malicious scripts (reverse shells, backdoors, web shells)
+- Obfuscated payloads (base64-encoded commands, encoded shellcode)
+- Exploit code or attack tools visible in screenshots
+- Phishing pages (fake login forms, credential harvesting)
+If found: category = "malicious", severity = "critical"
+Include in extracted_data: "threat_type", "payload" (exact content), "attack_vector"
 
-=== TASK 4: SAFETY VERDICT ===
-If the image is completely safe (no sensitive data, no inappropriate content):
+=== TASK 4: COMPLIANCE ===
+Note which regulations this data falls under:
+- GDPR (EU personal data)
+- HIPAA (US health data)
+- PCI-DSS (payment card data)
+- SOX (financial records)
+- FERPA (education records)
+Include as "compliance" in extracted_data if applicable.
+
+=== TASK 5: SAFETY VERDICT ===
+If the image contains no sensitive, personally identifiable, or malicious data:
 category = "safe", severity = "info"
 Include in extracted_data: "content_type" (photo/illustration/etc), "subject" (what it shows)
 
 Respond ONLY with a JSON array (no other text):
-[{{"category": "pii|credentials|financial|medical|confidential|inappropriate|safe", "description": "detailed explanation of what was found and why it matters", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value"}}}}]
+[{{"category": "pii|credentials|financial|medical|confidential|malicious|safe", "description": "detailed explanation of what was found and why it matters", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value"}}}}]
 
 CRITICAL RULES:
 - Use the OCR text for exact values, not approximations
 - Every image MUST produce at least one finding
-- Multiple findings are OK (e.g., PII + inappropriate in same image)
+- Multiple findings are OK (e.g., PII + financial in same image)
 - Put REAL VALUES in extracted_data, never "a name was visible""#,
         vision_description, ocr_section
     );
