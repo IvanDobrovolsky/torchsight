@@ -1323,55 +1323,113 @@ def gen_confidential_intelligence(n: int) -> list:
     return samples
 
 
+def gen_confidential_military(n: int) -> list:
+    """Generate military document samples (general military content)."""
+    samples = []
+    doc_types = [
+        ("DEPLOYMENT ORDER", "deployment of {unit} to {location} effective {date}"),
+        ("AFTER ACTION REPORT", "engagement at {location} on {date} involving {unit}"),
+        ("SITUATION REPORT", "current disposition of forces in {location} sector as of {date}"),
+        ("FORCE PROTECTION ADVISORY", "threat level assessment for {location} area of operations"),
+        ("PERSONNEL ACTION", "reassignment of personnel from {unit} to {location} station"),
+        ("LOGISTICS REQUEST", "supply requirements for {unit} operating in {location}"),
+        ("TRAINING DIRECTIVE", "required training completion for {unit} prior to {date} deployment"),
+        ("READINESS REPORT", "unit readiness status for {unit} stationed at {location}"),
+    ]
+    units = ["1st BCT, 82nd ABN", "3rd SFG(A)", "2nd BN, 75th RGR", "SEAL Team 4",
+             "1st MarDiv", "10th Mountain Div", "101st ABN DIV", "3rd ID", "173rd ABN BDE"]
+    locations = ["Camp Lemonnier", "Al Udeid AB", "FOB Salerno", "Bagram AF",
+                 "CENTCOM AOR", "EUCOM theater", "INDOPACOM region", "Horn of Africa"]
+
+    for _ in range(n):
+        doc_type, template = random.choice(doc_types)
+        classification = random.choice(["SECRET", "SECRET//NOFORN", "CONFIDENTIAL"])
+        unit = random.choice(units)
+        location = random.choice(locations)
+        date = rand_date()
+
+        text = (
+            f"{classification}\n\n"
+            f"{doc_type}\n\n"
+            f"DTG: {random.randint(1,28):02d}{random.randint(0,23):02d}00Z {random.choice(['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'])} 2025\n"
+            f"FROM: {random.choice(['COMUSFOR', 'CDR JSOC', 'COMJSOTF', 'DIV G3', 'BDE S3'])}\n"
+            f"TO: {random.choice(['SECDEF', 'CJCS', 'CDRUSCENTCOM', 'USSOCOM', 'BDE CDR'])}\n\n"
+            f"SUBJ: {template.format(unit=unit, location=location, date=date)}\n\n"
+            f"1. (S) {random.choice(['SITUATION:', 'PURPOSE:', 'BACKGROUND:'])} "
+            f"{random.choice(['Current operations require', 'Intelligence indicates', 'Mission objectives necessitate', 'Force protection measures dictate'])} "
+            f"{random.choice(['immediate action regarding', 'continued monitoring of', 'adjustment of posture in', 'enhanced security measures at'])} "
+            f"{location}.\n\n"
+            f"2. ({classification.split('//')[0][0]}) {random.choice(['MISSION:', 'EXECUTION:', 'TASK:'])} "
+            f"{unit} {random.choice(['will conduct', 'is directed to', 'shall prepare for', 'will execute'])} "
+            f"{random.choice(['operations', 'movement', 'sustainment', 'reconnaissance'])} "
+            f"in the {location} area NLT {date}.\n\n"
+            f"3. (U) ADMIN: POC for this action is {random.choice(['S3 OPS', 'G3 PLANS', 'J3 CURRENT OPS'])} "
+            f"at DSN {random.randint(100,999)}-{random.randint(1000,9999)}.\n\n"
+            f"{classification}"
+        )
+        samples.append({
+            "text": text,
+            "findings": [{
+                "category": "confidential",
+                "subcategory": "confidential.military",
+                "severity": "critical",
+                "compliance": ["EO-13526", "NIST-800-53-SC-13"],
+                "fields": {"doc_type": doc_type, "classification": classification},
+            }],
+        })
+    return samples
+
+
 # ── Registry ─────────────────────────────────────────────────────────────
 
 GENERATORS = {
     # PII
-    "pii.government_id": (gen_pii_government_id, 400),
-    "pii.biometric": (gen_pii_biometric, 200),
-    "pii.metadata": (gen_pii_metadata, 300),
-    "pii.behavioral": (gen_pii_behavioral, 200),
+    "pii.government_id": (gen_pii_government_id, 600),
+    "pii.biometric": (gen_pii_biometric, 500),
+    "pii.metadata": (gen_pii_metadata, 500),
+    "pii.behavioral": (gen_pii_behavioral, 500),
     # Credentials
-    "credentials.api_key": (gen_credentials_api_key, 300),
-    "credentials.token": (gen_credentials_token, 200),
-    "credentials.private_key": (gen_credentials_private_key, 200),
-    "credentials.connection_string": (gen_credentials_connection_string, 200),
-    "credentials.cloud_config": (gen_credentials_cloud_config, 300),
-    "credentials.cicd": (gen_credentials_cicd, 200),
-    "credentials.container": (gen_credentials_container, 200),
+    "credentials.api_key": (gen_credentials_api_key, 600),
+    "credentials.token": (gen_credentials_token, 500),
+    "credentials.private_key": (gen_credentials_private_key, 500),
+    "credentials.connection_string": (gen_credentials_connection_string, 500),
+    "credentials.cloud_config": (gen_credentials_cloud_config, 500),
+    "credentials.cicd": (gen_credentials_cicd, 500),
+    "credentials.container": (gen_credentials_container, 500),
     # Financial
-    "financial.credit_card": (gen_financial_credit_card, 300),
-    "financial.bank_account": (gen_financial_bank_account, 200),
-    "financial.tax": (gen_financial_tax, 200),
+    "financial.credit_card": (gen_financial_credit_card, 600),
+    "financial.bank_account": (gen_financial_bank_account, 500),
+    "financial.tax": (gen_financial_tax, 500),
     # Medical
-    "medical.insurance": (gen_medical_insurance, 200),
-    "medical.lab_result": (gen_medical_lab_result, 150),
+    "medical.insurance": (gen_medical_insurance, 500),
+    "medical.lab_result": (gen_medical_lab_result, 500),
     # Confidential
-    "confidential.classified": (gen_confidential_classified, 300),
-    "confidential.military_comms": (gen_confidential_military_comms, 250),
-    "confidential.geospatial": (gen_confidential_geospatial, 200),
-    "confidential.nuclear": (gen_confidential_nuclear, 150),
-    "confidential.education": (gen_confidential_education, 300),
+    "confidential.classified": (gen_confidential_classified, 600),
+    "confidential.military_comms": (gen_confidential_military_comms, 500),
+    "confidential.geospatial": (gen_confidential_geospatial, 500),
+    "confidential.nuclear": (gen_confidential_nuclear, 500),
+    "confidential.education": (gen_confidential_education, 500),
     # Malicious
-    "malicious.prompt_injection": (gen_malicious_prompt_injection, 300),
-    "malicious.supply_chain": (gen_malicious_supply_chain, 200),
-    "malicious.deserialization": (gen_malicious_deserialization, 200),
-    "malicious.ssrf": (gen_malicious_ssrf, 200),
-    "malicious.redos": (gen_malicious_redos, 150),
-    "malicious.steganography": (gen_malicious_steganography, 150),
-    "malicious.prototype_pollution": (gen_malicious_prototype_pollution, 150),
-    "malicious.phishing": (gen_malicious_phishing, 200),
-    "malicious.xxe": (gen_malicious_xxe, 200),
-    "malicious.ssti": (gen_malicious_ssti, 200),
-    "malicious.shell": (gen_malicious_shell_synth, 200),
+    "malicious.prompt_injection": (gen_malicious_prompt_injection, 500),
+    "malicious.supply_chain": (gen_malicious_supply_chain, 500),
+    "malicious.deserialization": (gen_malicious_deserialization, 500),
+    "malicious.ssrf": (gen_malicious_ssrf, 500),
+    "malicious.redos": (gen_malicious_redos, 500),
+    "malicious.steganography": (gen_malicious_steganography, 500),
+    "malicious.prototype_pollution": (gen_malicious_prototype_pollution, 500),
+    "malicious.phishing": (gen_malicious_phishing, 500),
+    "malicious.xxe": (gen_malicious_xxe, 500),
+    "malicious.ssti": (gen_malicious_ssti, 500),
+    "malicious.shell": (gen_malicious_shell_synth, 500),
     # Confidential (gap-fill)
-    "confidential.weapons_systems": (gen_confidential_weapons_systems, 200),
-    "confidential.intelligence": (gen_confidential_intelligence, 250),
-    # Safe
-    "safe.documentation": (gen_safe_documentation, 300),
-    "safe.code": (gen_safe_code, 300),
-    "safe.config": (gen_safe_config, 200),
-    "safe.media": (gen_safe_media, 200),
+    "confidential.weapons_systems": (gen_confidential_weapons_systems, 500),
+    "confidential.intelligence": (gen_confidential_intelligence, 500),
+    "confidential.military": (gen_confidential_military, 500),
+    # Safe (higher counts to prevent over-flagging)
+    "safe.documentation": (gen_safe_documentation, 800),
+    "safe.code": (gen_safe_code, 800),
+    "safe.config": (gen_safe_config, 600),
+    "safe.media": (gen_safe_media, 600),
 }
 
 
