@@ -38,31 +38,31 @@ TAXONOMY = {
     "financial.tax":           {"target": 200, "sources": ["synthetic"]},
     "financial.transaction":   {"target": 300, "sources": ["edgar", "synthetic"]},
 
-    "medical.diagnosis":     {"target": 400, "sources": ["mtsamples", "mimic3", "synthetic"]},
+    "medical.diagnosis":     {"target": 400, "sources": ["mtsamples", "synthetic"]},
     "medical.prescription":  {"target": 300, "sources": ["mtsamples", "synthetic"]},
-    "medical.lab_result":    {"target": 300, "sources": ["mimic3", "synthetic"]},
+    "medical.lab_result":    {"target": 300, "sources": ["synthetic"]},
     "medical.insurance":     {"target": 200, "sources": ["synthetic"]},
 
     "confidential.classified": {"target": 300, "sources": ["cia_foia", "synthetic"]},
     "confidential.internal":   {"target": 300, "sources": ["enron", "synthetic"]},
     "confidential.legal":      {"target": 300, "sources": ["courtlistener", "edgar", "synthetic"]},
-    "confidential.military":        {"target": 300, "sources": ["synthetic"]},
-    "confidential.military_comms":   {"target": 250, "sources": ["synthetic"]},
-    "confidential.weapons_systems":  {"target": 200, "sources": ["synthetic"]},
+    "confidential.military":        {"target": 300, "sources": ["dtic", "army_doctrine", "synthetic"]},
+    "confidential.military_comms":   {"target": 250, "sources": ["army_doctrine", "synthetic"]},
+    "confidential.weapons_systems":  {"target": 200, "sources": ["crs_reports", "gao", "synthetic"]},
     "confidential.intelligence":     {"target": 300, "sources": ["cia_foia", "synthetic"]},
-    "confidential.geospatial":       {"target": 200, "sources": ["synthetic"]},
-    "confidential.nuclear":          {"target": 150, "sources": ["synthetic"]},
+    "confidential.geospatial":       {"target": 200, "sources": ["army_doctrine", "synthetic"]},
+    "confidential.nuclear":          {"target": 150, "sources": ["gao", "synthetic"]},
     "confidential.education":        {"target": 300, "sources": ["synthetic"]},
 
     "malicious.injection":           {"target": 400, "sources": ["seclists", "owasp"]},
-    "malicious.exploit":             {"target": 300, "sources": ["exploitdb", "nvd"]},
-    "malicious.shell":               {"target": 200, "sources": ["seclists", "exploitdb", "synthetic"]},
+    "malicious.exploit":             {"target": 300, "sources": ["nvd", "synthetic"]},
+    "malicious.shell":               {"target": 200, "sources": ["seclists", "synthetic"]},
     "malicious.obfuscated":          {"target": 200, "sources": ["seclists", "synthetic"]},
     "malicious.phishing":            {"target": 200, "sources": ["synthetic"]},
     "malicious.malware":             {"target": 200, "sources": ["mitre", "synthetic"]},
     "malicious.prompt_injection":    {"target": 300, "sources": ["synthetic"]},
     "malicious.supply_chain":        {"target": 200, "sources": ["synthetic"]},
-    "malicious.deserialization":     {"target": 200, "sources": ["exploitdb", "synthetic"]},
+    "malicious.deserialization":     {"target": 200, "sources": ["synthetic"]},
     "malicious.ssrf":                {"target": 200, "sources": ["seclists", "synthetic"]},
     "malicious.redos":               {"target": 150, "sources": ["synthetic"]},
     "malicious.steganography":       {"target": 150, "sources": ["synthetic"]},
@@ -371,17 +371,11 @@ def analyze_owasp() -> dict:
 # ── Manual datasets (not downloaded) ─────────────────────────────────────
 
 MANUAL_DATASETS = {
-    "mimic3": {
-        "available": False,
-        "reason": "Requires PhysioNet credentialed access",
-        "url": "https://physionet.org/content/mimiciii/",
-        "covers": ["medical.diagnosis", "medical.prescription", "medical.lab_result"],
-        "estimated_samples": 1000,
-    },
     "edgar": {
         "available": False,
         "reason": "Requires SEC EDGAR bulk download",
-        "url": "https://www.sec.gov/cgi-bin/browse-edgar",
+        "url": "https://www.sec.gov/edgar/",
+        "license": "Public domain (US Gov)",
         "covers": ["financial.transaction", "confidential.legal"],
         "estimated_samples": 500,
     },
@@ -389,6 +383,7 @@ MANUAL_DATASETS = {
         "available": False,
         "reason": "Requires API access setup",
         "url": "https://www.courtlistener.com/api/",
+        "license": "Public domain (court records)",
         "covers": ["confidential.legal"],
         "estimated_samples": 300,
     },
@@ -396,15 +391,64 @@ MANUAL_DATASETS = {
         "available": False,
         "reason": "Manual search/download from reading room",
         "url": "https://www.cia.gov/readingroom/",
-        "covers": ["confidential.classified", "confidential.military"],
+        "license": "Public domain (US Gov)",
+        "covers": ["confidential.classified", "confidential.intelligence"],
+        "estimated_samples": 300,
+    },
+    "crs_reports": {
+        "available": False,
+        "reason": "Bulk download from crsreports.congress.gov",
+        "url": "https://crsreports.congress.gov/",
+        "license": "Public domain (US Gov)",
+        "covers": ["confidential.weapons_systems", "confidential.military"],
+        "estimated_samples": 400,
+    },
+    "dtic": {
+        "available": False,
+        "reason": "Search and download public technical reports",
+        "url": "https://discover.dtic.mil/",
+        "license": "Public domain (US Gov)",
+        "covers": ["confidential.military", "confidential.weapons_systems"],
+        "estimated_samples": 300,
+    },
+    "army_doctrine": {
+        "available": False,
+        "reason": "Download public Army doctrinal publications (ADP/FM/ATP)",
+        "url": "https://armypubs.army.mil/",
+        "license": "Public domain (US Gov)",
+        "covers": ["confidential.military", "confidential.military_comms", "confidential.geospatial"],
+        "estimated_samples": 200,
+    },
+    "gao": {
+        "available": False,
+        "reason": "Download defense/intelligence audit reports",
+        "url": "https://www.gao.gov/",
+        "license": "Public domain (US Gov)",
+        "covers": ["confidential.weapons_systems", "confidential.nuclear"],
         "estimated_samples": 200,
     },
     "midv500": {
         "available": False,
         "reason": "Academic dataset, request from authors",
         "url": "https://arxiv.org/abs/1807.05786",
+        "license": "CC / Public domain (Wikimedia sources)",
         "covers": ["pii.government_id"],
         "estimated_samples": 300,
+    },
+}
+
+# ── Excluded datasets (license issues) ───────────────────────────────────
+
+EXCLUDED_DATASETS = {
+    "mimic3": {
+        "reason": "PhysioNet DUA explicitly prohibits sharing with LLM services. Local fine-tuning is ambiguous under the agreement.",
+        "url": "https://physionet.org/content/mimiciii/",
+        "replacement": "MTSamples + synthetic medical data",
+    },
+    "exploitdb": {
+        "reason": "GPL v2 on repository. Individual exploits have no clear license. Whether model training creates a 'derivative work' under GPL is legally debated.",
+        "url": "https://gitlab.com/exploit-database/exploitdb",
+        "replacement": "NVD metadata + synthetic exploit samples. Exploit-DB used only as reference for realistic generation.",
     },
 }
 
@@ -501,8 +545,16 @@ def print_report(datasets: dict, coverage: dict):
     print("  " + "─" * 68)
     for name, ds in MANUAL_DATASETS.items():
         print(f"  [--]  {name:<20} {ds['reason']}")
+        print(f"          License: {ds.get('license', 'unknown')}")
         print(f"          URL: {ds['url']}")
         print(f"          Covers: {', '.join(ds['covers'])}")
+
+    # ── Excluded datasets ──
+    print("\n  EXCLUDED DATASETS (license issues)")
+    print("  " + "─" * 68)
+    for name, ds in EXCLUDED_DATASETS.items():
+        print(f"  [XX]  {name:<20} {ds['reason']}")
+        print(f"          Replacement: {ds['replacement']}")
 
     # ── Coverage matrix ──
     print("\n  COVERAGE BY SUBCATEGORY")
@@ -600,16 +652,17 @@ def print_report(datasets: dict, coverage: dict):
 def main():
     print("\n  Analyzing downloaded datasets...\n")
 
-    # Run all analyzers
+    # Run all analyzers (only datasets with confirmed training-compatible licenses)
     datasets = {
         "enron": analyze_enron(),
         "seclists": analyze_seclists(),
         "mitre": analyze_mitre(),
-        "exploitdb": analyze_exploitdb(),
         "nvd": analyze_nvd(),
         "mtsamples": analyze_mtsamples(),
         "owasp": analyze_owasp(),
     }
+    # Note: exploitdb excluded (GPL v2 — training legality unclear)
+    # Note: mimic3 excluded (PhysioNet DUA prohibits LLM use)
 
     # Add manual datasets
     datasets.update(MANUAL_DATASETS)

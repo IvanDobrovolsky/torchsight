@@ -57,9 +57,9 @@ L4  Compliance    — applicable regulations (multi-label)
 ### medical.*
 | Subcategory | Description | Key Fields | Source Datasets |
 |-------------|-------------|------------|-----------------|
-| `medical.diagnosis` | Conditions and diseases | diagnosis, icd_code, severity | MTSamples, MIMIC-III, Synthetic |
+| `medical.diagnosis` | Conditions and diseases | diagnosis, icd_code, severity | MTSamples, Synthetic |
 | `medical.prescription` | Medications and dosages | medication, dosage, frequency, prescriber | MTSamples, Synthetic |
-| `medical.lab_result` | Laboratory and imaging results | test_name, result, reference_range, flags | MIMIC-III, Synthetic |
+| `medical.lab_result` | Laboratory and imaging results | test_name, result, reference_range, flags | Synthetic |
 | `medical.insurance` | Health insurance information | insurance_provider, policy_number, group_number | Synthetic |
 
 ### confidential.*
@@ -68,26 +68,26 @@ L4  Compliance    — applicable regulations (multi-label)
 | `confidential.classified` | Government/military classifications | classification_level, codeword, handling_instructions | CIA FOIA, Synthetic |
 | `confidential.internal` | Corporate internal-only documents | classification, department, distribution_list | Enron, Synthetic |
 | `confidential.legal` | Legal privilege or restricted docs | document_type, parties, effective_date, jurisdiction | CourtListener, EDGAR, Synthetic |
-| `confidential.military` | Military operations and defense content | operation_name, unit, coordinates, classification, force_disposition | Synthetic only |
-| `confidential.military_comms` | Military communications and signals intelligence | message_type (OPORD/FRAGO/SITREP/INTREP), classification, dtg (date-time group), originator, recipients | Synthetic only |
-| `confidential.weapons_systems` | Weapons systems specifications and technical data | system_name, system_type (missile/aircraft/naval/cyber), specifications, export_control | Synthetic only |
-| `confidential.intelligence` | Intelligence reports and assessments | report_type (HUMINT/SIGINT/IMINT/OSINT/MASINT), source_reliability, information_credibility, classification | Synthetic, CIA FOIA |
-| `confidential.geospatial` | Military maps, coordinates, and targeting data | coordinates (MGRS/lat-lon), target_type, datum, imagery_source, resolution | Synthetic only |
-| `confidential.nuclear` | Nuclear-related information (CNWDI, RD, FRD) | category (RD/FRD/CNWDI/NNPI), handling_caveats, sigma_level | Synthetic only |
+| `confidential.military` | Military operations and defense content | operation_name, unit, coordinates, classification, force_disposition | DTIC, Army Doctrine, Synthetic |
+| `confidential.military_comms` | Military communications and signals intelligence | message_type (OPORD/FRAGO/SITREP/INTREP), classification, dtg (date-time group), originator, recipients | Army Doctrine, Synthetic |
+| `confidential.weapons_systems` | Weapons systems specifications and technical data | system_name, system_type (missile/aircraft/naval/cyber), specifications, export_control | CRS Reports, GAO, Synthetic |
+| `confidential.intelligence` | Intelligence reports and assessments | report_type (HUMINT/SIGINT/IMINT/OSINT/MASINT), source_reliability, information_credibility, classification | CIA FOIA, Synthetic |
+| `confidential.geospatial` | Military maps, coordinates, and targeting data | coordinates (MGRS/lat-lon), target_type, datum, imagery_source, resolution | Army Doctrine, Synthetic |
+| `confidential.nuclear` | Nuclear-related information (CNWDI, RD, FRD) | category (RD/FRD/CNWDI/NNPI), handling_caveats, sigma_level | GAO, Synthetic |
 | `confidential.education` | FERPA-protected student records | student_id, gpa, enrollment_status, disciplinary | Synthetic only |
 
 ### malicious.*
 | Subcategory | Description | Key Fields | Source Datasets |
 |-------------|-------------|------------|-----------------|
 | `malicious.injection` | Injection attack payloads | payload, injection_type (SQL/XSS/cmd/LDAP/template) | SecLists, OWASP |
-| `malicious.exploit` | Exploit code and PoCs | cve_id, target, payload, exploit_type | Exploit-DB, NVD |
-| `malicious.shell` | Reverse/web shells and backdoors | shell_type, target_host, target_port, payload | SecLists, Exploit-DB, Synthetic |
+| `malicious.exploit` | Exploit code and PoCs | cve_id, target, payload, exploit_type | NVD, Synthetic |
+| `malicious.shell` | Reverse/web shells and backdoors | shell_type, target_host, target_port, payload | SecLists, Synthetic |
 | `malicious.obfuscated` | Encoded/obfuscated payloads | encoding (base64/hex/rot13), decoded_payload | SecLists, Synthetic |
 | `malicious.phishing` | Phishing pages and social engineering | target_brand, harvested_fields, redirect_url | Synthetic |
 | `malicious.malware` | Malware signatures and C2 patterns | malware_family, c2_server, behavior | MITRE ATT&CK, Synthetic |
 | `malicious.prompt_injection` | LLM prompt injection and jailbreaks | injection_type (direct/indirect/jailbreak), target_model, payload | Synthetic, Garak |
 | `malicious.supply_chain` | Dependency confusion, typosquatting, lockfile poisoning | attack_type, package_name, target_registry, malicious_payload | Synthetic, Backstabber's Knife |
-| `malicious.deserialization` | Unsafe deserialization payloads | format (pickle/yaml/java/php), payload, gadget_chain | Exploit-DB, Synthetic |
+| `malicious.deserialization` | Unsafe deserialization payloads | format (pickle/yaml/java/php), payload, gadget_chain | Synthetic |
 | `malicious.ssrf` | Server-side request forgery payloads | target_url, protocol, cloud_metadata_endpoint | SecLists, Synthetic |
 | `malicious.redos` | Regular expression denial of service | regex_pattern, complexity_class, estimated_impact | Synthetic |
 | `malicious.steganography` | Hidden data embedded in files | carrier_type (image/audio/video), encoding_method, hidden_data_type | Synthetic |
