@@ -5,6 +5,9 @@ __pycache__/
 training/data/raw/
 training/data/processed/
 training/data/synthetic/
+training/data/ghsa/
+training/data/prompt_injection_deepset/
+training/data/ossf_malicious/
 torchsight_report_*.pdf
 torchsight_report_*.json
 site/node_modules/

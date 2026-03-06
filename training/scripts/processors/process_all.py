@@ -27,8 +27,8 @@ PROCESSORS = {
     "mtsamples": "mtsamples_processor",
     "crs_reports": "crs_processor",
     "prompt_injection": "prompt_injection_processor",
-    "phishing": "phishing_processor",
     "ghsa": "ghsa_processor",
+    "ossf": "ossf_processor",
 }
 
 
