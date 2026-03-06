@@ -80,6 +80,28 @@ L4  Compliance    — applicable regulations (multi-label)
 | `malicious.obfuscated` | Encoded/obfuscated payloads | encoding (base64/hex/rot13), decoded_payload | SecLists, Synthetic |
 | `malicious.phishing` | Phishing pages and social engineering | target_brand, harvested_fields, redirect_url | Synthetic |
 | `malicious.malware` | Malware signatures and C2 patterns | malware_family, c2_server, behavior | MITRE ATT&CK, Synthetic |
+| `malicious.prompt_injection` | LLM prompt injection and jailbreaks | injection_type (direct/indirect/jailbreak), target_model, payload | Synthetic, Garak |
+| `malicious.supply_chain` | Dependency confusion, typosquatting, lockfile poisoning | attack_type, package_name, target_registry, malicious_payload | Synthetic, Backstabber's Knife |
+| `malicious.deserialization` | Unsafe deserialization payloads | format (pickle/yaml/java/php), payload, gadget_chain | Exploit-DB, Synthetic |
+| `malicious.ssrf` | Server-side request forgery payloads | target_url, protocol, cloud_metadata_endpoint | SecLists, Synthetic |
+| `malicious.redos` | Regular expression denial of service | regex_pattern, complexity_class, estimated_impact | Synthetic |
+| `malicious.steganography` | Hidden data embedded in files | carrier_type (image/audio/video), encoding_method, hidden_data_type | Synthetic |
+| `malicious.prototype_pollution` | JavaScript prototype pollution | payload, target_property, attack_vector | SecLists, Synthetic |
+| `malicious.xxe` | XML External Entity injection | payload, target_resource, exfiltration_method | SecLists, OWASP |
+| `malicious.ssti` | Server-side template injection | template_engine, payload, target_language | SecLists, Synthetic |
+
+### credentials.*  (additional)
+| Subcategory | Description | Key Fields | Source Datasets |
+|-------------|-------------|------------|-----------------|
+| `credentials.cloud_config` | AWS/GCP/Azure config with secrets | provider, config_type (IAM/terraform/env), exposed_resource | Synthetic |
+| `credentials.cicd` | CI/CD pipeline secrets | platform (GitHub Actions/Jenkins/GitLab CI), secret_type, pipeline_file | Synthetic |
+| `credentials.container` | Container/orchestration secrets | platform (Docker/K8s/Helm), secret_location (ENV/configmap/values), exposed_secret | Synthetic |
+
+### pii.*  (additional)
+| Subcategory | Description | Key Fields | Source Datasets |
+|-------------|-------------|------------|-----------------|
+| `pii.metadata` | File metadata leaking identity | metadata_type (EXIF/PDF properties/Office), gps_coordinates, device_info, author | Synthetic |
+| `pii.behavioral` | Behavioral/tracking data | data_type (browsing_history/search_queries/location_traces), user_identifier | Synthetic |
 
 ### safe.*
 | Subcategory | Description | Source Datasets |
@@ -102,8 +124,15 @@ L4  Compliance    — applicable regulations (multi-label)
 ### Severity Assignment Rules
 - Any **full SSN, credit card, or active credential** → `critical`
 - Any **malicious payload or exploit** → `critical`
+- Any **prompt injection or supply chain attack** → `critical`
+- Any **reverse shell, C2 beacon, or steganographic payload** → `critical`
+- **Cloud config with IAM keys or terraform state secrets** → `critical`
+- **CI/CD secrets or container secrets in plaintext** → `critical`
 - **Name + DOB** or **name + address** (but no SSN/ID) → `warning`
 - **Email address alone** → `warning`
+- **EXIF GPS coordinates or file metadata with author** → `warning`
+- **Behavioral tracking data** → `warning`
+- **ReDoS pattern or prototype pollution vector** → `warning`
 - **Internal/confidential marking** without sensitive data → `warning`
 - **Safe/clean files** → `info`
 
@@ -155,7 +184,16 @@ L4  Compliance    — applicable regulations (multi-label)
 `medical_record_number` `diagnosis` `icd_code` `medication` `dosage` `prescriber` `insurance_provider` `policy_number` `group_number`
 
 ### Threat
-`threat_type` `payload` `attack_vector` `risk_level` `cve_id` `target` `c2_server`
+`threat_type` `payload` `attack_vector` `risk_level` `cve_id` `target` `c2_server` `injection_type` `target_model` `package_name` `target_registry` `gadget_chain` `regex_pattern` `template_engine` `encoding_method` `carrier_type`
+
+### File Metadata
+`metadata_type` `gps_coordinates` `device_info` `author` `software` `creation_date` `modification_date`
+
+### Behavioral
+`data_type` `user_identifier` `tracking_domain` `collection_method`
+
+### Cloud / Infrastructure
+`provider` `config_type` `exposed_resource` `platform` `secret_location` `pipeline_file`
 
 ### Document
 `document_type` `classification` `organization` `department` `effective_date` `expiration_date` `parties`

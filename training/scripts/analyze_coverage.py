@@ -49,12 +49,28 @@ TAXONOMY = {
     "confidential.military":   {"target": 400, "sources": ["synthetic"]},
     "confidential.education":  {"target": 300, "sources": ["synthetic"]},
 
-    "malicious.injection":   {"target": 400, "sources": ["seclists", "owasp"]},
-    "malicious.exploit":     {"target": 300, "sources": ["exploitdb", "nvd"]},
-    "malicious.shell":       {"target": 200, "sources": ["seclists", "exploitdb", "synthetic"]},
-    "malicious.obfuscated":  {"target": 200, "sources": ["seclists", "synthetic"]},
-    "malicious.phishing":    {"target": 200, "sources": ["synthetic"]},
-    "malicious.malware":     {"target": 200, "sources": ["mitre", "synthetic"]},
+    "malicious.injection":           {"target": 400, "sources": ["seclists", "owasp"]},
+    "malicious.exploit":             {"target": 300, "sources": ["exploitdb", "nvd"]},
+    "malicious.shell":               {"target": 200, "sources": ["seclists", "exploitdb", "synthetic"]},
+    "malicious.obfuscated":          {"target": 200, "sources": ["seclists", "synthetic"]},
+    "malicious.phishing":            {"target": 200, "sources": ["synthetic"]},
+    "malicious.malware":             {"target": 200, "sources": ["mitre", "synthetic"]},
+    "malicious.prompt_injection":    {"target": 300, "sources": ["synthetic"]},
+    "malicious.supply_chain":        {"target": 200, "sources": ["synthetic"]},
+    "malicious.deserialization":     {"target": 200, "sources": ["exploitdb", "synthetic"]},
+    "malicious.ssrf":                {"target": 200, "sources": ["seclists", "synthetic"]},
+    "malicious.redos":               {"target": 150, "sources": ["synthetic"]},
+    "malicious.steganography":       {"target": 150, "sources": ["synthetic"]},
+    "malicious.prototype_pollution": {"target": 150, "sources": ["seclists", "synthetic"]},
+    "malicious.xxe":                 {"target": 200, "sources": ["seclists", "owasp"]},
+    "malicious.ssti":                {"target": 200, "sources": ["seclists", "synthetic"]},
+
+    "credentials.cloud_config":  {"target": 300, "sources": ["synthetic"]},
+    "credentials.cicd":          {"target": 200, "sources": ["synthetic"]},
+    "credentials.container":     {"target": 200, "sources": ["synthetic"]},
+
+    "pii.metadata":    {"target": 300, "sources": ["synthetic"]},
+    "pii.behavioral":  {"target": 200, "sources": ["synthetic"]},
 
     "safe.documentation":  {"target": 300, "sources": ["synthetic"]},
     "safe.code":           {"target": 300, "sources": ["synthetic"]},
@@ -546,7 +562,7 @@ def print_report(datasets: dict, coverage: dict):
         "financial": "Generate invoices (HTML/PDF), bank statements, W-2/1099 forms, credit card receipts. Use realistic but fake numbers passing Luhn check.",
         "medical": "Inject synthetic PII into MTSamples transcriptions. Generate discharge summaries, lab reports, insurance cards. Follow HL7/FHIR field patterns.",
         "confidential": "Generate memos with classification markings (TOP SECRET//SCI, CONFIDENTIAL, INTERNAL ONLY). Create NDA templates, military-style orders with coordinates.",
-        "malicious": "Embed SecLists payloads into realistic file contexts (HTML forms, config files, log entries). Create multi-stage attack scenarios.",
+        "malicious": "Embed SecLists payloads into realistic file contexts (HTML forms, config files, log entries). Create multi-stage attack scenarios. Generate prompt injection payloads (direct, indirect, jailbreaks). Create supply chain attack samples (malicious package.json, lockfile poisoning, typosquatted packages). Generate deserialization payloads (pickle, YAML, Java). Create SSRF vectors targeting cloud metadata endpoints. Generate ReDoS patterns, XXE payloads, SSTI templates, and prototype pollution vectors. Create steganography samples with hidden data in images.",
         "safe": "Generate clean README files, source code (Python/JS/Rust), config files (nginx, docker-compose), and describe stock photos.",
     }
 
