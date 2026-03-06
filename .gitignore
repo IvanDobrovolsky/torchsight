@@ -1,5 +1,9 @@
 /target
 __pycache__/
+.venv/
+*.pyc
 training/data/raw/
 training/data/processed/
 training/data/synthetic/
+torchsight_report_*.pdf
+torchsight_report_*.json

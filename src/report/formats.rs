@@ -1,10 +1,6 @@
 use anyhow::Result;
 use chrono::Utc;
 use console::style;
-use genpdf::elements::{Break, Paragraph};
-use genpdf::fonts;
-use genpdf::style::Style;
-use genpdf::{Alignment, Document, Element};
 
 use super::builder::{ScanReport, Severity};
 
@@ -35,275 +31,79 @@ pub fn save_report(report: &ScanReport, format: &str) -> Result<String> {
     }
 }
 
-fn titlecase(s: &str) -> String {
-    s.replace('_', " ")
-        .split_whitespace()
-        .map(|w| {
-            let mut c = w.chars();
-            match c.next() {
-                None => String::new(),
-                Some(f) => f.to_uppercase().to_string() + c.as_str(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn human_size(bytes: u64) -> String {
-    if bytes < 1024 {
-        format!("{} B", bytes)
-    } else if bytes < 1024 * 1024 {
-        format!("{:.1} KB", bytes as f64 / 1024.0)
-    } else if bytes < 1024 * 1024 * 1024 {
-        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
-    } else {
-        format!("{:.2} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
-    }
-}
 
 fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
     let filename = format!("torchsight_report_{}.pdf", timestamp);
 
-    let font_dirs = [
-        "/usr/share/fonts/liberation",
-        "/usr/share/fonts/TTF",
-        "/usr/share/fonts/truetype/liberation",
-        "/usr/share/fonts/truetype/liberation2",
-    ];
+    // Write JSON to temp file
+    let tmp_json = std::env::temp_dir().join(format!("torchsight_{}.json", timestamp));
+    let json_content = serde_json::to_string_pretty(report)?;
+    std::fs::write(&tmp_json, &json_content)?;
 
-    let font_family = font_dirs
-        .iter()
-        .find_map(|dir| fonts::from_files(dir, "LiberationSans", None).ok())
-        .expect(
-            "Could not find Liberation Sans font. Install ttf-liberation (or liberation-fonts).",
-        );
+    // Find the report generator script relative to the executable
+    let report_script = find_report_script()?;
 
-    let mut doc = Document::new(font_family);
-    doc.set_title("TorchSight Scan Report");
-    doc.set_minimal_conformance();
-    doc.set_paper_size(genpdf::PaperSize::A4);
+    // Call Python report generator
+    let output = std::process::Command::new("uv")
+        .args([
+            "run",
+            "--project",
+            report_script
+                .parent()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "python",
+            report_script.to_str().unwrap(),
+            tmp_json.to_str().unwrap(),
+            "-o",
+            &filename,
+        ])
+        .output()?;
 
-    let margins = genpdf::SimplePageDecorator::new();
-    doc.set_page_decorator(margins);
+    // Clean up temp file
+    let _ = std::fs::remove_file(&tmp_json);
 
-    let title_style = Style::new().bold().with_font_size(22);
-    let subtitle_style = Style::new().with_font_size(11);
-    let section_style = Style::new().bold().with_font_size(13);
-    let file_heading_style = Style::new().bold().with_font_size(11);
-    let bold_style = Style::new().bold().with_font_size(10);
-    let normal_style = Style::new().with_font_size(10);
-    let small_style = Style::new().with_font_size(8);
-    let field_label_style = Style::new().bold().with_font_size(9);
-    let field_value_style = Style::new().with_font_size(9);
-
-    // ── Title Page Header ──
-    doc.push(Break::new(1.5));
-    doc.push(
-        Paragraph::new("TORCHSIGHT")
-            .aligned(Alignment::Center)
-            .styled(title_style),
-    );
-    doc.push(
-        Paragraph::new("Security Scan Report")
-            .aligned(Alignment::Center)
-            .styled(subtitle_style),
-    );
-    doc.push(Break::new(1.0));
-
-    // ── Report metadata ──
-    doc.push(
-        Paragraph::new(format!(
-            "Date:  {}",
-            report.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
-        ))
-        .styled(normal_style),
-    );
-    doc.push(
-        Paragraph::new(format!("Files Scanned:  {}", report.files.len())).styled(normal_style),
-    );
-    doc.push(
-        Paragraph::new(format!(
-            "Files Flagged:  {}    Clean:  {}",
-            report.flagged_count(),
-            report.clean_count()
-        ))
-        .styled(normal_style),
-    );
-    doc.push(Break::new(0.3));
-    doc.push(
-        Paragraph::new("CONFIDENTIAL - All data processed on-premise. No information transmitted externally.")
-            .styled(Style::new().bold().with_font_size(8)),
-    );
-    doc.push(Break::new(0.8));
-
-    // ── Executive Summary ──
-    doc.push(Paragraph::new("EXECUTIVE SUMMARY").styled(section_style));
-    doc.push(Break::new(0.2));
-    doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
-    doc.push(Break::new(0.3));
-
-    let summary_lines = [
-        format!("Total Findings .............. {}", report.total_findings()),
-        format!("  Critical .................. {}", report.critical_count()),
-        format!("  Warning ................... {}", report.warning_count()),
-        format!("  Informational ............. {}", report.info_count()),
-    ];
-    for line in &summary_lines {
-        doc.push(Paragraph::new(line.as_str()).styled(normal_style));
-    }
-    doc.push(Break::new(0.2));
-    doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
-    doc.push(Break::new(1.0));
-
-    // ── Flagged Files (detailed) ──
-    let flagged_files: Vec<_> = report
-        .files
-        .iter()
-        .filter(|f| f.findings.iter().any(|finding| finding.category != "safe"))
-        .collect();
-
-    if !flagged_files.is_empty() {
-        doc.push(Paragraph::new("Flagged Files - Detailed Findings").styled(section_style));
-        doc.push(Break::new(0.3));
-
-        for (idx, file) in flagged_files.iter().enumerate() {
-            doc.push(
-                Paragraph::new(format!(
-                    "{}. {}",
-                    idx + 1,
-                    file.path
-                ))
-                .styled(file_heading_style),
-            );
-            doc.push(
-                Paragraph::new(format!(
-                    "Type: {}  |  Size: {}",
-                    file.kind,
-                    human_size(file.size)
-                ))
-                .styled(small_style),
-            );
-            doc.push(Break::new(0.2));
-
-            for finding in &file.findings {
-                if finding.category == "safe" {
-                    continue;
-                }
-
-                let severity_label = finding.severity.to_string();
-
-                doc.push(
-                    Paragraph::new(format!(
-                        "[{}]  {}",
-                        severity_label, finding.description
-                    ))
-                    .styled(bold_style),
-                );
-                doc.push(
-                    Paragraph::new(format!(
-                        "Category: {}  |  Source: {}",
-                        finding.category, finding.source
-                    ))
-                    .styled(small_style),
-                );
-
-                if !finding.evidence.is_empty() && finding.evidence != "[image content]" {
-                    doc.push(
-                        Paragraph::new(format!("Pattern: {}", finding.evidence))
-                            .styled(small_style),
-                    );
-                }
-
-                if !finding.extracted_data.is_empty() {
-                    doc.push(Break::new(0.1));
-                    doc.push(Paragraph::new("Extracted Data:").styled(field_label_style));
-
-                    let mut keys: Vec<&String> = finding.extracted_data.keys().collect();
-                    keys.sort();
-
-                    for key in keys {
-                        let value = &finding.extracted_data[key];
-                        let label = titlecase(key);
-                        let dots: String = ".".repeat(30usize.saturating_sub(label.len()));
-                        doc.push(
-                            Paragraph::new(format!("    {} {} {}", label, dots, value))
-                                .styled(field_value_style),
-                        );
-                    }
-                }
-
-                doc.push(Break::new(0.3));
-            }
-
-            doc.push(Break::new(0.4));
-        }
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("PDF generator failed: {}", stderr.trim());
     }
 
-    // ── Clean Files List ──
-    let clean_files: Vec<_> = report
-        .files
-        .iter()
-        .filter(|f| !f.findings.iter().any(|finding| finding.category != "safe"))
-        .collect();
-
-    if !clean_files.is_empty() {
-        doc.push(Break::new(0.5));
-        doc.push(Paragraph::new("CLEAN FILES").styled(section_style));
-        doc.push(Break::new(0.1));
-        doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
-        doc.push(Break::new(0.2));
-        doc.push(
-            Paragraph::new("No security concerns found in the following files:")
-                .styled(small_style),
-        );
-        doc.push(Break::new(0.2));
-
-        for file in &clean_files {
-            let summary = file
-                .findings
-                .iter()
-                .find(|f| f.category == "safe")
-                .and_then(|f| {
-                    f.extracted_data
-                        .get("summary")
-                        .or(f.extracted_data.get("subject"))
-                })
-                .map(|s| format!(" - {}", s))
-                .unwrap_or_default();
-
-            doc.push(
-                Paragraph::new(format!(
-                    "  [OK]  {} ({}, {}){}",
-                    file.path,
-                    file.kind,
-                    human_size(file.size),
-                    summary
-                ))
-                .styled(field_value_style),
-            );
-        }
-
-        doc.push(Break::new(0.2));
-        doc.push(Paragraph::new("_____________________________________________________________").styled(small_style));
-    }
-
-    // ── Footer ──
-    doc.push(Break::new(2.0));
-    doc.push(
-        Paragraph::new(
-            "Generated by TorchSight | On-Premise Security Scanner | github.com/torchsight",
-        )
-        .aligned(Alignment::Center)
-        .styled(small_style),
-    );
-    doc.push(
-        Paragraph::new("All analysis performed locally. No data was transmitted to any external service.")
-            .aligned(Alignment::Center)
-            .styled(small_style),
-    );
-
-    doc.render_to_file(&filename)?;
     Ok(filename)
+}
+
+fn find_report_script() -> Result<std::path::PathBuf> {
+    // Try relative to executable
+    if let Ok(exe) = std::env::current_exe() {
+        let candidates = [
+            exe.parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join("../report/generate.py"),
+            exe.parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join("../../report/generate.py"),
+        ];
+        for c in &candidates {
+            if c.exists() {
+                return Ok(c.canonicalize()?);
+            }
+        }
+    }
+
+    // Try relative to cwd (development)
+    let cwd_candidates = [
+        std::path::PathBuf::from("report/generate.py"),
+        std::path::PathBuf::from("../report/generate.py"),
+    ];
+    for c in &cwd_candidates {
+        if c.exists() {
+            return Ok(c.canonicalize()?);
+        }
+    }
+
+    anyhow::bail!(
+        "Could not find report/generate.py. Make sure the report directory is present."
+    )
 }
 
 fn format_markdown(report: &ScanReport) -> String {

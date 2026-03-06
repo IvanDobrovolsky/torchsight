@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #0B0A14;
+    color: #C8C2D6;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 32mm 24mm 24mm 24mm;
+    page-break-after: always;
+    position: relative;
+  }
+
+  .page::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #A855F7, #6366F1, #38BDF8);
+  }
+
+  /* ── Cover ── */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 297mm;
+    padding: 0 24mm;
+    text-align: center;
+  }
+
+  .cover-logo {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 20px;
+  }
+
+  .cover h1 {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 6px;
+    color: #E2DFF0;
+    margin-bottom: 4px;
+  }
+
+  .cover h1 span {
+    color: #A78BFA;
+  }
+
+  .cover .subtitle {
+    font-size: 14px;
+    color: #6B6580;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+
+  .cover-meta {
+    font-size: 11px;
+    color: #5B5573;
+    line-height: 2;
+  }
+
+  .cover-meta strong {
+    color: #8B83A3;
+  }
+
+  .cover-badge {
+    margin-top: 48px;
+    padding: 8px 24px;
+    border: 1px solid #1E1A2E;
+    border-radius: 20px;
+    font-size: 9px;
+    color: #6B6580;
+    letter-spacing: 1px;
+  }
+
+  /* ── Summary cards ── */
+  .summary-grid {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .stat-card {
+    flex: 1;
+    background: #111020;
+    border: 1px solid #1E1A2E;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-card .number {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-card .label {
+    font-size: 9px;
+    color: #6B6580;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+
+  .stat-critical .number { color: #EF4444; }
+  .stat-warning .number { color: #F59E0B; }
+  .stat-info .number { color: #6B6580; }
+  .stat-files .number { color: #A78BFA; }
+  .stat-clean .number { color: #34D399; }
+
+  /* ── Sections ── */
+  .section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E2DFF0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 28px 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #1E1A2E;
+  }
+
+  /* ── File cards ── */
+  .file-card {
+    background: #111020;
+    border: 1px solid #1E1A2E;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .file-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #1E1A2E;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .file-path {
+    font-size: 11px;
+    font-weight: 600;
+    color: #C8C2D6;
+    word-break: break-all;
+  }
+
+  .file-meta {
+    font-size: 9px;
+    color: #5B5573;
+    white-space: nowrap;
+    margin-left: 12px;
+  }
+
+  .finding {
+    padding: 12px 16px;
+    border-bottom: 1px solid #151324;
+  }
+
+  .finding:last-child {
+    border-bottom: none;
+  }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .severity-badge {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .severity-critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .severity-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .severity-info {
+    background: rgba(107, 101, 128, 0.15);
+    color: #8B83A3;
+    border: 1px solid rgba(107, 101, 128, 0.3);
+  }
+
+  .category-badge {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(167, 139, 250, 0.1);
+    color: #A78BFA;
+    border: 1px solid rgba(167, 139, 250, 0.2);
+  }
+
+  .finding-desc {
+    font-size: 10px;
+    color: #9B95AD;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  /* ── Extracted data table ── */
+  .data-grid {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-grid tr {
+    border-bottom: 1px solid #151324;
+  }
+
+  .data-grid tr:last-child {
+    border-bottom: none;
+  }
+
+  .data-grid td {
+    padding: 4px 0;
+    vertical-align: top;
+  }
+
+  .data-label {
+    font-size: 9px;
+    color: #5B5573;
+    text-transform: capitalize;
+    width: 140px;
+    padding-right: 12px;
+  }
+
+  .data-value {
+    font-size: 9px;
+    color: #E2DFF0;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    word-break: break-all;
+  }
+
+  /* ── Clean files ── */
+  .clean-list {
+    list-style: none;
+  }
+
+  .clean-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #151324;
+    font-size: 10px;
+  }
+
+  .clean-item:last-child {
+    border-bottom: none;
+  }
+
+  .clean-check {
+    color: #34D399;
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  .clean-path {
+    color: #6B6580;
+    word-break: break-all;
+  }
+
+  .clean-summary {
+    color: #5B5573;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ── Compliance ── */
+  .compliance-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .compliance-tag {
+    font-size: 8px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.1);
+    color: #38BDF8;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #1E1A2E;
+    text-align: center;
+    font-size: 8px;
+    color: #3D3755;
+    line-height: 1.8;
+  }
+
+  .footer .brand {
+    color: #5B5573;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ COVER PAGE ══════════ -->
+<div class="cover page">
+  <img src="{{ logo_path }}" class="cover-logo" alt="TorchSight">
+  <h1>TORCH<span>SIGHT</span></h1>
+  <div class="subtitle">Security Scan Report</div>
+
+  <div class="cover-meta">
+    <strong>Date:</strong> {{ timestamp }}<br>
+    <strong>Files Scanned:</strong> {{ total_files }}<br>
+    <strong>Findings:</strong> {{ total_findings }} ({{ critical_count }} critical, {{ warning_count }} warning, {{ info_count }} info)
+  </div>
+
+  <div class="cover-badge">CONFIDENTIAL &mdash; ALL DATA PROCESSED ON-PREMISE &mdash; NO CLOUD TRANSMISSION</div>
+</div>
+
+<!-- ══════════ EXECUTIVE SUMMARY ══════════ -->
+<div class="page">
+  <div class="section-title">Executive Summary</div>
+
+  <div class="summary-grid">
+    <div class="stat-card stat-files">
+      <div class="number">{{ total_files }}</div>
+      <div class="label">Files Scanned</div>
+    </div>
+    <div class="stat-card stat-critical">
+      <div class="number">{{ critical_count }}</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="stat-card stat-warning">
+      <div class="number">{{ warning_count }}</div>
+      <div class="label">Warning</div>
+    </div>
+    <div class="stat-card stat-info">
+      <div class="number">{{ info_count }}</div>
+      <div class="label">Info</div>
+    </div>
+    <div class="stat-card stat-clean">
+      <div class="number">{{ clean_count }}</div>
+      <div class="label">Clean</div>
+    </div>
+  </div>
+
+  <!-- ── Flagged files ── -->
+  {% if flagged_files %}
+  <div class="section-title">Flagged Files</div>
+
+  {% for file in flagged_files %}
+  <div class="file-card">
+    <div class="file-header">
+      <span class="file-path">{{ file.path }}</span>
+      <span class="file-meta">{{ file.kind }} &middot; {{ file.size_human }}</span>
+    </div>
+
+    {% for finding in file.findings %}
+    {% if finding.category != "safe" %}
+    <div class="finding">
+      <div class="finding-header">
+        <span class="severity-badge severity-{{ finding.severity|lower }}">{{ finding.severity }}</span>
+        <span class="category-badge">{{ finding.category }}</span>
+      </div>
+      <div class="finding-desc">{{ finding.description }}</div>
+
+      {% if finding.extracted_data %}
+      <table class="data-grid">
+        {% for key, value in finding.extracted_data|dictsort %}
+        {% if key != "compliance" %}
+        <tr>
+          <td class="data-label">{{ key|replace("_", " ") }}</td>
+          <td class="data-value">{{ value }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </table>
+
+      {% if finding.extracted_data.compliance %}
+      <div class="compliance-tags">
+        {% for tag in finding.extracted_data.compliance.split(", ") %}
+        <span class="compliance-tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- ── Clean files ── -->
+  {% if clean_files %}
+  <div class="section-title">Clean Files</div>
+  <ul class="clean-list">
+    {% for file in clean_files %}
+    <li class="clean-item">
+      <span class="clean-check">&check;</span>
+      <span class="clean-path">{{ file.path }}</span>
+      <span class="clean-summary">{{ file.kind }} &middot; {{ file.size_human }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <!-- ── Footer ── -->
+  <div class="footer">
+    Generated by <span class="brand">TorchSight</span> &mdash; On-Premise Security Scanner<br>
+    All analysis performed locally. No data was transmitted to any external service.
+  </div>
+</div>
+
+</body>
+</html>
