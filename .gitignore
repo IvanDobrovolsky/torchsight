@@ -1,1 +1,5 @@
 /target
+__pycache__/
+training/data/raw/
+training/data/processed/
+training/data/synthetic/

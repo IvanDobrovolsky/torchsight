@@ -57,7 +57,6 @@ What is this file? Examples:
 - Financial records (transactions, invoices, tax documents)
 - Legal documents (contracts, NDAs)
 - Communication (emails, chat logs)
-- Content with profanity, hate speech, threats, or inappropriate language
 - Clean configuration, documentation, or code with no sensitive data
 
 === TASK 2: SENSITIVE DATA EXTRACTION ===
@@ -84,10 +83,19 @@ Use these fields in extracted_data (only include what is actually present):
 - "organization": company names
 - Add any other sensitive fields you find
 
-=== TASK 3: CONTENT MODERATION ===
-Flag any profanity, slurs, hate speech, threats, harassment, extremist content, or inappropriate language in the file.
-If found: category = "inappropriate", severity = "critical"
-Include: "content_type", "flagged_text" (exact text), "risk_level"
+=== TASK 3: SECURITY THREATS ===
+Detect any malicious or dangerous content in this file:
+- Embedded scripts (JavaScript in HTML/SVG/JSON, VBA macros, PowerShell, shell scripts)
+- Injection payloads (SQL injection, XSS vectors, command injection, LDAP injection, template injection)
+- Malicious code (reverse shells, C2 beacons, backdoors, web shells, keyloggers)
+- Obfuscated payloads (base64-encoded commands, hex-encoded shellcode, eval/exec with encoded strings)
+- Suspicious function calls (eval(), exec(), system(), os.popen(), subprocess, Runtime.exec())
+- Deserialization attacks (pickle, yaml.load, ObjectInputStream, unserialize)
+- Path traversal (../../etc/passwd, directory traversal attempts)
+- Phishing indicators (credential harvesting forms, fake login pages, social engineering scripts)
+- Exploit code (buffer overflow, format string, use-after-free, ROP chains)
+If found: category = "malicious", severity = "critical"
+Include in extracted_data: "threat_type", "payload" (exact malicious content), "attack_vector", "risk_level"
 
 === TASK 4: COMPLIANCE ===
 Note which regulations this data falls under:
@@ -99,11 +107,11 @@ Note which regulations this data falls under:
 Include as "compliance" in extracted_data if applicable.
 
 === TASK 5: SAFETY VERDICT ===
-If nothing sensitive or inappropriate: category = "safe", severity = "info"
+If nothing sensitive or malicious found: category = "safe", severity = "info"
 Include: "document_type", "summary" (brief description of file content)
 
 Respond ONLY with a JSON array (no other text):
-[{{"category": "pii|credentials|financial|medical|confidential|inappropriate|safe", "description": "detailed explanation", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value from file"}}}}]
+[{{"category": "pii|credentials|financial|medical|confidential|malicious|safe", "description": "detailed explanation", "severity": "critical|warning|info", "extracted_data": {{"field": "exact value from file"}}}}]
 
 CRITICAL RULES:
 - Extract EXACT values from the file, not descriptions

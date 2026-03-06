@@ -1,0 +1,10 @@
+# Training data — too large for git
+raw/
+processed/
+synthetic/
+*.csv
+*.jsonl
+*.tar.gz
+
+# Keep directory structure
+!.gitignore

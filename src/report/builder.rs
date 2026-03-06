@@ -88,14 +88,6 @@ impl ScanReport {
         self.files.len() - self.flagged_count()
     }
 
-    pub fn inappropriate_count(&self) -> usize {
-        self.files
-            .iter()
-            .flat_map(|f| &f.findings)
-            .filter(|f| f.category == "inappropriate")
-            .count()
-    }
-
     pub fn critical_count(&self) -> usize {
         self.files
             .iter()
