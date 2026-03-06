@@ -14,7 +14,9 @@ import json
 import sys
 from pathlib import Path
 
-PROCESSED_DIR = Path(__file__).parent.parent.parent / "data" / "processed"
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+PROCESSED_DIR = DATA_DIR / "processed"
+SYNTHETIC_DIR = DATA_DIR / "synthetic"
 COMBINED_PATH = PROCESSED_DIR / "combined_train.jsonl"
 
 PROCESSORS = {
@@ -24,6 +26,9 @@ PROCESSORS = {
     "nvd": "nvd_processor",
     "mtsamples": "mtsamples_processor",
     "crs_reports": "crs_processor",
+    "prompt_injection": "prompt_injection_processor",
+    "phishing": "phishing_processor",
+    "ghsa": "ghsa_processor",
 }
 
 
@@ -35,7 +40,13 @@ def run_processor(name: str):
 
     module_name = PROCESSORS[name]
     module = __import__(module_name)
-    module.process()
+    # Support both process() and main() entry points
+    if hasattr(module, "process"):
+        module.process()
+    elif hasattr(module, "main"):
+        module.main()
+    else:
+        print(f"  WARNING: {module_name} has no process() or main() function")
 
 
 def combine_datasets():
@@ -45,11 +56,17 @@ def combine_datasets():
     total = 0
     source_counts = {}
 
-    with open(COMBINED_PATH, "w") as fout:
-        for jsonl_file in sorted(PROCESSED_DIR.glob("*.jsonl")):
-            if jsonl_file.name == "combined_train.jsonl":
-                continue
+    # Gather JSONL files from both processed and synthetic dirs
+    all_files = []
+    for jsonl_file in sorted(PROCESSED_DIR.glob("*.jsonl")):
+        if jsonl_file.name != "combined_train.jsonl":
+            all_files.append(jsonl_file)
+    if SYNTHETIC_DIR.exists():
+        for jsonl_file in sorted(SYNTHETIC_DIR.glob("*.jsonl")):
+            all_files.append(jsonl_file)
 
+    with open(COMBINED_PATH, "w") as fout:
+        for jsonl_file in all_files:
             source = jsonl_file.stem
             count = 0
             with open(jsonl_file) as fin:
@@ -79,9 +96,10 @@ def show_stats():
         return
 
     total = 0
-    for jsonl_file in sorted(PROCESSED_DIR.glob("*.jsonl")):
-        if jsonl_file.name == "combined_train.jsonl":
-            continue
+    all_files = [f for f in sorted(PROCESSED_DIR.glob("*.jsonl")) if f.name != "combined_train.jsonl"]
+    if SYNTHETIC_DIR.exists():
+        all_files += sorted(SYNTHETIC_DIR.glob("*.jsonl"))
+    for jsonl_file in all_files:
 
         count = 0
         subcats = {}
