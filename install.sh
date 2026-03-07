@@ -9,8 +9,10 @@ RED='\033[0;31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-TEXT_MODEL="${TORCHSIGHT_TEXT_MODEL:-mistral}"
+TEXT_MODEL="${TORCHSIGHT_TEXT_MODEL:-torchsight/beam-q8}"
 VISION_MODEL="${TORCHSIGHT_VISION_MODEL:-llama3.2-vision}"
+BEAM_GGUF="training/output/torchsight-beam-f16.gguf"
+BEAM_MODELFILE="training/output/Modelfile"
 
 info()  { echo -e "  ${CYAN}>>>${RESET} $1"; }
 ok()    { echo -e "  ${GREEN}[OK]${RESET} $1"; }
@@ -136,17 +138,32 @@ else
     fi
 fi
 
-# ── 5. Pull the LLM model ─────────────────────────────────────────────────
+# ── 5. Setup text model ──────────────────────────────────────────────────
 
 info "Checking for text model: ${BOLD}$TEXT_MODEL${RESET}"
 
 if ollama list 2>/dev/null | grep -q "$TEXT_MODEL"; then
     ok "Model '$TEXT_MODEL' already available"
+elif [[ "$TEXT_MODEL" == *"beam"* ]] && [[ -f "$SCRIPT_DIR/$BEAM_GGUF" ]] && [[ -f "$SCRIPT_DIR/$BEAM_MODELFILE" ]]; then
+    info "Creating beam model from local GGUF (this may take a few minutes)..."
+    cd "$SCRIPT_DIR/training/output"
+    ollama create --quantize q8_0 "$TEXT_MODEL" -f Modelfile
+    cd "$SCRIPT_DIR"
+    ok "Model '$TEXT_MODEL' created from local weights"
+elif [[ "$TEXT_MODEL" == *"beam"* ]]; then
+    warn "Beam GGUF not found at $BEAM_GGUF"
+    warn "Falling back to mistral. Download beam weights or run: torchsight --text-model mistral"
+    TEXT_MODEL="mistral"
+    info "Pulling fallback model '$TEXT_MODEL'..."
+    ollama pull "$TEXT_MODEL"
+    ok "Model '$TEXT_MODEL' ready"
 else
     info "Pulling model '$TEXT_MODEL' (this may take a few minutes)..."
     ollama pull "$TEXT_MODEL"
     ok "Model '$TEXT_MODEL' ready"
 fi
+
+# ── 5b. Setup vision model ──────────────────────────────────────────────
 
 info "Checking for vision model: ${BOLD}$VISION_MODEL${RESET}"
 
@@ -192,6 +209,6 @@ echo ""
 echo -e "  ${DIM}Usage:${RESET}"
 echo -e "    ${CYAN}torchsight${RESET}                    Interactive mode"
 echo -e "    ${CYAN}torchsight /path/to/scan${RESET}      Direct scan"
-echo -e "    ${CYAN}torchsight --fast-only .${RESET}      Pattern-only (no LLM)"
+echo -e "    ${CYAN}torchsight --text-model mistral .${RESET}  Use a different model"
 echo -e "    ${CYAN}torchsight --help${RESET}             All options"
 echo ""
