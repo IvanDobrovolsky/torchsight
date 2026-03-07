@@ -31,31 +31,31 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SFT_DIR = Path(os.environ.get("TORCHSIGHT_DATA_DIR", SCRIPT_DIR.parent / "data" / "sft"))
 OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "output"))
 
-# Default hyperparameters
+# Default hyperparameters — tuned for high-VRAM GPU (GH200/A100/H100)
 DEFAULTS = {
     "base_model": "meta-llama/Llama-3.2-3B-Instruct",
     "format": "chatml",
-    "epochs": 2,
-    "lr": 2e-4,
-    "batch_size": 4,
-    "grad_accum": 4,
+    "epochs": 3,
+    "lr": 1e-4,
+    "batch_size": 16,
+    "grad_accum": 2,
     "max_seq_length": 4096,
-    "lora_r": 16,
-    "lora_alpha": 32,
+    "lora_r": 64,
+    "lora_alpha": 128,
     "lora_dropout": 0.05,
-    "warmup_ratio": 0.03,
+    "warmup_ratio": 0.05,
     "weight_decay": 0.01,
-    "quantize": None,  # None, "4bit", or "8bit"
+    "quantize": None,  # None = full bf16 (best quality)
     "resume": None,
 }
 
-# LoRA target modules per model family
+# LoRA target modules per model family — all linear layers for maximum adaptation
 LORA_TARGETS = {
-    "llama": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-    "qwen": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-    "mistral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-    "phi": ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
-    "gemma": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    "llama": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
+    "qwen": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
+    "mistral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
+    "phi": ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2", "lm_head"],
+    "gemma": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
 }
 
 
@@ -233,6 +233,7 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     output_path = OUTPUT_DIR / f"torchsight-{family}-lora"
 
+    has_eval = val_file.exists()
     training_args = SFTConfig(
         output_dir=str(output_path),
         num_train_epochs=config["epochs"],
@@ -244,15 +245,21 @@ def main():
         max_seq_length=config["max_seq_length"],
         logging_steps=10,
         save_strategy="steps",
-        save_steps=500,
-        eval_strategy="steps" if val_file.exists() else "no",
-        eval_steps=500 if val_file.exists() else None,
+        save_steps=250,
+        save_total_limit=5,
+        eval_strategy="steps" if has_eval else "no",
+        eval_steps=250 if has_eval else None,
+        load_best_model_at_end=has_eval,
+        metric_for_best_model="eval_loss" if has_eval else None,
+        greater_is_better=False if has_eval else None,
         bf16=torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
         fp16=not torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
         gradient_checkpointing=True,
-        optim="paged_adamw_8bit" if config["quantize"] else "adamw_torch",
+        optim="paged_adamw_8bit" if config["quantize"] else "adamw_torch_fused",
         lr_scheduler_type="cosine",
         report_to="none",
+        dataloader_num_workers=4,
+        dataloader_pin_memory=True,
         seed=42,
     )
 

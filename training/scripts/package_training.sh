@@ -53,15 +53,9 @@ echo "Data directory: $TORCHSIGHT_DATA_DIR"
 echo "Output directory: $TORCHSIGHT_OUTPUT_DIR"
 echo ""
 
-# Default: QLoRA 4-bit on Llama 3.2 3B
-# Override with: ./train.sh --base-model Qwen/Qwen2.5-3B-Instruct --quantize 4bit
+# Full-precision LoRA on Llama 3.2 3B (tuned for high-VRAM GPU)
+# All defaults are already maxed in train_lora.py — just pass overrides if needed
 python3 "$SCRIPT_DIR/train_lora.py" \
-    --base-model meta-llama/Llama-3.2-3B-Instruct \
-    --quantize 4bit \
-    --format chatml \
-    --epochs 2 \
-    --batch-size 4 \
-    --grad-accum 4 \
     "$@"
 
 echo ""
