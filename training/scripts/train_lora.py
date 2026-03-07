@@ -9,14 +9,14 @@ Requirements:
     pip install torch transformers peft datasets accelerate bitsandbytes trl
 
 Usage:
-    # Full fine-tune (requires ~24GB VRAM)
-    python train_lora.py --base-model meta-llama/Llama-3.2-3B-Instruct
+    # Full fine-tune on Lambda cluster (~60GB VRAM, 90GB available)
+    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct
 
-    # QLoRA 4-bit (requires ~8GB VRAM)
-    python train_lora.py --base-model meta-llama/Llama-3.2-3B-Instruct --quantize 4bit
+    # QLoRA 4-bit (requires ~16GB VRAM)
+    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct --quantize 4bit
 
     # Custom settings
-    python train_lora.py --base-model Qwen/Qwen2.5-3B-Instruct --epochs 3 --lr 2e-4
+    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct --epochs 3 --lr 2e-4
 
     # Resume from checkpoint
     python train_lora.py --resume ./output/checkpoint-1000
@@ -33,7 +33,7 @@ OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "o
 
 # Default hyperparameters — tuned for high-VRAM GPU (GH200/A100/H100)
 DEFAULTS = {
-    "base_model": "meta-llama/Llama-3.2-3B-Instruct",
+    "base_model": "meta-llama/Llama-3.1-8B-Instruct",
     "format": "chatml",
     "epochs": 3,
     "lr": 1e-4,
@@ -206,28 +206,38 @@ def main():
     })
 
     # Format function based on format type
+    # trl 0.15 probes with a single example (dict), then calls with batches
     if config["format"] == "chatml":
-        def formatting_func(examples):
-            texts = []
-            for messages in examples["messages"]:
-                text = tokenizer.apply_chat_template(
+        def formatting_func(example):
+            messages = example["messages"]
+            # Single example: messages is a list of dicts
+            if isinstance(messages, list) and len(messages) > 0 and isinstance(messages[0], dict):
+                return tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=False
                 )
-                texts.append(text)
+            # Batched: messages is a list of lists
+            texts = []
+            for msgs in messages:
+                texts.append(tokenizer.apply_chat_template(
+                    msgs, tokenize=False, add_generation_prompt=False
+                ))
             return texts
     elif config["format"] == "alpaca":
-        def formatting_func(examples):
-            texts = []
-            for inst, inp, out in zip(examples["instruction"], examples["input"], examples["output"]):
-                text = f"### Instruction:\n{inst}\n\n### Input:\n{inp}\n\n### Response:\n{out}"
-                texts.append(text)
-            return texts
+        def formatting_func(example):
+            inst = example["instruction"]
+            inp = example["input"]
+            out = example["output"]
+            if isinstance(inst, str):
+                return f"### Instruction:\n{inst}\n\n### Input:\n{inp}\n\n### Response:\n{out}"
+            return [f"### Instruction:\n{i}\n\n### Input:\n{p}\n\n### Response:\n{o}"
+                    for i, p, o in zip(inst, inp, out)]
     else:
-        def formatting_func(examples):
-            texts = []
-            for prompt, completion in zip(examples["prompt"], examples["completion"]):
-                texts.append(f"{prompt}{completion}")
-            return texts
+        def formatting_func(example):
+            prompt = example["prompt"]
+            completion = example["completion"]
+            if isinstance(prompt, str):
+                return f"{prompt}{completion}"
+            return [f"{p}{c}" for p, c in zip(prompt, completion)]
 
     # Training arguments
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

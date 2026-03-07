@@ -27,6 +27,7 @@ cp "$TRAINING_DIR/data/sft/val_chatml.jsonl" "$PACKAGE_DIR/data/"
 echo "  Copying scripts..."
 cp "$SCRIPT_DIR/train_lora.py" "$PACKAGE_DIR/"
 cp "$SCRIPT_DIR/export_gguf.py" "$PACKAGE_DIR/"
+cp "$SCRIPT_DIR/eval_model.py" "$PACKAGE_DIR/"
 
 # Create the self-contained train script that patches paths
 cat > "$PACKAGE_DIR/train.sh" << 'TRAINEOF'
@@ -38,7 +39,7 @@ echo "  TorchSight Training Setup"
 echo "============================================"
 
 # Install dependencies
-pip install torch transformers peft datasets accelerate bitsandbytes trl
+pip install torch transformers peft datasets accelerate bitsandbytes trl scikit-learn tabulate
 
 # Patch train_lora.py to use local data paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -53,13 +54,19 @@ echo "Data directory: $TORCHSIGHT_DATA_DIR"
 echo "Output directory: $TORCHSIGHT_OUTPUT_DIR"
 echo ""
 
-# Full-precision LoRA on Llama 3.2 3B (tuned for high-VRAM GPU)
+# Full-precision LoRA on Llama 3.1 8B (tuned for 90GB VRAM cluster)
 # All defaults are already maxed in train_lora.py — just pass overrides if needed
 python3 "$SCRIPT_DIR/train_lora.py" \
     "$@"
 
 echo ""
 echo "Training complete! LoRA adapter saved to: $TORCHSIGHT_OUTPUT_DIR"
+echo ""
+echo "Running evaluation..."
+python3 "$SCRIPT_DIR/eval_model.py" \
+    --adapter "$TORCHSIGHT_OUTPUT_DIR/torchsight-llama-lora" \
+    --val-data "$TORCHSIGHT_DATA_DIR/val_chatml.jsonl"
+
 echo ""
 echo "To export GGUF:"
 echo "  python3 export_gguf.py --adapter ./output/torchsight-llama-lora"
@@ -88,5 +95,5 @@ echo "  cd torchsight-training"
 echo "  ./train.sh"
 echo ""
 echo "Optional overrides:"
-echo "  ./train.sh --base-model Qwen/Qwen2.5-3B-Instruct"
+echo "  ./train.sh --base-model meta-llama/Llama-3.1-8B-Instruct"
 echo "  ./train.sh --quantize 4bit --epochs 3 --lr 1e-4"

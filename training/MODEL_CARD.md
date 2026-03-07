@@ -7,10 +7,10 @@
 | | |
 |---|---|
 | **Name** | `torchsight/sentinel` |
-| **Base model** | Llama 3.2 3B Instruct |
+| **Base model** | Llama 3.1 8B Instruct |
 | **Method** | LoRA fine-tuning (rank 64, alpha 128) |
 | **Training data** | 105,168 samples across 51 subcategories |
-| **Output format** | GGUF (q4_k_m) for Ollama |
+| **Output format** | GGUF (q4_k_m) for Ollama (~5GB) |
 | **License** | Apache 2.0 |
 
 ---
@@ -98,7 +98,7 @@ graph TD
     end
 
     subgraph TRAIN ["④ Train"]
-        BASE["Llama 3.2 3B<br/>Instruct"]
+        BASE["Llama 3.1 8B<br/>Instruct"]
         LORA["LoRA Adapter<br/>r=64, α=128"]
         BEST["Best Checkpoint<br/>by eval loss"]
     end
@@ -317,10 +317,10 @@ graph LR
 
 graph LR
     A["LoRA Adapter<br/>~100MB"] --> B["Merge with<br/>Base Model"]
-    C["Llama 3.2 3B<br/>~6GB fp16"] --> B
-    B --> D["Merged Model<br/>~6GB"]
+    C["Llama 3.1 8B<br/>~16GB fp16"] --> B
+    B --> D["Merged Model<br/>~16GB"]
     D --> E["llama.cpp<br/>Quantize"]
-    E --> F["GGUF q4_k_m<br/>~2GB"]
+    E --> F["GGUF q4_k_m<br/>~5GB"]
     F --> G["Ollama<br/>Modelfile"]
     G --> H["torchsight/sentinel<br/>Ready to run"]
 
@@ -337,7 +337,7 @@ graph LR
 Three-step export process:
 
 1. **Merge** — LoRA adapter weights are mathematically merged back into the base model, producing a single standalone model
-2. **Quantize** — `q4_k_m` reduces model size from ~6GB to ~2GB using 4-bit quantization with k-quant importance-based precision allocation
+2. **Quantize** — `q4_k_m` reduces model size from ~16GB to ~2GB using 4-bit quantization with k-quant importance-based precision allocation
 3. **Modelfile** — Creates an Ollama Modelfile with the system prompt and inference parameters baked in
 
 The final GGUF file runs on any machine with Ollama — CPU-only works fine, GPU just makes it faster.
