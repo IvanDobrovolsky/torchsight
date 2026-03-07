@@ -16,7 +16,7 @@ struct Args {
     path: Option<String>,
 
     /// Text analysis model (fast reasoning)
-    #[arg(long, default_value = "mistral")]
+    #[arg(long, default_value = "torchsight/beam-q8")]
     text_model: String,
 
     /// Vision model (image understanding)

@@ -25,6 +25,29 @@ struct GenerateResponse {
     response: String,
 }
 
+#[derive(Serialize)]
+struct ChatMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Serialize)]
+struct ChatRequest {
+    model: String,
+    messages: Vec<ChatMessage>,
+    stream: bool,
+}
+
+#[derive(Deserialize)]
+struct ChatResponse {
+    message: ChatResponseMessage,
+}
+
+#[derive(Deserialize)]
+struct ChatResponseMessage {
+    content: String,
+}
+
 impl OllamaClient {
     pub fn new(base_url: &str, text_model: &str, vision_model: &str) -> Self {
         Self {
@@ -53,9 +76,34 @@ impl OllamaClient {
         Ok(resp.status().is_success())
     }
 
-    /// Text analysis — uses the fast text model (mistral)
+    /// Text analysis — uses the fast text model
     pub async fn generate(&self, prompt: &str) -> Result<String> {
         self.generate_with_model(&self.text_model, prompt).await
+    }
+
+    /// Chat-based text analysis (for models trained with chat format)
+    pub async fn chat(&self, user_message: &str) -> Result<String> {
+        let req = ChatRequest {
+            model: self.text_model.clone(),
+            messages: vec![ChatMessage {
+                role: "user".to_string(),
+                content: user_message.to_string(),
+            }],
+            stream: false,
+        };
+
+        let resp = self
+            .client
+            .post(format!("{}/api/chat", self.base_url))
+            .json(&req)
+            .timeout(std::time::Duration::from_secs(300))
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ChatResponse>()
+            .await?;
+
+        Ok(resp.message.content)
     }
 
     /// Image description — uses the vision model (llama3.2-vision)

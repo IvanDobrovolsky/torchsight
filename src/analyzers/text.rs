@@ -27,14 +27,51 @@ pub async fn analyze_text_file(
     }
 
     let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
-    let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
 
-    let file_name = path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy();
+    let is_beam = ollama.text_model().contains("beam");
+    let response = if is_beam {
+        let message = format!(
+            "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
+            truncated
+        );
+        ollama.chat(&message).await?
+    } else {
+        let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
+        let file_name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy();
+        let prompt = build_detailed_prompt(&file_name, content.len(), was_truncated, &truncated);
+        ollama.generate(&prompt).await?
+    };
 
-    let prompt = format!(
+    let mut findings = if is_beam {
+        parse_beam_findings(&response)?
+    } else {
+        parse_llm_findings(&response)?
+    };
+
+    // If LLM returned nothing, mark as analyzed but unclear
+    if findings.is_empty() {
+        findings.push(FileFinding {
+            category: "safe".to_string(),
+            description: "File analyzed, no sensitive data or concerns detected.".to_string(),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "llm".to_string(),
+            extracted_data: {
+                let mut m = HashMap::new();
+                m.insert("document_type".to_string(), "unknown".to_string());
+                m
+            },
+        });
+    }
+
+    Ok(findings)
+}
+
+fn build_detailed_prompt(file_name: &str, content_len: usize, was_truncated: bool, truncated: &str) -> String {
+    format!(
         r#"You are a cybersecurity forensics analyst performing a deep security assessment of a file.
 
 File name: "{}"
@@ -172,27 +209,86 @@ CRITICAL RULES:
 - Multiple findings are expected for files with multiple issues
 - Every file MUST produce at least one finding"#,
         file_name,
-        content.len(),
+        content_len,
         if was_truncated { " (truncated for analysis)" } else { "" },
         truncated
-    );
+    )
+}
 
-    let response = ollama.generate(&prompt).await?;
-    let mut findings = parse_llm_findings(&response)?;
+/// Parse beam model output: multiple separate JSON arrays with text between them
+fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
+    #[derive(serde::Deserialize)]
+    struct BeamFinding {
+        category: String,
+        subcategory: Option<String>,
+        severity: Option<String>,
+        explanation: Option<String>,
+    }
 
-    // If LLM returned nothing, mark as analyzed but unclear
+    let mut findings = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut pos = 0;
+    let bytes = response.as_bytes();
+
+    while pos < bytes.len() {
+        // Find next '[' ... ']' block
+        let start = match response[pos..].find('[') {
+            Some(i) => pos + i,
+            None => break,
+        };
+        let end = match response[start..].find(']') {
+            Some(i) => start + i + 1,
+            None => break,
+        };
+
+        if let Ok(parsed) = serde_json::from_str::<Vec<BeamFinding>>(&response[start..end]) {
+            for f in parsed {
+                let subcategory = f.subcategory.unwrap_or_default();
+                let key = format!("{}:{}", f.category, subcategory);
+                if seen.contains(&key) {
+                    continue;
+                }
+                seen.insert(key);
+
+                let severity_str = f.severity.as_deref().unwrap_or("medium");
+                let severity = match severity_str {
+                    "critical" | "high" => Severity::Critical,
+                    "medium" | "warning" => Severity::Warning,
+                    _ => Severity::Info,
+                };
+
+                let description = f.explanation.unwrap_or_else(|| {
+                    format!("Detected {} content", if subcategory.is_empty() { &f.category } else { &subcategory })
+                });
+
+                // Skip "safe" findings that aren't the only result
+                if f.category == "safe" {
+                    continue;
+                }
+
+                findings.push(FileFinding {
+                    category: f.category,
+                    description,
+                    evidence: subcategory,
+                    severity,
+                    source: "beam".to_string(),
+                    extracted_data: HashMap::new(),
+                });
+            }
+        }
+
+        pos = end;
+    }
+
+    // If no non-safe findings, return a safe finding
     if findings.is_empty() {
         findings.push(FileFinding {
             category: "safe".to_string(),
-            description: "File analyzed, no sensitive data or concerns detected.".to_string(),
+            description: "No security issues detected.".to_string(),
             evidence: String::new(),
             severity: Severity::Info,
-            source: "llm".to_string(),
-            extracted_data: {
-                let mut m = HashMap::new();
-                m.insert("document_type".to_string(), "unknown".to_string());
-                m
-            },
+            source: "beam".to_string(),
+            extracted_data: HashMap::new(),
         });
     }
 
