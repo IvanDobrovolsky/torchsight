@@ -128,7 +128,7 @@ def main():
 
     # Step 2: Convert to GGUF
     print(f"\n[2/3] Converting to GGUF format...")
-    gguf_path = merged_path.parent / f"torchsight-security-{config['quant']}.gguf"
+    gguf_path = merged_path.parent / f"torchsight-sentinel-{config['quant']}.gguf"
 
     convert_script = find_llama_cpp() if not config.get("llama_cpp") else Path(config["llama_cpp"])
 
@@ -152,7 +152,7 @@ def main():
     modelfile_path = merged_path.parent / "Modelfile"
     modelfile_content = f"""FROM {gguf_path}
 
-SYSTEM \"\"\"You are TorchSight, a cybersecurity document classifier. Analyze text for security threats, sensitive data, credentials, malicious content, and policy violations. Output findings as a JSON array with category, subcategory, severity, and explanation for each finding.\"\"\"
+SYSTEM \"\"\"You are TorchSight Sentinel, a cybersecurity document classifier. Analyze text for security threats, sensitive data, credentials, malicious content, and policy violations. Output findings as a JSON array with category, subcategory, severity, and explanation for each finding.\"\"\"
 
 PARAMETER temperature 0.1
 PARAMETER top_p 0.9
@@ -167,8 +167,8 @@ PARAMETER num_predict 2048
     print(f"\nGGUF model:  {gguf_path}")
     print(f"Modelfile:   {modelfile_path}")
     print(f"\nTo use with Ollama:")
-    print(f"  ollama create torchsight/security -f {modelfile_path}")
-    print(f"  ollama run torchsight/security")
+    print(f"  ollama create torchsight/sentinel -f {modelfile_path}")
+    print(f"  ollama run torchsight/sentinel")
 
 
 if __name__ == "__main__":
