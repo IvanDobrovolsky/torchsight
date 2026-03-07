@@ -10,6 +10,7 @@ training/data/prompt_injection_deepset/
 training/data/ossf_malicious/
 training/data/sft/
 training/output/
+*.tar.gz
 torchsight_report_*.pdf
 torchsight_report_*.json
 site/node_modules/

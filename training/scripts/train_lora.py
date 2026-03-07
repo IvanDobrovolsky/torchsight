@@ -23,12 +23,13 @@ Usage:
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-SFT_DIR = SCRIPT_DIR.parent / "data" / "sft"
-OUTPUT_DIR = SCRIPT_DIR.parent / "output"
+SFT_DIR = Path(os.environ.get("TORCHSIGHT_DATA_DIR", SCRIPT_DIR.parent / "data" / "sft"))
+OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "output"))
 
 # Default hyperparameters
 DEFAULTS = {
