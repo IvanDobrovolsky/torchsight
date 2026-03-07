@@ -215,6 +215,11 @@ CRITICAL RULES:
     )
 }
 
+/// Public wrapper for image analyzer to reuse beam parsing
+pub fn parse_beam_findings_public(response: &str) -> Result<Vec<FileFinding>> {
+    parse_beam_findings(response)
+}
+
 /// Parse beam model output: multiple separate JSON arrays with text between them
 fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
     #[derive(serde::Deserialize)]
