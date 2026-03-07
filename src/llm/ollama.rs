@@ -143,7 +143,7 @@ impl OllamaClient {
             .client
             .post(format!("{}/api/generate", self.base_url))
             .json(&req)
-            .timeout(std::time::Duration::from_secs(120))
+            .timeout(std::time::Duration::from_secs(300))
             .send()
             .await?
             .error_for_status()?

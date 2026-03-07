@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use crate::llm::OllamaClient;
 use crate::report::{FileFinding, Severity};
@@ -13,7 +14,11 @@ pub async fn analyze_text_file(
     path: &Path,
     ollama: &OllamaClient,
 ) -> Result<Vec<FileFinding>> {
-    let content = read_text_safe(path)?;
+    let content = if is_pdf(path) {
+        extract_pdf_text(path)?
+    } else {
+        read_text_safe(path)?
+    };
 
     if content.trim().is_empty() {
         return Ok(vec![FileFinding {
@@ -354,4 +359,33 @@ fn read_text_safe(path: &Path) -> Result<String> {
     let bytes = fs::read(path)?;
     let content = String::from_utf8_lossy(&bytes[..read_size.min(bytes.len())]);
     Ok(content.to_string())
+}
+
+fn is_pdf(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
+}
+
+fn extract_pdf_text(path: &Path) -> Result<String> {
+    let output = Command::new("pdftotext")
+        .args(["-layout", path.to_str().unwrap_or(""), "-"])
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let text = String::from_utf8_lossy(&out.stdout).to_string();
+            if text.trim().is_empty() {
+                anyhow::bail!("PDF contains no extractable text (may be scanned/image-only)")
+            }
+            Ok(text)
+        }
+        Ok(out) => {
+            let err = String::from_utf8_lossy(&out.stderr);
+            anyhow::bail!("pdftotext failed: {}", err)
+        }
+        Err(_) => {
+            anyhow::bail!("pdftotext not found. Install: pacman -S poppler (Arch) or apt install poppler-utils (Debian)")
+        }
+    }
 }
