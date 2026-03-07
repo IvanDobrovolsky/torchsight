@@ -146,10 +146,19 @@ CRITICAL RULES:
         vision_description, ocr_section
     );
 
-    let response = ollama.generate(&analysis_prompt).await?;
+    let is_beam = ollama.text_model().contains("beam");
+    let response = if is_beam {
+        ollama.chat(&analysis_prompt).await?
+    } else {
+        ollama.generate(&analysis_prompt).await?
+    };
 
     // Parse LLM response
-    let llm_findings = parse_findings(&response)?;
+    let llm_findings = if is_beam {
+        super::text::parse_beam_findings_public(&response)?
+    } else {
+        parse_findings(&response)?
+    };
     findings.extend(llm_findings);
 
     // If LLM returned nothing, add a basic finding from what we have
