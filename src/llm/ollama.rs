@@ -81,6 +81,11 @@ impl OllamaClient {
         self.generate_with_model(&self.text_model, prompt).await
     }
 
+    /// General-purpose Q&A — uses the vision model (which can also do text reasoning)
+    pub async fn generate_with_vision_model(&self, prompt: &str) -> Result<String> {
+        self.generate_with_model(&self.vision_model, prompt).await
+    }
+
     /// Chat-based text analysis (for models trained with chat format)
     pub async fn chat(&self, user_message: &str) -> Result<String> {
         let req = ChatRequest {
