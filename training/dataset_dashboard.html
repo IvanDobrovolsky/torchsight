@@ -40,7 +40,7 @@
 <body>
 
 <h1>TorchSight Dataset Dashboard</h1>
-<p class="subtitle">89,468 samples across 49 subcategories — all license-verified, all at 500+ minimum</p>
+<p class="subtitle">105,168 samples across 51 subcategories — all license-verified, all at 500+ minimum, 17.6% safe data</p>
 
 <div class="stats-row" id="stats-row"></div>
 
@@ -72,7 +72,7 @@ const data = {
   "confidential.education": { real: 0, synthetic: 500 },
   "confidential.geospatial": { real: 0, synthetic: 500 },
   "confidential.intelligence": { real: 65, synthetic: 500 },
-  "confidential.internal": { real: 1701, synthetic: 0 },
+  "confidential.internal": { real: 1551, synthetic: 0 },
   "confidential.military": { real: 109, synthetic: 500 },
   "confidential.military_comms": { real: 0, synthetic: 500 },
   "confidential.nuclear": { real: 10, synthetic: 500 },
@@ -113,10 +113,12 @@ const data = {
   "pii.government_id": { real: 0, synthetic: 600 },
   "pii.identity": { real: 3994, synthetic: 0 },
   "pii.metadata": { real: 0, synthetic: 500 },
-  "safe.code": { real: 0, synthetic: 800 },
-  "safe.config": { real: 0, synthetic: 600 },
-  "safe.documentation": { real: 0, synthetic: 800 },
-  "safe.media": { real: 0, synthetic: 600 },
+  "safe.business": { real: 0, synthetic: 3000 },
+  "safe.code": { real: 0, synthetic: 3500 },
+  "safe.config": { real: 0, synthetic: 3000 },
+  "safe.documentation": { real: 0, synthetic: 3500 },
+  "safe.email": { real: 0, synthetic: 3000 },
+  "safe.media": { real: 0, synthetic: 2500 },
 };
 
 const sourceData = {
@@ -129,7 +131,7 @@ const sourceData = {
   "MITRE ATT&CK": { count: 1620, color: "#3b82f6", license: "Apache-2.0" },
   "Prompt Injection": { count: 263, color: "#818cf8", license: "Apache-2.0" },
   "CRS Reports": { count: 156, color: "#8b5cf6", license: "Public Domain" },
-  "Synthetic Generated": { count: 22200, color: "#22d3ee", license: "Generated" },
+  "Synthetic Generated": { count: 37900, color: "#22d3ee", license: "Generated" },
 };
 
 // Stats

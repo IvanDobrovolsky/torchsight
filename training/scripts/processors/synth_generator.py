@@ -477,17 +477,121 @@ def gen_confidential_military_comms(n: int) -> list:
 
 
 def gen_safe_documentation(n: int) -> list:
-    """Generate clean, safe documentation samples."""
+    """Generate diverse safe documentation samples."""
     samples = []
-    topics = [
-        ("README.md", "# My Project\n\nA simple web application for managing tasks.\n\n## Install\n\n```bash\nnpm install\nnpm start\n```\n\n## License\n\nMIT"),
-        ("CONTRIBUTING.md", "# Contributing\n\nThank you for your interest in contributing!\n\n1. Fork the repo\n2. Create a branch\n3. Make your changes\n4. Submit a PR\n\nPlease follow our code of conduct."),
-        ("API.md", "# API Reference\n\n## GET /users\n\nReturns a list of users.\n\n### Parameters\n\n| Name | Type | Description |\n|------|------|-------------|\n| page | int | Page number |\n| limit | int | Results per page |\n\n### Response\n\n```json\n{\"users\": [], \"total\": 0}\n```"),
-        ("CHANGELOG.md", "# Changelog\n\n## [1.2.0] - 2024-01-15\n\n### Added\n- Dark mode support\n- Export to CSV\n\n### Fixed\n- Login redirect bug\n- Memory leak in worker"),
-    ]
+    projects = ["TaskFlow", "DataPipe", "CloudSync", "WebKit", "LogStream",
+                "MetricsHub", "AuthProxy", "CacheLayer", "QueueWorker", "SearchIndex",
+                "ConfigManager", "HealthCheck", "RateLimiter", "BatchProcessor", "EventBus"]
+    versions = ["1.0.0", "1.2.3", "2.0.0-beta", "0.9.1", "3.1.0", "2.5.2"]
+    langs = ["Python", "TypeScript", "Rust", "Go", "Java"]
+    features = ["dark mode", "CSV export", "real-time sync", "batch processing",
+                "WebSocket support", "rate limiting", "caching", "pagination",
+                "file upload", "search indexing", "webhook integration", "SSO support",
+                "audit logging", "i18n support", "email notifications", "PDF generation"]
+    bugs = ["login redirect loop", "memory leak in worker", "race condition in cache",
+            "incorrect timezone handling", "pagination offset error", "null pointer in serializer",
+            "slow query on large datasets", "CSS overflow on mobile", "broken link in footer"]
+    endpoints = ["/users", "/products", "/orders", "/search", "/analytics",
+                 "/health", "/config", "/webhooks", "/events", "/reports"]
+    params = ["page", "limit", "sort", "filter", "q", "since", "until", "format"]
 
     for _ in range(n):
-        filename, text = random.choice(topics)
+        proj = random.choice(projects)
+        doc_type = random.choice(["readme", "api", "changelog", "contributing",
+                                   "architecture", "deployment", "testing", "migration"])
+
+        if doc_type == "readme":
+            lang = random.choice(langs)
+            install = {"Python": "pip install", "TypeScript": "npm install",
+                       "Rust": "cargo build", "Go": "go build", "Java": "mvn install"}
+            text = (
+                f"# {proj}\n\n"
+                f"A {random.choice(['lightweight', 'fast', 'scalable', 'modular', 'simple'])} "
+                f"{random.choice(['library', 'framework', 'tool', 'service', 'CLI'])} for "
+                f"{random.choice(['managing tasks', 'processing data', 'building APIs', 'monitoring services', 'automating workflows'])}.\n\n"
+                f"## Features\n\n"
+                + "\n".join(f"- {f}" for f in random.sample(features, random.randint(3, 6))) +
+                f"\n\n## Installation\n\n```bash\n{install[lang]} {proj.lower()}\n```\n\n"
+                f"## Quick Start\n\n```{lang.lower()}\n// See examples/ directory\n```\n\n"
+                f"## License\n\n{random.choice(['MIT', 'Apache-2.0', 'BSD-3-Clause'])}"
+            )
+        elif doc_type == "api":
+            ep = random.choice(endpoints)
+            method = random.choice(["GET", "POST", "PUT", "DELETE"])
+            text = (
+                f"# API Reference\n\n## {method} {ep}\n\n"
+                f"{random.choice(['Returns', 'Creates', 'Updates', 'Deletes'])} "
+                f"{ep.strip('/').replace('/', ' ')} resources.\n\n"
+                f"### Parameters\n\n"
+                f"| Name | Type | Required | Description |\n|------|------|----------|-------------|\n"
+                + "\n".join(f"| {p} | {random.choice(['string', 'int', 'boolean'])} | "
+                           f"{random.choice(['yes', 'no'])} | {p.title()} parameter |"
+                           for p in random.sample(params, random.randint(2, 4))) +
+                f"\n\n### Response\n\n```json\n{{\n  \"data\": [],\n  \"total\": 0,\n  \"page\": 1\n}}\n```\n\n"
+                f"### Status Codes\n\n- 200: Success\n- 400: Bad Request\n- 404: Not Found\n- 500: Server Error"
+            )
+        elif doc_type == "changelog":
+            ver = random.choice(versions)
+            text = (
+                f"# Changelog\n\n## [{ver}] - {rand_date()}\n\n"
+                f"### Added\n" + "\n".join(f"- {f}" for f in random.sample(features, random.randint(2, 4))) +
+                f"\n\n### Fixed\n" + "\n".join(f"- {b}" for b in random.sample(bugs, random.randint(2, 3))) +
+                f"\n\n### Changed\n- Updated {random.choice(langs)} SDK to latest\n"
+                f"- Improved {random.choice(['performance', 'error handling', 'logging', 'test coverage'])}"
+            )
+        elif doc_type == "contributing":
+            text = (
+                f"# Contributing to {proj}\n\n"
+                f"Thank you for your interest in contributing!\n\n"
+                f"## Development Setup\n\n1. Fork the repository\n2. Clone your fork\n"
+                f"3. Install dependencies\n4. Create a feature branch\n\n"
+                f"## Code Style\n\n- Follow the existing code conventions\n"
+                f"- Write tests for new features\n- Keep PRs focused and small\n\n"
+                f"## Pull Request Process\n\n1. Update documentation\n2. Add tests\n"
+                f"3. Ensure CI passes\n4. Request review from maintainers\n\n"
+                f"## Code of Conduct\n\nBe respectful and constructive."
+            )
+        elif doc_type == "architecture":
+            text = (
+                f"# {proj} Architecture\n\n## Overview\n\n"
+                f"{proj} follows a {random.choice(['microservice', 'monolithic', 'event-driven', 'layered'])} architecture.\n\n"
+                f"## Components\n\n"
+                f"### {random.choice(['API Gateway', 'Frontend', 'Core Service'])}\n"
+                f"Handles {random.choice(['incoming requests', 'user interactions', 'business logic'])}.\n\n"
+                f"### {random.choice(['Database Layer', 'Cache', 'Message Queue'])}\n"
+                f"Manages {random.choice(['data persistence', 'performance optimization', 'async processing'])}.\n\n"
+                f"## Data Flow\n\n1. Client sends request\n2. Load balancer routes to service\n"
+                f"3. Service processes and responds\n4. Response cached for {random.randint(5, 60)} minutes"
+            )
+        elif doc_type == "deployment":
+            text = (
+                f"# Deployment Guide\n\n## Prerequisites\n\n"
+                f"- {random.choice(langs)} {random.choice(['3.11+', '18+', '1.75+', '1.21+', '17+'])}\n"
+                f"- Docker {random.choice(['24+', '25+'])}\n- {random.choice(['PostgreSQL 15', 'Redis 7', 'MongoDB 7'])}\n\n"
+                f"## Production\n\n```bash\ndocker compose -f docker-compose.prod.yml up -d\n```\n\n"
+                f"## Environment Variables\n\n| Variable | Description | Default |\n|----------|-------------|----------|\n"
+                f"| PORT | Server port | 3000 |\n| LOG_LEVEL | Logging level | info |\n"
+                f"| DB_HOST | Database host | localhost |\n\n## Health Check\n\n```\nGET /health\n```"
+            )
+        elif doc_type == "testing":
+            text = (
+                f"# Testing Guide\n\n## Running Tests\n\n```bash\n"
+                f"{random.choice(['pytest', 'npm test', 'cargo test', 'go test ./...', 'mvn test'])}\n```\n\n"
+                f"## Test Structure\n\n- `tests/unit/` - Unit tests\n- `tests/integration/` - Integration tests\n"
+                f"- `tests/e2e/` - End-to-end tests\n\n"
+                f"## Coverage\n\nTarget: {random.randint(80, 95)}% line coverage\n\n```bash\n"
+                f"{random.choice(['pytest --cov', 'npm run test:coverage', 'cargo tarpaulin'])}\n```\n\n"
+                f"## Writing Tests\n\n- Test one thing per test function\n- Use descriptive names\n- Mock external dependencies"
+            )
+        else:  # migration
+            text = (
+                f"# Migration Guide: v{random.randint(1,3)}.x to v{random.randint(4,6)}.x\n\n"
+                f"## Breaking Changes\n\n- Renamed `{random.choice(['getAll', 'fetchData', 'create'])}` to `{random.choice(['list', 'query', 'insert'])}`\n"
+                f"- Changed default {random.choice(['timeout', 'batch size', 'retry count'])} from {random.randint(5,30)} to {random.randint(30,120)}\n\n"
+                f"## Steps\n\n1. Update {random.choice(langs)} dependency\n2. Run migration script\n3. Update configuration\n4. Test thoroughly\n\n"
+                f"## Rollback\n\nIf issues arise, revert to previous version:\n```bash\n{random.choice(['pip install', 'npm install', 'cargo install'])} {proj.lower()}@previous\n```"
+            )
+
         samples.append({
             "text": text,
             "findings": [{
@@ -495,23 +599,57 @@ def gen_safe_documentation(n: int) -> list:
                 "subcategory": "safe.documentation",
                 "severity": "info",
                 "compliance": [],
-                "fields": {"content_type": "documentation"},
+                "fields": {"content_type": doc_type},
             }],
         })
     return samples
 
 
 def gen_safe_code(n: int) -> list:
-    """Generate clean source code samples."""
+    """Generate diverse safe source code samples."""
     samples = []
-    codes = [
-        'def fibonacci(n):\n    """Return the nth Fibonacci number."""\n    if n <= 1:\n        return n\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b',
-        'export function debounce(fn, ms) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), ms);\n  };\n}',
-        'fn merge_sort<T: Ord + Clone>(arr: &[T]) -> Vec<T> {\n    if arr.len() <= 1 {\n        return arr.to_vec();\n    }\n    let mid = arr.len() / 2;\n    let left = merge_sort(&arr[..mid]);\n    let right = merge_sort(&arr[mid..]);\n    merge(&left, &right)\n}',
-        'class UserService:\n    def __init__(self, db):\n        self.db = db\n\n    async def get_user(self, user_id: int):\n        return await self.db.fetch_one(\n            "SELECT * FROM users WHERE id = $1", user_id\n        )',
+    # Python generators
+    py_funcs = [
+        "def fibonacci(n):\n    if n <= 1:\n        return n\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b",
+        "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+        "class LRUCache:\n    def __init__(self, capacity):\n        self.capacity = capacity\n        self.cache = {}\n        self.order = []\n\n    def get(self, key):\n        if key in self.cache:\n            self.order.remove(key)\n            self.order.append(key)\n            return self.cache[key]\n        return -1",
+        "async def fetch_data(url, session):\n    async with session.get(url) as response:\n        if response.status == 200:\n            return await response.json()\n        raise ValueError(f'HTTP {response.status}')",
+        "def flatten(nested):\n    result = []\n    for item in nested:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result",
     ]
+    # JavaScript/TypeScript generators
+    js_funcs = [
+        "export function debounce(fn, ms) {\n  let timer;\n  return (...args) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), ms);\n  };\n}",
+        "function deepClone(obj) {\n  if (obj === null || typeof obj !== 'object') return obj;\n  const clone = Array.isArray(obj) ? [] : {};\n  for (const key of Object.keys(obj)) {\n    clone[key] = deepClone(obj[key]);\n  }\n  return clone;\n}",
+        "const pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);\n\nconst double = (n) => n * 2;\nconst addOne = (n) => n + 1;\nconst transform = pipe(double, addOne);",
+        "class EventEmitter {\n  constructor() {\n    this.listeners = new Map();\n  }\n  on(event, fn) {\n    if (!this.listeners.has(event)) this.listeners.set(event, []);\n    this.listeners.get(event).push(fn);\n  }\n  emit(event, ...args) {\n    for (const fn of this.listeners.get(event) ?? []) fn(...args);\n  }\n}",
+        "async function retry(fn, attempts = 3, delay = 1000) {\n  for (let i = 0; i < attempts; i++) {\n    try {\n      return await fn();\n    } catch (err) {\n      if (i === attempts - 1) throw err;\n      await new Promise(r => setTimeout(r, delay * (i + 1)));\n    }\n  }\n}",
+    ]
+    # Rust generators
+    rs_funcs = [
+        "fn merge_sort<T: Ord + Clone>(arr: &[T]) -> Vec<T> {\n    if arr.len() <= 1 {\n        return arr.to_vec();\n    }\n    let mid = arr.len() / 2;\n    let left = merge_sort(&arr[..mid]);\n    let right = merge_sort(&arr[mid..]);\n    merge(&left, &right)\n}",
+        "pub struct HashMap<K, V> {\n    buckets: Vec<Vec<(K, V)>>,\n    size: usize,\n}\n\nimpl<K: Hash + Eq, V> HashMap<K, V> {\n    pub fn new() -> Self {\n        Self {\n            buckets: vec![vec![]; 16],\n            size: 0,\n        }\n    }\n}",
+        "use std::fs;\nuse std::path::Path;\n\nfn count_lines(path: &Path) -> std::io::Result<usize> {\n    let content = fs::read_to_string(path)?;\n    Ok(content.lines().count())\n}",
+    ]
+    # Go generators
+    go_funcs = [
+        "func reverseString(s string) string {\n\trunes := []rune(s)\n\tfor i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {\n\t\trunes[i], runes[j] = runes[j], runes[i]\n\t}\n\treturn string(runes)\n}",
+        "type Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(item T) {\n\ts.items = append(s.items, item)\n}\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tif len(s.items) == 0 {\n\t\tvar zero T\n\t\treturn zero, false\n\t}\n\titem := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn item, true\n}",
+    ]
+    # SQL
+    sql_funcs = [
+        "SELECT u.name, COUNT(o.id) AS order_count, SUM(o.total) AS total_spent\nFROM users u\nLEFT JOIN orders o ON u.id = o.user_id\nWHERE o.created_at >= NOW() - INTERVAL '30 days'\nGROUP BY u.id\nHAVING COUNT(o.id) > 0\nORDER BY total_spent DESC\nLIMIT 10;",
+        "CREATE TABLE products (\n    id SERIAL PRIMARY KEY,\n    name VARCHAR(255) NOT NULL,\n    price DECIMAL(10, 2) NOT NULL,\n    category_id INT REFERENCES categories(id),\n    created_at TIMESTAMP DEFAULT NOW()\n);\n\nCREATE INDEX idx_products_category ON products(category_id);",
+    ]
+    # HTML/CSS
+    html_funcs = [
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Dashboard</title>\n  <link rel="stylesheet" href="/styles.css">\n</head>\n<body>\n  <nav class="navbar">\n    <a href="/">Home</a>\n    <a href="/about">About</a>\n  </nav>\n  <main id="app"></main>\n  <script src="/app.js"></script>\n</body>\n</html>',
+        ".container {\n  max-width: 1200px;\n  margin: 0 auto;\n  padding: 0 20px;\n}\n\n.card {\n  background: white;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n  padding: 24px;\n  margin-bottom: 16px;\n}\n\n@media (max-width: 768px) {\n  .grid {\n    grid-template-columns: 1fr;\n  }\n}",
+    ]
+
+    all_code = py_funcs + js_funcs + rs_funcs + go_funcs + sql_funcs + html_funcs
+
     for _ in range(n):
-        text = random.choice(codes)
+        text = random.choice(all_code)
         samples.append({
             "text": text,
             "findings": [{
@@ -1166,15 +1304,142 @@ def gen_malicious_phishing(n: int) -> list:
 def gen_safe_config(n: int) -> list:
     """Generate clean, non-sensitive configuration files."""
     samples = []
-    configs = [
-        "# nginx.conf\nserver {\n    listen 80;\n    server_name example.com;\n    location / {\n        proxy_pass http://localhost:3000;\n        proxy_set_header Host $host;\n    }\n}",
-        "# docker-compose.yml\nversion: '3.8'\nservices:\n  web:\n    build: .\n    ports:\n      - '3000:3000'\n    volumes:\n      - .:/app\n  db:\n    image: postgres:15\n    ports:\n      - '5432:5432'",
-        "# .eslintrc.json\n{\n  \"extends\": [\"eslint:recommended\"],\n  \"env\": {\"node\": true, \"es2022\": true},\n  \"rules\": {\n    \"no-unused-vars\": \"warn\",\n    \"semi\": [\"error\", \"always\"]\n  }\n}",
-        "# pyproject.toml\n[project]\nname = \"my-app\"\nversion = \"1.0.0\"\nrequires-python = \">=3.11\"\n\n[tool.ruff]\nline-length = 100\ntarget-version = \"py311\"",
-        "# tsconfig.json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"ESNext\",\n    \"strict\": true,\n    \"outDir\": \"dist\"\n  },\n  \"include\": [\"src\"]\n}",
-    ]
+
+    def _nginx():
+        domain = random.choice(["example.com", "app.internal", "staging.mysite.io", "api.corp.dev", "cdn.widgets.co"])
+        port = random.choice([3000, 5000, 8000, 8080, 9090])
+        workers = random.choice([1, 2, 4, "auto"])
+        return (
+            f"# nginx.conf\nworker_processes {workers};\n\nhttp {{\n  upstream backend {{\n    server 127.0.0.1:{port};\n"
+            f"    server 127.0.0.1:{port+1} backup;\n  }}\n\n  server {{\n    listen 80;\n    server_name {domain};\n\n"
+            f"    location / {{\n      proxy_pass http://backend;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n"
+            f"    }}\n\n    location /static {{\n      root /var/www/{domain.split('.')[0]}/public;\n      expires 30d;\n    }}\n  }}\n}}"
+        )
+
+    def _docker_compose():
+        app = random.choice(["web", "api", "app", "service", "backend"])
+        db = random.choice(["postgres:16", "mysql:8.4", "mariadb:11", "mongo:7"])
+        db_port = {"postgres": 5432, "mysql": 3306, "mariadb": 3306, "mongo": 27017}
+        db_name = db.split(":")[0]
+        cache = random.choice(["redis:7-alpine", "memcached:1.6", "valkey:8"])
+        port = random.choice([3000, 5000, 8000, 8080])
+        return (
+            f"# docker-compose.yml\nversion: '3.8'\nservices:\n  {app}:\n    build: .\n    ports:\n      - '{port}:{port}'\n"
+            f"    volumes:\n      - .:/app\n    depends_on:\n      - db\n      - cache\n    environment:\n      - NODE_ENV=development\n\n"
+            f"  db:\n    image: {db}\n    ports:\n      - '{db_port.get(db_name, 5432)}:{db_port.get(db_name, 5432)}'\n"
+            f"    volumes:\n      - db_data:/var/lib/{db_name}\n\n  cache:\n    image: {cache}\n\nvolumes:\n  db_data:"
+        )
+
+    def _eslint():
+        extends = random.choice([
+            '["eslint:recommended"]', '["eslint:recommended", "prettier"]',
+            '["airbnb-base"]', '["standard"]', '["next/core-web-vitals"]',
+        ])
+        rules = random.choice([
+            '"no-unused-vars": "warn", "semi": ["error", "always"]',
+            '"indent": ["error", 2], "quotes": ["error", "single"]',
+            '"no-console": "warn", "eqeqeq": "error"',
+            '"prefer-const": "error", "no-var": "error"',
+        ])
+        return f'// .eslintrc.json\n{{\n  "extends": {extends},\n  "env": {{"node": true, "es2024": true}},\n  "rules": {{\n    {rules}\n  }}\n}}'
+
+    def _pyproject():
+        name = random.choice(["my-app", "data-pipeline", "web-scraper", "ml-trainer", "api-gateway", "task-runner", "log-parser"])
+        ver = f"{random.randint(0,3)}.{random.randint(0,15)}.{random.randint(0,9)}"
+        pyver = random.choice(["3.11", "3.12", "3.13"])
+        tool = random.choice([
+            f'[tool.ruff]\nline-length = {random.choice([80, 100, 120])}\ntarget-version = "py{pyver.replace(".", "")}"',
+            f'[tool.pytest.ini_options]\ntestpaths = ["tests"]\naddopts = "-v --tb=short"',
+            f'[tool.mypy]\nstrict = true\npython_version = "{pyver}"',
+            f'[tool.black]\nline-length = {random.choice([80, 88, 100])}\ntarget-version = ["py{pyver.replace(".", "")}"]',
+        ])
+        deps = random.choice(['"fastapi>=0.110", "uvicorn"', '"click>=8.0", "rich"', '"httpx", "pydantic>=2"', '"sqlalchemy>=2", "alembic"'])
+        return f'# pyproject.toml\n[project]\nname = "{name}"\nversion = "{ver}"\nrequires-python = ">={pyver}"\ndependencies = [{deps}]\n\n{tool}'
+
+    def _tsconfig():
+        target = random.choice(["ES2020", "ES2022", "ES2023", "ESNext"])
+        module = random.choice(["ESNext", "NodeNext", "CommonJS"])
+        opts = random.choice([
+            '"strict": true, "esModuleInterop": true',
+            '"strict": true, "noUncheckedIndexedAccess": true',
+            '"strict": true, "exactOptionalPropertyTypes": true',
+            '"strict": true, "declaration": true, "declarationMap": true',
+        ])
+        return f'// tsconfig.json\n{{\n  "compilerOptions": {{\n    "target": "{target}",\n    "module": "{module}",\n    {opts},\n    "outDir": "dist"\n  }},\n  "include": ["src"]\n}}'
+
+    def _k8s():
+        app = random.choice(["frontend", "api-server", "worker", "scheduler", "ingestion", "auth-service"])
+        replicas = random.randint(1, 5)
+        port = random.choice([3000, 8080, 8443, 9090])
+        image = f"registry.internal/{app}:v{random.randint(1,5)}.{random.randint(0,20)}"
+        mem = random.choice(["128Mi", "256Mi", "512Mi", "1Gi"])
+        cpu = random.choice(["100m", "250m", "500m", "1000m"])
+        return (
+            f"# k8s deployment for {app}\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {app}\n  labels:\n    app: {app}\nspec:\n"
+            f"  replicas: {replicas}\n  selector:\n    matchLabels:\n      app: {app}\n  template:\n    metadata:\n      labels:\n        app: {app}\n"
+            f"    spec:\n      containers:\n      - name: {app}\n        image: {image}\n        ports:\n        - containerPort: {port}\n"
+            f"        resources:\n          requests:\n            memory: \"{mem}\"\n            cpu: \"{cpu}\"\n          limits:\n            memory: \"{mem}\"\n            cpu: \"{cpu}\""
+        )
+
+    def _terraform():
+        provider = random.choice(["aws", "gcp", "azure"])
+        region = random.choice(["us-east-1", "eu-west-1", "ap-southeast-1", "us-central1", "westeurope"])
+        resource = random.choice([
+            f'resource "aws_s3_bucket" "data" {{\n  bucket = "company-data-{rand_hex(4)}"\n  tags = {{\n    Environment = "production"\n  }}\n}}',
+            f'resource "aws_vpc" "main" {{\n  cidr_block = "10.0.0.0/16"\n  enable_dns_hostnames = true\n  tags = {{\n    Name = "main-vpc"\n  }}\n}}',
+            f'resource "google_compute_instance" "vm" {{\n  name         = "app-server"\n  machine_type = "e2-medium"\n  zone         = "{region}-a"\n  boot_disk {{\n    initialize_params {{\n      image = "debian-cloud/debian-12"\n    }}\n  }}\n}}',
+        ])
+        return f'# main.tf\nterraform {{\n  required_version = ">= 1.7"\n}}\n\nprovider "{provider}" {{\n  region = "{region}"\n}}\n\n{resource}'
+
+    def _github_actions():
+        name = random.choice(["CI", "Build & Test", "Deploy", "Lint", "Release"])
+        lang = random.choice(["node", "python", "rust", "go"])
+        steps_map = {
+            "node": "      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n      - run: npm ci\n      - run: npm test",
+            "python": "      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.13'\n      - run: pip install -e '.[test]'\n      - run: pytest",
+            "rust": "      - uses: dtolnay/rust-toolchain@stable\n      - run: cargo build\n      - run: cargo test",
+            "go": "      - uses: actions/setup-go@v5\n        with:\n          go-version: '1.23'\n      - run: go build ./...\n      - run: go test ./...",
+        }
+        return (
+            f"# .github/workflows/ci.yml\nname: {name}\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n"
+            f"      - uses: actions/checkout@v4\n{steps_map[lang]}"
+        )
+
+    def _cargo_toml():
+        name = random.choice(["my-tool", "data-parser", "http-server", "cli-app", "log-reader", "file-sync"])
+        ver = f"{random.randint(0,2)}.{random.randint(0,12)}.{random.randint(0,9)}"
+        edition = random.choice(["2021", "2024"])
+        deps = random.choice([
+            'tokio = { version = "1", features = ["full"] }\nserde = { version = "1", features = ["derive"] }',
+            'clap = { version = "4", features = ["derive"] }\nanyhow = "1"',
+            'axum = "0.8"\ntower = "0.5"\ntracing = "0.1"',
+            'reqwest = { version = "0.12", features = ["json"] }\nserde_json = "1"',
+        ])
+        return f'# Cargo.toml\n[package]\nname = "{name}"\nversion = "{ver}"\nedition = "{edition}"\n\n[dependencies]\n{deps}'
+
+    def _makefile():
+        lang = random.choice(["c", "go", "general"])
+        if lang == "c":
+            return "# Makefile\nCC = gcc\nCFLAGS = -Wall -Wextra -O2\nSRC = $(wildcard src/*.c)\nOBJ = $(SRC:.c=.o)\n\nall: app\n\napp: $(OBJ)\n\t$(CC) $(CFLAGS) -o $@ $^\n\nclean:\n\trm -f app $(OBJ)\n\n.PHONY: all clean"
+        elif lang == "go":
+            return "# Makefile\n.PHONY: build test lint run\n\nbuild:\n\tgo build -o bin/app ./cmd/app\n\ntest:\n\tgo test -v ./...\n\nlint:\n\tgolangci-lint run\n\nrun: build\n\t./bin/app"
+        return "# Makefile\n.PHONY: dev build test clean\n\ndev:\n\tnpm run dev\n\nbuild:\n\tnpm run build\n\ntest:\n\tnpm test\n\nclean:\n\trm -rf dist node_modules\n\nlint:\n\tnpm run lint"
+
+    def _gitignore():
+        lang = random.choice(["node", "python", "rust", "go", "java"])
+        patterns = {
+            "node": "node_modules/\ndist/\n.env\n*.log\ncoverage/\n.DS_Store",
+            "python": "__pycache__/\n*.pyc\n.venv/\ndist/\n*.egg-info/\n.coverage\n.mypy_cache/",
+            "rust": "/target\n**/*.rs.bk\nCargo.lock",
+            "go": "/bin\n/vendor\n*.exe\n*.test\ncoverage.out",
+            "java": "*.class\n*.jar\ntarget/\n.gradle/\nbuild/\n.idea/",
+        }
+        return f"# .gitignore ({lang})\n{patterns[lang]}"
+
+    generators = [_nginx, _docker_compose, _eslint, _pyproject, _tsconfig, _k8s, _terraform, _github_actions, _cargo_toml, _makefile, _gitignore]
+
     for _ in range(n):
-        text = random.choice(configs)
+        text = random.choice(generators)()
         samples.append({
             "text": text,
             "findings": [{
@@ -1191,18 +1456,98 @@ def gen_safe_config(n: int) -> list:
 def gen_safe_media(n: int) -> list:
     """Generate clean media description samples (what OCR/vision would produce)."""
     samples = []
-    descriptions = [
-        "A landscape photograph showing mountains reflected in a calm lake at sunset. No text or identifying information visible.",
-        "Corporate office photograph showing an open floor plan with desks and monitors. No sensitive information visible on screens.",
-        "A flowchart diagram showing a software deployment pipeline: Build -> Test -> Stage -> Production. Standard CI/CD process.",
-        "Stock photo of a diverse team in a meeting room with a whiteboard showing project timeline. No sensitive content readable.",
-        "Product photograph of a laptop on a wooden desk with a coffee mug. Screen shows a generic desktop wallpaper.",
-        "Architectural floor plan of a commercial building. Standard layout with offices, conference rooms, and common areas. No security-sensitive details.",
-        "Infographic showing global internet usage statistics by region. Public data from ITU World Telecommunication report.",
-        "Nature photograph of a forest trail in autumn. Golden leaves on trees. No text or people visible.",
-    ]
+
+    def _photo():
+        subjects = [
+            ("landscape", ["mountains reflected in a calm lake at sunset", "rolling hills covered in wildflowers under blue sky",
+                          "coastal cliff overlooking the ocean at dawn", "desert sand dunes with long shadows at golden hour",
+                          "snow-capped peaks above a pine forest valley", "waterfall cascading into a tropical pool"]),
+            ("urban", ["city skyline at night with lit office buildings", "cobblestone street in a European old town",
+                      "modern glass skyscrapers reflecting clouds", "busy intersection with pedestrian crosswalk",
+                      "historic bridge spanning a river at twilight", "rooftop garden on a commercial building"]),
+            ("nature", ["close-up of a monarch butterfly on a flower", "flock of birds in V-formation over a lake",
+                       "forest trail in autumn with golden leaves", "coral reef with colorful tropical fish",
+                       "wildflower meadow with bees pollinating", "frost patterns on a winter morning leaf"]),
+            ("food", ["artisan sourdough bread on a wooden cutting board", "colorful fruit bowl on a marble countertop",
+                     "restaurant plate presentation of pasta dish", "farmers market display of fresh vegetables",
+                     "latte art in a ceramic cup next to a pastry", "grilled salmon with garnish on a white plate"]),
+            ("product", ["laptop on a wooden desk with coffee mug", "smartphone displaying a weather app",
+                        "pair of running shoes on a gym floor", "headphones next to a vinyl record player",
+                        "watch face showing 10:10 on a leather strap", "bicycle leaning against a brick wall"]),
+        ]
+        category, options = random.choice(subjects)
+        desc = random.choice(options)
+        suffix = random.choice([
+            "No text or identifying information visible.",
+            "No sensitive content readable in the image.",
+            "Standard stock photography, no PII or sensitive data.",
+            "Public scene, no confidential information present.",
+            "",
+        ])
+        return f"Photograph ({category}): {desc}. {suffix}".strip()
+
+    def _diagram():
+        diagrams = [
+            "Flowchart showing a software deployment pipeline: Build -> Test -> Stage -> Production. Standard CI/CD process.",
+            f"UML class diagram with {random.randint(4,12)} classes showing inheritance and composition relationships. Software design document.",
+            "Entity-relationship diagram for an e-commerce database: Users, Products, Orders, Reviews tables with foreign keys.",
+            f"Network topology diagram showing {random.randint(3,8)} servers, load balancer, and firewall. Standard 3-tier architecture.",
+            "Sequence diagram showing HTTP request flow: Client -> API Gateway -> Auth Service -> Database -> Response.",
+            "Kanban board screenshot with columns: Backlog, In Progress, Review, Done. Task cards with generic descriptions.",
+            f"Git branch diagram showing feature branches merging to main. {random.randint(5,15)} commits visualized.",
+            "System architecture diagram with microservices: API, Auth, Payments, Notifications, connected via message queue.",
+            f"Gantt chart showing project timeline over {random.randint(3,12)} months with milestones.",
+            "State machine diagram for an order lifecycle: Pending -> Confirmed -> Shipped -> Delivered / Cancelled.",
+        ]
+        return random.choice(diagrams)
+
+    def _screenshot():
+        screenshots = [
+            "Screenshot of a code editor showing Python code for a sorting algorithm. Standard programming content.",
+            "Terminal window showing output of 'git log' with generic commit messages. No credentials visible.",
+            f"Dashboard showing website analytics: {random.randint(1000,50000)} page views, {random.randint(100,5000)} unique visitors. Aggregated public metrics.",
+            "Browser showing a documentation website for an open-source library. API reference page.",
+            "Spreadsheet with quarterly sales figures by product category. Fictional sample data for a demo.",
+            f"IDE showing a {random.choice(['React', 'Vue', 'Angular', 'Svelte'])} component file. Standard frontend code.",
+            "Monitoring dashboard showing CPU and memory usage graphs. All values within normal ranges.",
+            "Email client inbox showing subject lines: team meeting, weekly update, holiday schedule. No sensitive content.",
+            "Calendar application showing a weekly view with generic meeting names. No confidential details.",
+            "Design tool showing a wireframe mockup for a mobile app login screen. Standard UI elements.",
+        ]
+        return random.choice(screenshots)
+
+    def _infographic():
+        topics = [
+            f"Infographic: Global internet usage by region ({random.randint(2022,2025)} data). Public ITU statistics.",
+            f"Chart: Programming language popularity rankings. Top {random.randint(10,20)} languages by usage.",
+            "Timeline infographic: History of computing from 1940s to present day. Educational content.",
+            f"Pie chart: Market share of web browsers ({random.choice(['Chrome', 'Firefox', 'Safari'])} leading at {random.randint(50,70)}%).",
+            f"Bar graph: Global renewable energy capacity by country. Top {random.randint(5,10)} producers.",
+            "Infographic: How HTTPS works — step by step TLS handshake explanation. Educational.",
+            f"World map visualization: Internet connectivity index by country. Public World Bank data.",
+            f"Line chart: Stack Overflow survey trends over {random.randint(3,8)} years. Developer demographics.",
+        ]
+        return random.choice(topics)
+
+    def _document_scan():
+        docs = [
+            "Scanned page from a published programming textbook. Chapter on data structures and algorithms. ISBN visible.",
+            "Printed restaurant menu with appetizers, entrees, and desserts. Prices in USD. Standard commercial document.",
+            f"Conference presentation slide: '{random.choice(['Introduction to Kubernetes', 'Building REST APIs', 'Clean Code Principles', 'Agile Methodology'])}'. Speaker name and event logo visible.",
+            "Business card scan: Generic title 'Software Engineer' at a fictional company. Name: John Smith. Public contact info only.",
+            "Whiteboard photo from a brainstorming session. Mind map with product feature ideas. No confidential labels.",
+            "Printed recipe for chocolate chip cookies. Ingredients list and step-by-step instructions.",
+            "Book cover image: generic fiction novel with author name and title. Published work, no sensitive content.",
+            "Scanned receipt from a coffee shop. Total: $4.50. No payment card details visible.",
+        ]
+        return random.choice(docs)
+
+    generators = [_photo, _diagram, _screenshot, _infographic, _document_scan]
+    weights = [35, 20, 25, 10, 10]
+
     for _ in range(n):
-        text = random.choice(descriptions)
+        gen = random.choices(generators, weights=weights, k=1)[0]
+        text = gen()
         samples.append({
             "text": text,
             "findings": [{
@@ -1211,6 +1556,234 @@ def gen_safe_media(n: int) -> list:
                 "severity": "info",
                 "compliance": [],
                 "fields": {"content_type": "media_description"},
+            }],
+        })
+    return samples
+
+
+def gen_safe_email(n: int) -> list:
+    """Generate clean, non-sensitive email content."""
+    samples = []
+    first_names = ["Alex", "Jordan", "Morgan", "Casey", "Taylor", "Riley", "Quinn", "Sam", "Chris", "Jamie", "Pat", "Drew"]
+    last_names = ["Smith", "Chen", "Garcia", "Williams", "Kumar", "Anderson", "Miller", "Brown", "Lee", "Wilson"]
+    companies = ["Acme Corp", "TechVentures", "GlobalSoft", "DataStream", "CloudWorks", "NetSolutions", "CodeForge", "AppDynamics"]
+
+    def _meeting():
+        sender = f"{random.choice(first_names)} {random.choice(last_names)}"
+        day = random.choice(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])
+        time = f"{random.randint(9,16)}:{random.choice(['00','30'])}"
+        room = random.choice(["Everest", "Summit", "Harbor", "Garden", "Oak", "Maple"])
+        topic = random.choice(["Sprint Planning", "Design Review", "Architecture Discussion", "Retrospective",
+                               "Product Sync", "Team Standup", "Roadmap Review", "Onboarding Kickoff"])
+        return (
+            f"From: {sender}\nTo: team@company.com\nSubject: {topic} - {day} at {time}\n\n"
+            f"Hi team,\n\nJust a reminder that we have {topic} scheduled for {day} at {time} in the {room} room.\n\n"
+            f"Agenda:\n- Review progress from last week\n- Discuss blockers\n- Plan next steps\n\n"
+            f"Please come prepared with your updates.\n\nBest,\n{sender}"
+        )
+
+    def _project_update():
+        sender = f"{random.choice(first_names)} {random.choice(last_names)}"
+        project = random.choice(["Phoenix", "Atlas", "Horizon", "Nebula", "Titan", "Aurora", "Catalyst"])
+        status = random.choice(["on track", "ahead of schedule", "slightly behind but recovering"])
+        pct = random.randint(40, 95)
+        return (
+            f"From: {sender}\nTo: stakeholders@company.com\nSubject: Project {project} - Weekly Update\n\n"
+            f"Hi all,\n\nHere's the weekly update for Project {project}:\n\n"
+            f"Status: {status}\nCompletion: {pct}%\n\n"
+            f"Highlights:\n- Completed integration testing for Module A\n- Started performance optimization\n- Documentation updated\n\n"
+            f"No blockers at this time. Next milestone is end of month.\n\nRegards,\n{sender}"
+        )
+
+    def _announcement():
+        sender = f"{random.choice(first_names)} {random.choice(last_names)}"
+        company = random.choice(companies)
+        topics = [
+            (f"Office Closure - Holiday", f"Please note that the office will be closed on {random.choice(['December 25', 'January 1', 'July 4', 'November 28'])}. Regular hours resume the following business day."),
+            (f"New Coffee Machine in Break Room", "We've installed a new espresso machine in the 3rd floor break room. Please keep the area clean and report any issues to facilities."),
+            (f"Parking Lot Maintenance", f"The east parking lot will be repaved this weekend ({random.randint(1,28)}-{random.randint(1,28)}). Please use the west lot during this time."),
+            (f"Team Building Event", f"Join us for our quarterly team building event! We'll be doing {random.choice(['bowling', 'escape room', 'cooking class', 'hiking', 'trivia night'])} on Friday afternoon."),
+            (f"IT System Maintenance Window", f"Scheduled maintenance on internal tools this Saturday from {random.randint(1,6)}:00 AM to {random.randint(7,12)}:00 AM. Expect brief downtime."),
+        ]
+        subject, body = random.choice(topics)
+        return f"From: {sender} ({company})\nTo: all-staff@{company.lower().replace(' ', '')}.com\nSubject: {subject}\n\nDear colleagues,\n\n{body}\n\nThank you,\n{sender}\nOffice Management"
+
+    def _feedback():
+        sender = f"{random.choice(first_names)} {random.choice(last_names)}"
+        receiver = f"{random.choice(first_names)} {random.choice(last_names)}"
+        return (
+            f"From: {sender}\nTo: {receiver.split()[0].lower()}@company.com\nSubject: Re: Code Review Feedback\n\n"
+            f"Hi {receiver.split()[0]},\n\n"
+            f"Thanks for the pull request! A few suggestions:\n\n"
+            f"1. The error handling in the parse function looks good\n"
+            f"2. Consider extracting the validation logic into a separate method\n"
+            f"3. The test coverage is solid — nice edge case testing\n\n"
+            f"Overall looks great. Approved with minor comments.\n\nCheers,\n{sender}"
+        )
+
+    def _newsletter():
+        company = random.choice(companies)
+        month = random.choice(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+        return (
+            f"From: newsletter@{company.lower().replace(' ', '')}.com\nSubject: {company} Engineering Blog - {month} Edition\n\n"
+            f"This month in engineering:\n\n"
+            f"- How we migrated to {random.choice(['Kubernetes', 'serverless', 'microservices', 'event-driven architecture'])}\n"
+            f"- Lessons learned from our {random.choice(['load testing', 'incident response', 'observability', 'CI/CD'])} improvements\n"
+            f"- Welcome to our {random.randint(2,8)} new team members!\n"
+            f"- Upcoming tech talk: {random.choice(['Distributed Systems 101', 'API Design Best Practices', 'Security for Developers', 'Building Accessible UIs'])}\n\n"
+            f"Read more on our engineering blog.\n\nUnsubscribe | Preferences"
+        )
+
+    generators = [_meeting, _project_update, _announcement, _feedback, _newsletter]
+    for _ in range(n):
+        text = random.choice(generators)()
+        samples.append({
+            "text": text,
+            "findings": [{
+                "category": "safe",
+                "subcategory": "safe.email",
+                "severity": "info",
+                "compliance": [],
+                "fields": {"content_type": "email"},
+            }],
+        })
+    return samples
+
+
+def gen_safe_business(n: int) -> list:
+    """Generate clean business documents — contracts, reports, policies without sensitive data."""
+    samples = []
+    companies = ["Acme Corp", "TechVentures", "GlobalSoft", "Pinnacle Inc", "Vertex Solutions", "Horizon Labs", "Cascade Systems"]
+
+    def _policy():
+        policies = [
+            ("Remote Work Policy", [
+                "Eligible employees may work remotely up to 3 days per week.",
+                "Remote workers must maintain a dedicated workspace.",
+                "Core collaboration hours are 10:00 AM - 3:00 PM in the employee's local time zone.",
+                "Equipment needs should be discussed with your manager.",
+                "Regular check-ins with your team are expected.",
+            ]),
+            ("Code of Conduct", [
+                "All employees are expected to act with integrity and professionalism.",
+                "Respectful communication is required in all interactions.",
+                "Report concerns through the appropriate channels.",
+                "Compliance with applicable laws and regulations is mandatory.",
+                "Company resources should be used for business purposes.",
+            ]),
+            ("Travel Policy", [
+                "All business travel must be pre-approved by your manager.",
+                "Book economy class for flights under 6 hours.",
+                "Hotel accommodations should be at approved properties.",
+                "Submit expense reports within 30 days of travel.",
+                "Retain all receipts for expenses over $25.",
+            ]),
+            ("PTO Policy", [
+                f"Full-time employees receive {random.randint(15,25)} days of paid time off per year.",
+                "PTO requests should be submitted at least 2 weeks in advance.",
+                f"Up to {random.randint(3,10)} unused days may be carried over to the next year.",
+                "Sick days are separate from PTO and do not require advance notice.",
+                "Company holidays are listed in the annual calendar.",
+            ]),
+        ]
+        title, points = random.choice(policies)
+        company = random.choice(companies)
+        return (
+            f"{company} — {title}\n\nEffective Date: {random.choice(['January', 'April', 'July', 'October'])} 1, {random.randint(2023,2026)}\n"
+            f"Version: {random.randint(1,5)}.0\n\nPurpose: This policy outlines guidelines for {'remote work arrangements' if 'Remote' in title else 'employee conduct'}.\n\n"
+            + "\n".join(f"{i+1}. {p}" for i, p in enumerate(points))
+            + f"\n\nFor questions, contact HR at hr@{company.lower().replace(' ', '')}.com"
+        )
+
+    def _meeting_notes():
+        attendees = [f"{random.choice(['A.', 'B.', 'C.', 'D.', 'E.', 'J.', 'K.', 'M.', 'R.', 'S.'])} {random.choice(['Smith', 'Chen', 'Garcia', 'Williams', 'Kumar', 'Lee'])}" for _ in range(random.randint(3, 7))]
+        topic = random.choice(["Sprint Review", "Product Planning", "Architecture Review", "Budget Discussion", "Hiring Pipeline", "Customer Feedback Review"])
+        return (
+            f"Meeting Notes: {topic}\nDate: {random.randint(2024,2026)}-{random.randint(1,12):02d}-{random.randint(1,28):02d}\n"
+            f"Attendees: {', '.join(attendees)}\n\n"
+            f"Agenda:\n1. Review action items from last meeting\n2. {topic} discussion\n3. Next steps\n\n"
+            f"Key Decisions:\n- Agreed to proceed with Option B for the upcoming release\n"
+            f"- Timeline extended by 2 weeks to accommodate additional testing\n"
+            f"- Next review scheduled for {random.choice(['next Monday', 'end of sprint', 'next Friday'])}\n\n"
+            f"Action Items:\n- Team lead to update the project board\n- Engineering to provide revised estimates\n- PM to communicate timeline to stakeholders"
+        )
+
+    def _job_description():
+        titles = ["Software Engineer", "Product Manager", "Data Analyst", "DevOps Engineer", "UX Designer", "QA Engineer", "Technical Writer"]
+        title = random.choice(titles)
+        company = random.choice(companies)
+        level = random.choice(["Junior", "Mid-Level", "Senior", "Staff", "Principal"])
+        yrs = {"Junior": "0-2", "Mid-Level": "2-5", "Senior": "5-8", "Staff": "8-12", "Principal": "10+"}
+        return (
+            f"Job Description: {level} {title}\nCompany: {company}\nLocation: {random.choice(['Remote', 'Hybrid (NYC)', 'On-site (SF)', 'Hybrid (London)', 'Remote (US)'])}\n\n"
+            f"About the Role:\nWe're looking for a {level.lower()} {title.lower()} to join our growing team. "
+            f"You'll work on challenging problems and collaborate with talented engineers.\n\n"
+            f"Requirements:\n- {yrs[level]} years of relevant experience\n- Strong communication skills\n"
+            f"- Experience with modern development practices\n- Bachelor's degree or equivalent experience\n\n"
+            f"Benefits:\n- Competitive salary\n- Health, dental, and vision insurance\n- 401(k) matching\n- Professional development budget\n\n"
+            f"Apply at careers.{company.lower().replace(' ', '')}.com"
+        )
+
+    def _quarterly_report():
+        company = random.choice(companies)
+        q = random.choice(["Q1", "Q2", "Q3", "Q4"])
+        year = random.randint(2024, 2026)
+        revenue = random.randint(10, 500)
+        growth = random.randint(5, 35)
+        employees = random.randint(50, 5000)
+        return (
+            f"{company} — {q} {year} Summary Report\n\n"
+            f"Financial Highlights (illustrative):\n- Revenue: ${revenue}M ({growth}% YoY growth)\n"
+            f"- Operating margin: {random.randint(10,30)}%\n- New customers: {random.randint(20,500)}\n\n"
+            f"Operational Metrics:\n- Headcount: {employees} employees\n- Customer satisfaction: {random.randint(80,98)}%\n"
+            f"- System uptime: {random.uniform(99.5,99.99):.2f}%\n\n"
+            f"Key Achievements:\n- Launched v{random.randint(2,8)}.0 of core platform\n"
+            f"- Expanded to {random.randint(2,5)} new markets\n- Reduced infrastructure costs by {random.randint(10,40)}%\n\n"
+            f"Note: All figures are illustrative and for internal planning purposes only."
+        )
+
+    def _process_doc():
+        processes = [
+            ("Incident Response Procedure", [
+                "1. Detection: Monitor alerts from observability tools",
+                "2. Triage: Assess severity (P1-P4) based on impact matrix",
+                "3. Response: Assemble team based on severity level",
+                "4. Communication: Notify stakeholders per communication plan",
+                "5. Resolution: Implement fix and verify resolution",
+                "6. Post-mortem: Document findings within 48 hours",
+            ]),
+            ("Release Process", [
+                "1. Feature freeze: No new features after Wednesday",
+                "2. QA verification: Run full regression test suite",
+                "3. Staging deployment: Deploy to staging environment",
+                "4. Smoke test: Verify core user flows",
+                "5. Production deployment: Rolling deployment with canary",
+                "6. Monitoring: Watch error rates for 1 hour post-deploy",
+            ]),
+            ("Onboarding Checklist", [
+                "1. IT setup: Laptop, accounts, access permissions",
+                "2. HR orientation: Benefits enrollment, policies review",
+                "3. Team introduction: Meet your team and stakeholders",
+                "4. Codebase walkthrough: Architecture overview session",
+                "5. First task: Starter ticket assigned by buddy",
+                "6. 30-day check-in: Review progress with manager",
+            ]),
+        ]
+        title, steps = random.choice(processes)
+        company = random.choice(companies)
+        return f"{company} — {title}\n\nLast Updated: {random.randint(2024,2026)}-{random.randint(1,12):02d}\nOwner: Engineering Operations\n\n" + "\n".join(steps)
+
+    generators = [_policy, _meeting_notes, _job_description, _quarterly_report, _process_doc]
+    for _ in range(n):
+        text = random.choice(generators)()
+        samples.append({
+            "text": text,
+            "findings": [{
+                "category": "safe",
+                "subcategory": "safe.business",
+                "severity": "info",
+                "compliance": [],
+                "fields": {"content_type": "business_document"},
             }],
         })
     return samples
@@ -1530,11 +2103,13 @@ GENERATORS = {
     "confidential.weapons_systems": (gen_confidential_weapons_systems, 500),
     "confidential.intelligence": (gen_confidential_intelligence, 500),
     "confidential.military": (gen_confidential_military, 500),
-    # Safe (higher counts to prevent over-flagging)
-    "safe.documentation": (gen_safe_documentation, 800),
-    "safe.code": (gen_safe_code, 800),
-    "safe.config": (gen_safe_config, 600),
-    "safe.media": (gen_safe_media, 600),
+    # Safe (high counts to prevent over-flagging — target ~15-20% of total)
+    "safe.documentation": (gen_safe_documentation, 3500),
+    "safe.code": (gen_safe_code, 3500),
+    "safe.config": (gen_safe_config, 3000),
+    "safe.media": (gen_safe_media, 2500),
+    "safe.email": (gen_safe_email, 3000),
+    "safe.business": (gen_safe_business, 3000),
 }
 
 

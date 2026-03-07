@@ -4,11 +4,12 @@
 
 | Metric | Value |
 |--------|-------|
-| **Total samples** | 89,468 |
-| **Real data** | 67,268 (75.2%) |
-| **Synthetic data** | 22,200 (24.8%) |
-| **Subcategories** | 49 |
+| **Total samples** | 105,168 |
+| **Real data** | 67,268 (64.0%) |
+| **Synthetic data** | 37,900 (36.0%) |
+| **Subcategories** | 51 |
 | **Min per subcategory** | 500+ |
+| **Safe data** | 18,500 (17.6%) |
 | **All licenses verified** | Yes |
 
 ## Data Sources
@@ -60,8 +61,9 @@
 - malicious.ssti, malicious.ssrf, malicious.deserialization, malicious.redos
 - malicious.steganography, malicious.prototype_pollution
 
-### Safe (4)
+### Safe (6)
 - safe.code, safe.documentation, safe.config, safe.media
+- safe.email, safe.business
 
 ## Pipeline
 
@@ -107,7 +109,7 @@ export_gguf.py → GGUF model → Ollama
 | `processors/prompt_injection_processor.py` | Process deepset prompt injections |
 | `processors/ghsa_processor.py` | Process GitHub advisories |
 | `processors/ossf_processor.py` | Process OSSF malicious packages |
-| `processors/synth_generator.py` | Generate synthetic data (38 generators) |
+| `processors/synth_generator.py` | Generate synthetic data (40 generators) |
 | `processors/process_all.py` | Run all processors + combine |
 | `sft_converter.py` | Convert to SFT format (alpaca/chatml) |
 | `train_lora.py` | LoRA fine-tuning script |
