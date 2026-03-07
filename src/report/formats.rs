@@ -73,7 +73,14 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
 }
 
 fn find_report_script() -> Result<std::path::PathBuf> {
-    // Try relative to executable
+    // Compile-time project root (works in dev builds)
+    let project_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let from_manifest = project_root.join("report/generate.py");
+    if from_manifest.exists() {
+        return Ok(from_manifest.canonicalize()?);
+    }
+
+    // Try relative to executable (installed binary)
     if let Ok(exe) = std::env::current_exe() {
         let candidates = [
             exe.parent()
@@ -82,6 +89,9 @@ fn find_report_script() -> Result<std::path::PathBuf> {
             exe.parent()
                 .unwrap_or(std::path::Path::new("."))
                 .join("../../report/generate.py"),
+            exe.parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join("../share/torchsight/report/generate.py"),
         ];
         for c in &candidates {
             if c.exists() {
@@ -90,7 +100,7 @@ fn find_report_script() -> Result<std::path::PathBuf> {
         }
     }
 
-    // Try relative to cwd (development)
+    // Try relative to cwd (fallback)
     let cwd_candidates = [
         std::path::PathBuf::from("report/generate.py"),
         std::path::PathBuf::from("../report/generate.py"),
