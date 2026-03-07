@@ -105,7 +105,10 @@ pub async fn run(
                     spinner.set_message("Thinking...");
                     spinner.enable_steady_tick(std::time::Duration::from_millis(80));
 
-                    match ollama.generate(&prompt).await {
+                    // Use vision model for Q&A — beam is a classifier, not a chatbot
+                    let result = ollama.generate_with_vision_model(&prompt).await;
+
+                    match result {
                         Ok(response) => {
                             spinner.finish_and_clear();
                             println!("\n  {}\n", response);
