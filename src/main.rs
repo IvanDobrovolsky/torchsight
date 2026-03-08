@@ -12,14 +12,14 @@ use console::style;
 #[derive(Parser)]
 #[command(name = "torchsight", version, about = "On-premise cybersecurity scanner")]
 struct Args {
-    /// Path to scan (if not provided, interactive mode)
+    /// Path to scan (if not provided, starts REPL)
     path: Option<String>,
 
-    /// Text analysis model (fast reasoning)
-    #[arg(long, default_value = "torchsight/beam-q8")]
+    /// Text analysis model
+    #[arg(long, default_value = "torchsight/beam")]
     text_model: String,
 
-    /// Vision model (image understanding)
+    /// Vision model (for image analysis and interactive Q&A)
     #[arg(long, default_value = "llama3.2-vision")]
     vision_model: String,
 
@@ -34,6 +34,10 @@ struct Args {
     /// Output report format (json, markdown)
     #[arg(long, default_value = "json")]
     format: String,
+
+    /// Interactive mode — enables LLM-powered Q&A after scan
+    #[arg(short, long)]
+    interactive: bool,
 }
 
 #[tokio::main]
@@ -55,29 +59,30 @@ async fn main() -> Result<()> {
 
     let ollama = llm::OllamaClient::new(&args.ollama_url, &args.text_model, &args.vision_model);
 
-    match ollama.health_check().await {
+    // Health check — only require Ollama for scanning
+    let ollama_ok = match ollama.health_check().await {
         Ok(true) => {
             println!(
-                "   {} Ollama connected (text: {}, vision: {})",
+                "   {} Ollama connected (model: {})",
                 style("[OK]").green().bold(),
                 style(ollama.text_model()).cyan(),
-                style(ollama.vision_model()).cyan()
             );
+            true
         }
         _ => {
             println!(
-                "   {} Ollama not reachable at {}. LLM analysis requires Ollama.",
+                "   {} Ollama not reachable at {}",
                 style("[ERR]").red().bold(),
                 &args.ollama_url
             );
             println!(
-                "   {} Install: ollama serve && ollama pull {} && ollama pull {}\n",
+                "   {} Install: ollama serve && ollama pull {}\n",
                 style(">>").dim(),
                 &args.text_model,
-                &args.vision_model
             );
+            false
         }
-    }
+    };
 
     // Check Tesseract
     if analyzers::ocr::is_available() {
@@ -87,12 +92,24 @@ async fn main() -> Result<()> {
         );
     } else {
         println!(
-            "   {} Tesseract not found. Install: pacman -S tesseract tesseract-data-eng",
+            "   {} Tesseract not found (image text extraction disabled)",
             style("[WARN]").yellow().bold()
         );
     }
 
     println!();
+
+    if !ollama_ok {
+        println!(
+            "  TorchSight requires Ollama to scan files.\n\
+             \n  Quick start:\n\
+             \n    1. Install Ollama:   curl -fsSL https://ollama.com/install.sh | sh\
+             \n    2. Pull the model:   ollama pull {}\
+             \n    3. Run TorchSight:   torchsight <path>\n",
+            &args.text_model
+        );
+        return Ok(());
+    }
 
     let config = cli::ScanConfig {
         text_model: args.text_model,
@@ -102,5 +119,8 @@ async fn main() -> Result<()> {
         format: args.format,
     };
 
-    cli::repl::run(config, ollama, args.path).await
+    // Two modes:
+    // 1. Command mode (default): scan, report, exit
+    // 2. Interactive mode (-i): scan + LLM-powered Q&A about results
+    cli::repl::run(config, ollama, args.path, args.interactive).await
 }

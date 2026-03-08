@@ -9,10 +9,9 @@ RED='\033[0;31m'
 DIM='\033[2m'
 RESET='\033[0m'
 
-TEXT_MODEL="${TORCHSIGHT_TEXT_MODEL:-torchsight/beam-q8}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEXT_MODEL="${TORCHSIGHT_TEXT_MODEL:-torchsight/beam}"
 VISION_MODEL="${TORCHSIGHT_VISION_MODEL:-llama3.2-vision}"
-BEAM_GGUF="training/output/torchsight-beam-f16.gguf"
-BEAM_MODELFILE="training/output/Modelfile"
 
 info()  { echo -e "  ${CYAN}>>>${RESET} $1"; }
 ok()    { echo -e "  ${GREEN}[OK]${RESET} $1"; }
@@ -61,7 +60,7 @@ else
             sudo pacman -S --noconfirm tesseract tesseract-data-eng
             ;;
         apt)
-            sudo apt install -y tesseract-ocr tesseract-ocr-eng
+            sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-eng
             ;;
         dnf)
             sudo dnf install -y tesseract tesseract-langpack-eng
@@ -94,17 +93,10 @@ else
                 sudo pacman -S --noconfirm ollama
             fi
             ;;
-        apt)
-            curl -fsSL https://ollama.com/install.sh | sh
-            ;;
-        dnf)
-            curl -fsSL https://ollama.com/install.sh | sh
-            ;;
         brew)
             brew install ollama
             ;;
         *)
-            warn "Unknown package manager. Trying ollama install script..."
             curl -fsSL https://ollama.com/install.sh | sh
             ;;
     esac
@@ -112,23 +104,22 @@ else
     ok "Ollama installed"
 fi
 
-# ── 4. Start Ollama service ────────────────────────────────────────────────
+# ── 5. Start Ollama service ────────────────────────────────────────────────
 
-if systemctl is-active --quiet ollama 2>/dev/null; then
+if curl -s http://localhost:11434/api/tags &>/dev/null; then
     ok "Ollama service is running"
 else
     info "Starting Ollama service..."
-    # Try systemd first, fall back to background process
     if command -v systemctl &>/dev/null; then
         sudo systemctl start ollama 2>/dev/null || true
         sudo systemctl enable ollama 2>/dev/null || true
     fi
 
     # Verify or start manually
-    if ! systemctl is-active --quiet ollama 2>/dev/null; then
+    if ! curl -s http://localhost:11434/api/tags &>/dev/null; then
         info "Starting Ollama in background..."
         nohup ollama serve &>/dev/null &
-        sleep 2
+        sleep 3
     fi
 
     if curl -s http://localhost:11434/api/tags &>/dev/null; then
@@ -138,59 +129,42 @@ else
     fi
 fi
 
-# ── 5. Setup text model ──────────────────────────────────────────────────
+# ── 6. Pull models ──────────────────────────────────────────────────────────
 
-info "Checking for text model: ${BOLD}$TEXT_MODEL${RESET}"
+info "Setting up model: ${BOLD}$TEXT_MODEL${RESET}"
 
 if ollama list 2>/dev/null | grep -q "$TEXT_MODEL"; then
     ok "Model '$TEXT_MODEL' already available"
-elif [[ "$TEXT_MODEL" == *"beam"* ]] && [[ -f "$SCRIPT_DIR/$BEAM_GGUF" ]] && [[ -f "$SCRIPT_DIR/$BEAM_MODELFILE" ]]; then
-    info "Creating beam model from local GGUF (this may take a few minutes)..."
-    cd "$SCRIPT_DIR/training/output"
-    ollama create --quantize q8_0 "$TEXT_MODEL" -f Modelfile
-    cd "$SCRIPT_DIR"
-    ok "Model '$TEXT_MODEL' created from local weights"
-elif [[ "$TEXT_MODEL" == *"beam"* ]]; then
-    warn "Beam GGUF not found at $BEAM_GGUF"
-    warn "Falling back to mistral. Download beam weights or run: torchsight --text-model mistral"
-    TEXT_MODEL="mistral"
-    info "Pulling fallback model '$TEXT_MODEL'..."
-    ollama pull "$TEXT_MODEL"
-    ok "Model '$TEXT_MODEL' ready"
 else
-    info "Pulling model '$TEXT_MODEL' (this may take a few minutes)..."
+    info "Pulling model '$TEXT_MODEL'..."
     ollama pull "$TEXT_MODEL"
     ok "Model '$TEXT_MODEL' ready"
 fi
 
-# ── 5b. Setup vision model ──────────────────────────────────────────────
-
-info "Checking for vision model: ${BOLD}$VISION_MODEL${RESET}"
+# Vision model is optional (for interactive mode)
+info "Setting up vision model: ${BOLD}$VISION_MODEL${RESET} (optional, for interactive mode)"
 
 if ollama list 2>/dev/null | grep -q "$VISION_MODEL"; then
     ok "Model '$VISION_MODEL' already available"
 else
-    info "Pulling model '$VISION_MODEL' (this may take a few minutes)..."
-    ollama pull "$VISION_MODEL"
-    ok "Model '$VISION_MODEL' ready"
+    info "Pulling model '$VISION_MODEL'..."
+    ollama pull "$VISION_MODEL" || warn "Vision model pull failed. Interactive mode will be unavailable."
 fi
 
-# ── 6. Build TorchSight ───────────────────────────────────────────────────
+# ── 7. Build TorchSight ───────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 info "Building TorchSight (release mode)..."
 cargo build --release 2>&1 | tail -1
 ok "Built successfully"
 
-# ── 7. Install binary ─────────────────────────────────────────────────────
+# ── 8. Install binary ─────────────────────────────────────────────────────
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 cp target/release/torchsight "$INSTALL_DIR/torchsight"
 
-# Check if ~/.local/bin is in PATH
 if echo "$PATH" | grep -q "$INSTALL_DIR"; then
     ok "Installed to $INSTALL_DIR/torchsight"
 else
@@ -207,8 +181,8 @@ echo ""
 echo -e "  ${GREEN}${BOLD}Installation complete!${RESET}"
 echo ""
 echo -e "  ${DIM}Usage:${RESET}"
-echo -e "    ${CYAN}torchsight${RESET}                    Interactive mode"
-echo -e "    ${CYAN}torchsight /path/to/scan${RESET}      Direct scan"
-echo -e "    ${CYAN}torchsight --text-model mistral .${RESET}  Use a different model"
-echo -e "    ${CYAN}torchsight --help${RESET}             All options"
+echo -e "    ${CYAN}torchsight /path/to/scan${RESET}         Scan files"
+echo -e "    ${CYAN}torchsight -i /path/to/scan${RESET}      Scan + interactive Q&A"
+echo -e "    ${CYAN}torchsight${RESET}                       Start REPL"
+echo -e "    ${CYAN}torchsight --help${RESET}                All options"
 echo ""
