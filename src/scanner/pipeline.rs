@@ -18,7 +18,7 @@ pub async fn run_scan(
     let pb = ProgressBar::new(total);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("  {spinner:.cyan} [{bar:40.cyan/dim}] {pos}/{len} | {msg}")?
+            .template("  {spinner:.cyan} [{bar:30.cyan/dim}] {msg}")?
             .progress_chars("##-"),
     );
 
@@ -34,13 +34,13 @@ pub async fn run_scan(
     let mut report = ScanReport::new();
 
     for (i, file) in files.iter().enumerate() {
-        pb.set_position(i as u64);
         let filename = file
             .path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
-        pb.set_message(format!("{} ({}/{})", filename, i + 1, total));
+        pb.set_position(i as u64);
+        pb.set_message(format!("{}/{} | {}", i + 1, total, filename));
 
         let findings = match file.kind {
             FileKind::Text => {
