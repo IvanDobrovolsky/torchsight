@@ -46,14 +46,26 @@
   }
 
   .cover-logo {
-    width: 320px;
-    height: 320px;
-    margin-bottom: 32px;
+    width: 200px;
+    height: 200px;
+    margin-bottom: 20px;
+  }
+
+  .cover-title {
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #7C3AED, #6366F1, #38BDF8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
   }
 
   .cover .subtitle {
     font-size: 14px;
-    color: #8B83A3;
+    color: #6B6580;
     letter-spacing: 3px;
     text-transform: uppercase;
     margin-bottom: 48px;
@@ -328,6 +340,7 @@
 <!-- ══════════ COVER PAGE ══════════ -->
 <div class="cover page">
   <img src="{{ logo_path }}" class="cover-logo" alt="TorchSight">
+  <div class="cover-title">TorchSight</div>
   <div class="subtitle">Security Scan Report</div>
 
   <div class="cover-meta">

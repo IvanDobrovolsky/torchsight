@@ -5,218 +5,53 @@
 <h1 align="center">TorchSight</h1>
 
 <p align="center">
-  On-premise cybersecurity scanner powered by local LLMs.<br>
-  Fully local. No cloud. No data leaves your machine.
-</p>
-
-<p align="center">
-  <a href="#install">Install</a> &middot;
-  <a href="#usage">Usage</a> &middot;
-  <a href="#the-beam-model">Model</a> &middot;
-  <a href="#training-data">Training Data</a> &middot;
-  <a href="LICENSE">Apache 2.0</a>
+  On-premise security scanner powered by local LLMs.<br>
+  Scans files for sensitive data, credentials, and threats. Nothing leaves your machine.
 </p>
 
 ---
 
-TorchSight scans text files, images, and PDFs for sensitive data, security threats, and compliance violations using a custom fine-tuned LLM. Everything runs locally through [Ollama](https://ollama.com) — no API keys, no cloud, no data exfiltration.
-
-### What it detects
-
-| Category | Examples |
-|----------|---------|
-| **PII** | Names, SSNs, DOB, addresses, phone numbers, government IDs |
-| **Credentials** | Passwords, API keys, tokens, private keys, connection strings |
-| **Financial** | Credit cards, bank accounts, invoices, tax documents |
-| **Medical / PHI** | Diagnoses, prescriptions, lab results, insurance records |
-| **Confidential** | Classification markings, military documents, defense data, NDAs |
-| **Malicious** | SQL injection, XSS, reverse shells, prompt injection, exploit code |
-
 ## Install
 
-### Linux (recommended)
-
 ```bash
 git clone https://github.com/IvanDobrovolsky/torchsight.git
-cd torchsight
-./install.sh
+cd torchsight && ./install.sh
 ```
 
-The installer handles Rust, Tesseract OCR, Ollama, model pulls, and builds the binary.
+<details>
+<summary>macOS / Windows / manual install</summary>
 
-### macOS
-
+**macOS**
 ```bash
 brew install ollama tesseract rust
-ollama serve &
 ollama pull torchsight/beam
-git clone https://github.com/IvanDobrovolsky/torchsight.git
-cd torchsight && cargo build --release
-cp target/release/torchsight /usr/local/bin/
+cargo build --release && cp target/release/torchsight /usr/local/bin/
 ```
 
-### Windows
+**Windows** — use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) and follow the Linux instructions.
 
-**Option A: WSL2 (recommended)**
-
-```bash
-wsl --install
-# Inside WSL2, follow the Linux instructions above
-```
-
-**Option B: Native**
-
-```powershell
-winget install Rustlang.Rustup
-winget install UB-Mannheim.TesseractOCR
-winget install Ollama.Ollama
-ollama pull torchsight/beam
-git clone https://github.com/IvanDobrovolsky/torchsight.git
-cd torchsight; cargo build --release
-```
-
-### Manual install (any platform)
-
-```bash
-# 1. Install Rust: https://rustup.rs
-# 2. Install Ollama: https://ollama.com
-# 3. Install Tesseract: https://github.com/tesseract-ocr/tesseract (optional, for image OCR)
-
-ollama pull torchsight/beam              # Required: security classifier
-ollama pull llama3.2-vision              # Optional: image analysis + interactive Q&A
-
-git clone https://github.com/IvanDobrovolsky/torchsight.git
-cd torchsight
-cargo build --release
-cp target/release/torchsight ~/.local/bin/
-```
+**Manual** — install [Rust](https://rustup.rs), [Ollama](https://ollama.com), and optionally [Tesseract](https://github.com/tesseract-ocr/tesseract). Then `ollama pull torchsight/beam` and `cargo build --release`.
+</details>
 
 ## Usage
 
-TorchSight has two modes:
-
-### Command mode (default)
-
-Scan, get results, done. Fast — uses only the beam model (~4GB).
-
 ```bash
-torchsight /path/to/scan                # Scan a file or directory
-torchsight /path/to/scan <<< "n"        # Scan and exit (no interactive prompt)
+torchsight /path/to/scan              # scan and report
+torchsight -i /path/to/scan           # scan + interactive Q&A (loads extra model ~4.9GB)
+torchsight                            # start REPL
 ```
 
-### Interactive mode
+## What it detects
 
-Scan and then ask questions about the results in natural language. Loads an additional vision model (~4.9GB) for Q&A.
-
-```bash
-torchsight -i /path/to/scan             # Scan + Q&A
-torchsight -i                           # Start REPL directly
-```
-
-In interactive mode you can ask things like:
-
-```
-torchsight> What sensitive data was found?
-torchsight> Are there any credentials exposed?
-torchsight> scan ~/Downloads
-torchsight> Analyze my config files for leaked secrets
-```
-
-### Commands
-
-| Command | Description |
-|---------|-------------|
-| `scan <path>` | Scan a file or directory |
-| `scan` | Interactive scan wizard |
-| `report` | Show findings from last scan |
-| `save` | Save report (JSON / Markdown / PDF) |
-| `history` | Show scan history |
-| `help` | Show available commands |
-| `exit` | Quit |
-
-### CLI options
-
-```
-torchsight [OPTIONS] [PATH]
-
-Options:
-    -i, --interactive        Enable LLM-powered Q&A after scan
-    --text-model <MODEL>     Text analysis model [default: torchsight/beam]
-    --vision-model <MODEL>   Vision model [default: llama3.2-vision]
-    --ollama-url <URL>       Ollama server URL [default: http://localhost:11434]
-    --max-size-mb <MB>       Max file size to scan [default: 1024]
-    --format <FMT>           Report format: json, markdown [default: json]
-    -h, --help               Show help
-    -V, --version            Show version
-```
+PII, credentials, financial records, medical data, classified/military documents, malicious payloads (injection, exploits, prompt injection, reverse shells), and more — across text, images, and PDFs.
 
 ## How it works
 
-```
-File --> Discovery --> [OCR + Vision (images)] --> Beam LLM --> Findings --> Report (PDF/JSON/MD)
-```
-
-1. **Discovery** — recursively finds text files, images, and PDFs
-2. **OCR** — Tesseract extracts text from images
-3. **Vision** — llama3.2-vision describes image content
-4. **Classification** — beam model analyzes every file and outputs structured JSON findings
-5. **Report** — results displayed in terminal and saved as PDF, JSON, or Markdown
-
-There are no regex patterns or keyword matching. Every file goes through the LLM.
-
-## The beam model
-
-[torchsight/beam](https://huggingface.co/torchsight/beam) is fine-tuned from Llama 3.1 8B Instruct on 105,000 security samples across 7 categories and 49 subcategories. It outputs structured JSON:
-
-```json
-[
-  {
-    "category": "pii",
-    "subcategory": "pii.identity",
-    "severity": "critical",
-    "explanation": "Found personal identity information for John Smith and Social Security Number(s)"
-  }
-]
-```
+Every file goes through [torchsight/beam](https://huggingface.co/torchsight/beam), a Llama 3.1 8B model fine-tuned on 105K security samples. No regex, no keyword matching — pure LLM classification. Images get OCR + vision analysis first. All local via [Ollama](https://ollama.com).
 
 ## Training data
 
-All training data is from publicly available, commercially licensed sources:
-
-| Source | License | Samples |
-|--------|---------|---------|
-| [NVD](https://nvd.nist.gov) (NIST) | Public Domain | 50,000 |
-| Synthetic (generated) | Original | 22,200 |
-| [OSSF Malicious Packages](https://github.com/ossf/malicious-packages) | Apache 2.0 | 5,000 |
-| [SecLists](https://github.com/danielmiessler/SecLists) | MIT | 3,229 |
-| [GitHub Security Advisories](https://github.com/advisories) | CC-BY-4.0 | 3,000 |
-| [Enron Email Corpus](https://www.cs.cmu.edu/~enron/) | Public Domain (FERC) | 2,000 |
-| [MTSamples](https://mtsamples.com) | CC0 | 2,000 |
-| [MITRE ATT&CK](https://attack.mitre.org) | Apache 2.0 | 1,620 |
-| [Deepset Prompt Injections](https://huggingface.co/datasets/deepset/prompt-injections) | Apache 2.0 | 263 |
-| [CRS Reports](https://crsreports.congress.gov) | Public Domain | 156 |
-
-See [training/README.md](training/README.md) for details on the training pipeline.
-
-### Reproducing the dataset
-
-```bash
-cd training/scripts
-python download_all.py      # Download public datasets
-python sft_converter.py     # Convert to SFT format
-python train_lora.py        # Fine-tune with LoRA
-python export_gguf.py       # Export to GGUF
-```
-
-## Requirements
-
-| Dependency | Purpose | Required |
-|---|---|---|
-| [Ollama](https://ollama.com) | LLM runtime | Yes |
-| [torchsight/beam](https://huggingface.co/torchsight/beam) | Security classification | Yes |
-| [Rust](https://rustup.rs) | Build from source | Yes |
-| [Tesseract](https://github.com/tesseract-ocr/tesseract) | Image text extraction (OCR) | Optional |
-| [llama3.2-vision](https://ollama.com/library/llama3.2-vision) | Image analysis + interactive Q&A | Optional |
+All sources are public domain, Apache 2.0, MIT, CC-BY-4.0, or CC0. See [training/](training/) for the full pipeline and dataset details.
 
 ## License
 

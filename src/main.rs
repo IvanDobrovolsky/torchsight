@@ -46,15 +46,20 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    println!();
+    for line in [
+        r"   _                _         _       _     _   ",
+        r"  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_ ",
+        r"  |  _/ _ \| '_/ __| ' \(_-< | |/ _` | ' \ |  _|",
+        r"   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|",
+        r"                                |___/            ",
+    ] {
+        println!("{}", style(line).magenta());
+    }
     println!(
-        "\n{}  {} v{}\n",
-        style(">>").bold().cyan(),
-        style("TorchSight").bold(),
+        "   {} v{}\n",
+        style("on-premise security scanner").dim(),
         env!("CARGO_PKG_VERSION")
-    );
-    println!(
-        "   {}\n",
-        style("On-Premise Security Scanner | Fully Local | No Cloud").dim()
     );
 
     let ollama = llm::OllamaClient::new(&args.ollama_url, &args.text_model, &args.vision_model);
