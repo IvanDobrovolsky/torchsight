@@ -1,5 +1,6 @@
 pub mod prompts;
 pub mod repl;
+pub mod snake;
 
 use serde::{Deserialize, Serialize};
 

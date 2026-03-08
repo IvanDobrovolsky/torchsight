@@ -244,34 +244,38 @@ def main():
     output_path = OUTPUT_DIR / f"torchsight-{family}-lora"
 
     has_eval = val_file.exists()
-    training_args = SFTConfig(
-        output_dir=str(output_path),
-        num_train_epochs=config["epochs"],
-        per_device_train_batch_size=config["batch_size"],
-        gradient_accumulation_steps=config["grad_accum"],
-        learning_rate=config["lr"],
-        warmup_ratio=config["warmup_ratio"],
-        weight_decay=config["weight_decay"],
-        max_seq_length=config["max_seq_length"],
-        logging_steps=10,
-        save_strategy="steps",
-        save_steps=250,
-        save_total_limit=5,
-        eval_strategy="steps" if has_eval else "no",
-        eval_steps=250 if has_eval else None,
-        load_best_model_at_end=has_eval,
-        metric_for_best_model="eval_loss" if has_eval else None,
-        greater_is_better=False if has_eval else None,
-        bf16=torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
-        fp16=not torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
-        gradient_checkpointing=True,
-        optim="paged_adamw_8bit" if config["quantize"] else "adamw_torch_fused",
-        lr_scheduler_type="cosine",
-        report_to="none",
-        dataloader_num_workers=4,
-        dataloader_pin_memory=True,
-        seed=42,
-    )
+    sft_kwargs = {
+        "output_dir": str(output_path),
+        "num_train_epochs": config["epochs"],
+        "per_device_train_batch_size": config["batch_size"],
+        "gradient_accumulation_steps": config["grad_accum"],
+        "learning_rate": config["lr"],
+        "warmup_ratio": config["warmup_ratio"],
+        "weight_decay": config["weight_decay"],
+        "logging_steps": 10,
+        "save_strategy": "steps",
+        "save_steps": 250,
+        "save_total_limit": 5,
+        "eval_strategy": "steps" if has_eval else "no",
+        "eval_steps": 250 if has_eval else None,
+        "load_best_model_at_end": has_eval,
+        "metric_for_best_model": "eval_loss" if has_eval else None,
+        "greater_is_better": False if has_eval else None,
+        "bf16": torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
+        "fp16": not torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
+        "gradient_checkpointing": True,
+        "optim": "paged_adamw_8bit" if config["quantize"] else "adamw_torch_fused",
+        "lr_scheduler_type": "cosine",
+        "report_to": "none",
+        "dataloader_num_workers": 4,
+        "dataloader_pin_memory": True,
+        "seed": 42,
+    }
+    # max_seq_length moved in newer trl versions
+    import inspect
+    if "max_seq_length" in inspect.signature(SFTConfig.__init__).parameters:
+        sft_kwargs["max_seq_length"] = config["max_seq_length"]
+    training_args = SFTConfig(**sft_kwargs)
 
     # Trainer
     trainer = SFTTrainer(

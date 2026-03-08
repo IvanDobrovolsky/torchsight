@@ -1,6 +1,6 @@
 use anyhow::Result;
 use console::style;
-use dialoguer::{Input, theme::ColorfulTheme};
+use dialoguer::{Confirm, Input, theme::ColorfulTheme};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::cli::ScanConfig;
@@ -25,6 +25,24 @@ pub async fn run(
                 last_report = Some(r);
             }
             Err(e) => println!("  {} {}", style("[ERROR]").red().bold(), e),
+        }
+
+        // After initial scan, ask if user wants interactive mode
+        if last_report.is_some() {
+            println!(
+                "  {} This will load {} (~4.9GB) for Q&A about the results.",
+                style("NOTE:").dim(),
+                style(&config.vision_model).cyan()
+            );
+            let interactive = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt("Explore results interactively?")
+                .default(false)
+                .interact()?;
+
+            if !interactive {
+                println!("\n{}\n", style("Goodbye.").dim());
+                return Ok(());
+            }
         }
     }
 
@@ -87,6 +105,9 @@ pub async fn run(
             }
             "history" => {
                 session.print_history();
+            }
+            "snake" | "play" => {
+                crate::cli::snake::play()?;
             }
             _ => {
                 if let Some(ref r) = last_report {
@@ -185,11 +206,6 @@ async fn run_scan(
     // Print findings to terminal
     let terminal_output = report::format_report(&report, "terminal")?;
     println!("{terminal_output}");
-
-    println!(
-        "  {}",
-        style("Ask questions about the results, or type 'help' for commands.").dim()
-    );
 
     Ok(report)
 }
