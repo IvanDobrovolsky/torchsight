@@ -283,7 +283,7 @@ def main():
         args=training_args,
         train_dataset=dataset["train"],
         eval_dataset=dataset.get("validation"),
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
         formatting_func=formatting_func,
     )
 

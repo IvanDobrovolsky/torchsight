@@ -101,7 +101,7 @@ impl OllamaClient {
             .client
             .post(format!("{}/api/chat", self.base_url))
             .json(&req)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(600))
             .send()
             .await?
             .error_for_status()?
@@ -126,7 +126,7 @@ impl OllamaClient {
             .client
             .post(format!("{}/api/generate", self.base_url))
             .json(&req)
-            .timeout(std::time::Duration::from_secs(180))
+            .timeout(std::time::Duration::from_secs(600))
             .send()
             .await?
             .error_for_status()?
@@ -148,7 +148,7 @@ impl OllamaClient {
             .client
             .post(format!("{}/api/generate", self.base_url))
             .json(&req)
-            .timeout(std::time::Duration::from_secs(300))
+            .timeout(std::time::Duration::from_secs(600))
             .send()
             .await?
             .error_for_status()?
