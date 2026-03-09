@@ -30,15 +30,16 @@ COMBINED_PATH = DATA_DIR / "processed" / "combined_train.jsonl"
 OUTPUT_DIR = DATA_DIR / "sft"
 
 # System prompt for the model
-SYSTEM_PROMPT = """You are TorchSight, a cybersecurity document classifier. Analyze the provided text and identify any security-relevant findings.
+SYSTEM_PROMPT = """You are TorchSight, a cybersecurity document classifier. Analyze the provided text and identify ALL security-relevant findings.
 
 For each finding, output a JSON object with:
 - category: one of [pii, credentials, financial, medical, confidential, malicious, safe]
 - subcategory: specific type (e.g., pii.identity, malicious.injection, credentials.api_key)
 - severity: one of [critical, high, medium, low, info]
-- explanation: brief explanation of what was found
+- explanation: detailed explanation including specific values found (redact sensitive parts, e.g., SSN: 412-XX-7890, API key: sk_live_51HG...). Explain what was found, why it matters, and the risk.
 
-If the text is clean/safe, output a finding with category "safe" and appropriate subcategory.
+If a document contains multiple types of sensitive data, return a finding for EACH one.
+If the text is clean/safe, output a single finding with category "safe".
 
 Respond ONLY with a JSON array of findings."""
 
@@ -69,28 +70,20 @@ def format_findings_output(findings: list[dict], source_text: str = "") -> str:
 
 
 def build_explanation(finding: dict, source_text: str) -> str:
-    """Build a descriptive explanation from finding fields and source text."""
+    """Build a rich explanation with extracted values from finding fields and source text."""
     category = finding.get("category", "")
     subcategory = finding.get("subcategory", "")
     fields = finding.get("fields", {})
     evidence = finding.get("evidence", "")
     explanation = finding.get("explanation", "")
 
-    # If we already have a good explanation, use it
-    if explanation and len(explanation) > 30:
-        return explanation[:200]
-
     # --- SAFE: describe the document ---
     if category == "safe":
         return build_safe_description(fields, source_text)
 
-    # --- MALICIOUS: use evidence or explanation ---
+    # --- MALICIOUS ---
     if category == "malicious":
-        if evidence:
-            return f"Found: {evidence[:180]}"
-        if explanation:
-            return explanation[:200]
-        return build_from_text_context(subcategory, source_text)
+        return build_malicious_explanation(subcategory, fields, evidence, explanation, source_text)
 
     # --- PII ---
     if category == "pii":
@@ -149,173 +142,302 @@ def build_safe_description(fields: dict, source_text: str) -> str:
     return f"{label} with no sensitive or malicious content."
 
 
+def extract_from_text(source_text: str, patterns: list[tuple[str, str]]) -> dict[str, str]:
+    """Extract values from source text using simple keyword matching."""
+    import re
+    found = {}
+    text_lower = source_text.lower()
+    for label, pattern in patterns:
+        match = re.search(pattern, source_text, re.IGNORECASE)
+        if match:
+            val = match.group(0).strip()
+            # Partially redact sensitive values
+            if label in ("ssn",) and len(val) >= 7:
+                found[label] = val[:3] + "-XX-" + val[-4:]
+            elif label in ("api_key", "token", "password") and len(val) > 12:
+                found[label] = val[:12] + "..."
+            elif label in ("credit_card",) and len(val) >= 12:
+                found[label] = val[:4] + "-XXXX-XXXX-" + val[-4:]
+            else:
+                found[label] = val[:60]
+    return found
+
+
 def build_pii_explanation(subcategory: str, fields: dict, source_text: str) -> str:
-    """Build explanation for PII findings."""
+    """Build explanation for PII findings with extracted values."""
     parts = []
+    extracted = extract_from_text(source_text, [
+        ("name", r"(?:Name|name)[:\s]+([A-Z][a-z]+ [A-Z][a-z]+)"),
+        ("ssn", r"\d{3}-\d{2}-\d{4}"),
+        ("email", r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
+        ("phone", r"[\(]?\d{3}[\)]?[\s.-]\d{3}[\s.-]\d{4}"),
+        ("dob", r"(?:DOB|Date of Birth|dob)[:\s]+[\d/.-]+"),
+    ])
 
     if subcategory == "pii.identity":
         names = fields.get("full_name", [])
         ssns = fields.get("ssn", [])
-        if names:
-            name_str = ", ".join(names[:3])
-            parts.append(f"personal identity information for {name_str}")
-        if ssns:
-            parts.append(f"Social Security Number(s) found")
-        if not parts:
-            parts.append("personally identifiable information (names, IDs)")
+        name_str = ", ".join(names[:2]) if names else extracted.get("name", "")
+        ssn_str = extracted.get("ssn", "")
+        if name_str and ssn_str:
+            parts.append(f"Identity data for {name_str} with SSN {ssn_str}")
+        elif name_str:
+            parts.append(f"Identity data for {name_str}")
+        elif ssn_str:
+            parts.append(f"SSN found: {ssn_str}")
+        else:
+            parts.append("Personally identifiable information (names, IDs)")
+        if extracted.get("dob"):
+            parts.append(f"DOB: {extracted['dob']}")
 
     elif subcategory == "pii.contact":
-        emails = fields.get("email", [])
-        phones = fields.get("phone", [])
-        addresses = fields.get("address", [])
-        if emails:
-            parts.append(f"{len(emails)} email address(es)")
-        if phones:
-            parts.append(f"phone number(s)")
-        if addresses:
-            parts.append(f"physical address(es)")
+        if extracted.get("email"):
+            parts.append(f"Email: {extracted['email']}")
+        if extracted.get("phone"):
+            parts.append(f"Phone: {extracted['phone']}")
         if not parts:
-            parts.append("contact information (email, phone, address)")
+            parts.append("Contact information (email, phone, address)")
 
     elif subcategory == "pii.government_id":
-        ssns = fields.get("ssn", [])
-        dl = fields.get("driver_license", [])
-        if ssns:
-            parts.append(f"{len(ssns)} Social Security Number(s)")
-        if dl:
-            parts.append("driver's license number(s)")
-        if not parts:
-            parts.append("government-issued identification number(s)")
+        if extracted.get("ssn"):
+            parts.append(f"Government ID — SSN: {extracted['ssn']}")
+        else:
+            parts.append("Government-issued identification number")
 
     elif subcategory == "pii.biometric":
-        parts.append("biometric data")
+        parts.append("Biometric data (fingerprint, iris, or facial recognition template)")
+
+    elif subcategory == "pii.behavioral":
+        parts.append("Behavioral tracking data — user activity patterns that can identify individuals")
+
+    elif subcategory == "pii.metadata":
+        parts.append("Metadata containing user-identifying information")
 
     else:
-        parts.append(subcategory.replace("pii.", "") + " data")
+        parts.append(f"{subcategory.replace('pii.', '').replace('_', ' ')} data")
 
     context = get_document_context(source_text)
-    result = "Found " + " and ".join(parts)
+    result = ". ".join(parts)
     if context:
-        result += f" in {context}"
-    return result[:200]
+        result += f". Found in {context}"
+    result += ". Risk: identity theft, privacy violation"
+    return result[:300]
 
 
 def build_credentials_explanation(subcategory: str, fields: dict, source_text: str) -> str:
-    """Build explanation for credential findings."""
-    pw_refs = fields.get("password_reference", [])
-    api_keys = fields.get("api_key", [])
+    """Build explanation for credential findings with extracted values."""
+    import re
+    extracted = extract_from_text(source_text, [
+        ("api_key", r"(?:sk_live_|sk_test_|AKIA|ghp_|xoxb-|SG\.|rk_live_|npm_)[A-Za-z0-9_/+=.-]{8,}"),
+        ("password", r"(?:password|passwd|pass|pwd)[=:\s]+['\"]?([^\s'\"]{4,40})"),
+        ("token", r"(?:token|bearer|auth)[=:\s]+['\"]?([A-Za-z0-9_/+=.-]{10,})"),
+        ("conn_string", r"(?:postgres|mysql|mongodb|redis)://[^\s]{10,80}"),
+        ("private_key", r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    ])
 
     if subcategory == "credentials.password":
-        if pw_refs:
-            # Show the password reference but redact the actual value
-            ref = pw_refs[0][:80]
-            return f"Password credential exposed: '{ref}'"
-        return "Plaintext password found in document"
+        pw = extracted.get("password", "")
+        if pw:
+            return f"Hardcoded password found: {pw}. Plaintext credentials in source code or config files can be extracted by anyone with read access. Move to environment variables or a secrets manager."
+        return "Plaintext password found in document. Credentials should never be stored in plain text — use hashing for storage and environment variables for configuration."
 
     elif subcategory == "credentials.api_key":
-        if api_keys:
-            key_preview = api_keys[0][:20] + "..."
-            return f"API key exposed: {key_preview}"
-        return "API key or access token found in document"
+        key = extracted.get("api_key", "")
+        if key:
+            svc = "Stripe" if "sk_" in key else "AWS" if "AKIA" in key else "GitHub" if "ghp_" in key else "external service"
+            return f"{svc} API key exposed: {key}. This key grants access to the {svc} API and should be rotated immediately. Store API keys in environment variables, not source code."
+        return "API key or access token found in document. Exposed keys grant unauthorized access to external services and should be rotated."
 
     elif subcategory == "credentials.private_key":
-        return "Private cryptographic key found (SSH, TLS, or PGP)"
+        return "Private cryptographic key (RSA/EC/SSH) found in file. Private keys enable impersonation, decryption of traffic, and unauthorized access. Never store private keys in repositories or shared locations."
 
     elif subcategory == "credentials.connection_string":
-        return "Database connection string with credentials found"
+        cs = extracted.get("conn_string", "")
+        if cs:
+            return f"Database connection string with embedded credentials: {cs[:40]}... Contains hostname, username, and password for direct database access. Use environment variables or a secrets manager."
+        return "Database connection string with embedded credentials found. Contains authentication details for direct database access."
 
     elif subcategory == "credentials.token":
-        return "Authentication token or session token found"
+        tok = extracted.get("token", "")
+        if tok:
+            return f"Authentication token exposed: {tok}. Session or auth tokens grant access to user accounts and should never be logged or stored in plain text."
+        return "Authentication or session token found. Tokens grant access to user sessions and protected resources."
+
+    elif subcategory == "credentials.cloud_config":
+        key = extracted.get("api_key", "")
+        if key:
+            return f"Cloud provider credentials exposed: {key}. These credentials provide access to cloud infrastructure (compute, storage, databases). Rotate immediately and use IAM roles instead."
+        return "Cloud provider credentials found (AWS, GCP, or Azure). Cloud keys provide broad infrastructure access and should be managed through IAM roles, not static keys."
+
+    elif subcategory == "credentials.cicd":
+        return "CI/CD pipeline credentials found. These grant access to build and deployment systems and could be used to inject malicious code into the software supply chain."
+
+    elif subcategory == "credentials.container":
+        return "Container registry or orchestration credentials found. These provide access to container images and cluster management."
 
     context = get_document_context(source_text)
-    desc = subcategory.replace("credentials.", "")
+    desc = subcategory.replace("credentials.", "").replace("_", " ")
     result = f"Credential found: {desc}"
     if context:
         result += f" in {context}"
-    return result[:200]
+    return result[:300]
 
 
 def build_financial_explanation(subcategory: str, fields: dict, source_text: str) -> str:
-    """Build explanation for financial findings."""
-    amounts = fields.get("amounts", [])
-    keywords = fields.get("keywords", [])
+    """Build explanation for financial findings with extracted values."""
+    import re
+    extracted = extract_from_text(source_text, [
+        ("amount", r"\$[\d,]+(?:\.\d{2})?"),
+        ("credit_card", r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+        ("routing", r"(?:routing|ABA)[:\s#]+(\d{9})"),
+        ("account", r"(?:account|acct)[:\s#]+[\d-]{6,}"),
+    ])
 
     if subcategory == "financial.transaction":
-        if amounts:
-            amt_str = ", ".join(amounts[:3])
-            desc = f"Financial transaction(s) with amounts: {amt_str}"
-        else:
-            desc = "Financial transaction data"
-        if keywords:
-            desc += f" ({', '.join(keywords[:3])})"
-        return desc[:200]
+        amt = extracted.get("amount", "")
+        if amt:
+            return f"Financial transaction detected with amount {amt}. Wire transfer or payment instructions with beneficiary details. Risk: unauthorized fund transfers, financial fraud. Compliance: SOX, PCI-DSS."
+        return "Financial transaction data found including payment amounts and transfer details. Risk: unauthorized fund movement if exposed."
 
     elif subcategory == "financial.bank_account":
-        return "Bank account number(s) found in document"
+        acct = extracted.get("account", "")
+        routing = extracted.get("routing", "")
+        if acct and routing:
+            return f"Bank account details: routing {routing}, account {acct}. Sufficient for initiating unauthorized ACH transfers. Compliance: PCI-DSS, SOX."
+        return "Bank account number(s) found. Account and routing numbers enable unauthorized transfers. Compliance: PCI-DSS, SOX."
 
     elif subcategory == "financial.credit_card":
-        return "Credit card number(s) found in document"
+        cc = extracted.get("credit_card", "")
+        if cc:
+            return f"Credit card number found: {cc}. Full card numbers enable unauthorized charges. Must be encrypted per PCI-DSS. Immediate risk: financial fraud."
+        return "Credit card number found in document. PCI-DSS violation — card data must be encrypted and access-controlled."
 
-    elif subcategory == "financial.government_id":
-        return "Government financial identifier (SSN, TIN, EIN) found"
+    elif subcategory == "financial.tax":
+        amt = extracted.get("amount", "")
+        return f"Tax document with financial details{' (amounts: ' + amt + ')' if amt else ''}. Contains income, deductions, and potentially SSN. Compliance: IRS regulations, state tax law."
 
     context = get_document_context(source_text)
-    desc = subcategory.replace("financial.", "")
+    desc = subcategory.replace("financial.", "").replace("_", " ")
     result = f"Financial data: {desc}"
     if context:
         result += f" in {context}"
-    return result[:200]
+    return result[:300]
 
 
 def build_medical_explanation(subcategory: str, fields: dict, source_text: str) -> str:
-    """Build explanation for medical findings."""
+    """Build explanation for medical findings with extracted values."""
+    import re
     specialty = fields.get("medical_specialty", "")
-    keywords = fields.get("keywords", "")
+
+    # Try to extract diagnosis from text
+    dx_match = re.search(r"(?:diagnosis|dx|assessment)[:\s]+(.{10,80})", source_text, re.IGNORECASE)
+    dx = dx_match.group(1).strip().rstrip(".") if dx_match else ""
+
+    # Try to extract patient name
+    name_match = re.search(r"(?:patient|name)[:\s]+([A-Z][a-z]+ [A-Z][a-z]+)", source_text, re.IGNORECASE)
+    name = name_match.group(1) if name_match else ""
 
     if subcategory == "medical.diagnosis":
+        parts = ["Protected health information (PHI)"]
+        if dx:
+            parts.append(f"diagnosis: {dx}")
+        if name:
+            parts.append(f"patient: {name}")
         if specialty:
-            return f"{specialty} medical record with patient diagnosis and treatment information"
-        return "Medical record containing patient diagnosis information"
+            parts.append(f"specialty: {specialty}")
+        return ". ".join(parts) + ". HIPAA-protected — unauthorized disclosure may result in penalties up to $50,000 per violation."
 
     elif subcategory == "medical.prescription":
-        if specialty:
-            return f"Prescription record from {specialty} department"
-        return "Prescription or medication record found"
+        parts = ["Prescription/medication record"]
+        if name:
+            parts.append(f"for {name}")
+        med_match = re.search(r"(?:rx|prescription|medication)[:\s]+(.{5,60})", source_text, re.IGNORECASE)
+        if med_match:
+            parts.append(f"medication: {med_match.group(1).strip()}")
+        return " ".join(parts) + ". HIPAA-protected PHI including patient identity and treatment details."
 
-    elif subcategory == "medical.lab_results":
-        return "Laboratory test results with patient health data"
+    elif subcategory in ("medical.lab_results", "medical.lab_result"):
+        return f"Laboratory test results{' for ' + name if name else ''} with diagnostic values. HIPAA-protected PHI — lab data reveals health conditions and must be secured."
 
     elif subcategory == "medical.insurance":
-        return "Health insurance information with policy details"
+        return f"Health insurance information{' for ' + name if name else ''} with policy and member details. HIPAA-protected — includes coverage information tied to patient identity."
 
-    context = get_document_context(source_text)
-    desc = subcategory.replace("medical.", "")
-    result = f"Protected health information: {desc}"
-    if context and specialty:
-        result += f" ({specialty})"
-    return result[:200]
+    return f"Protected health information ({subcategory.split('.')[-1]}). HIPAA compliance required — unauthorized access or disclosure is a federal violation."
+
+
+def build_malicious_explanation(subcategory: str, fields: dict, evidence: str, explanation: str, source_text: str) -> str:
+    """Build explanation for malicious findings with specific payload details."""
+    import re
+    first_line = get_first_line(source_text)
+
+    descs = {
+        "malicious.injection": "SQL injection, XSS, or command injection payload",
+        "malicious.exploit": "Exploit code targeting a known vulnerability",
+        "malicious.malware": "Malware, backdoor, or trojan indicator",
+        "malicious.phishing": "Phishing or social engineering attempt",
+        "malicious.prompt_injection": "LLM prompt injection attempting to override system instructions",
+        "malicious.supply_chain": "Supply chain attack — malicious or typosquatted package",
+        "malicious.shell": "Reverse shell or remote command execution",
+        "malicious.xxe": "XML External Entity (XXE) attack for file read or SSRF",
+        "malicious.ssti": "Server-Side Template Injection allowing code execution",
+        "malicious.ssrf": "Server-Side Request Forgery targeting internal services",
+        "malicious.deserialization": "Insecure deserialization enabling remote code execution",
+        "malicious.redos": "Regular Expression Denial of Service (ReDoS) pattern",
+        "malicious.steganography": "Steganography — hidden data embedded in media files",
+        "malicious.prototype_pollution": "Prototype pollution enabling privilege escalation",
+    }
+
+    base = descs.get(subcategory, f"Malicious content ({subcategory.split('.')[-1]})")
+
+    # Add evidence/payload preview
+    if evidence and len(evidence) > 10:
+        payload_preview = evidence[:100].replace("\n", " ")
+        return f"{base}. Payload: {payload_preview}. Immediate security risk — investigate and remediate."
+    elif explanation and len(explanation) > 20:
+        return f"{base}. {explanation[:150]}. Investigate source and intent."
+    else:
+        return f"{base}: {first_line}. Review context to determine if this is intentional (e.g., security testing) or a genuine threat."
 
 
 def build_confidential_explanation(subcategory: str, fields: dict, source_text: str) -> str:
-    """Build explanation for confidential findings."""
+    """Build explanation for confidential findings with context."""
+    import re
     first_line = get_first_line(source_text)
 
+    # Try to find classification markings
+    marking_match = re.search(r"(TOP SECRET|SECRET|CONFIDENTIAL|RESTRICTED|NOFORN|SCI|FOUO)", source_text, re.IGNORECASE)
+    marking = marking_match.group(1).upper() if marking_match else ""
+
     if subcategory == "confidential.military":
-        return f"Military/defense document: {first_line}"
+        return f"Military/defense document: {first_line}. Contains operational military information. ITAR/EAR controlled — unauthorized disclosure is a federal offense."
+
+    elif subcategory == "confidential.military_comms":
+        return f"Military communications/operations order: {first_line}. Contains tactical information, unit positions, or mission details. Classified under EO 13526."
 
     elif subcategory == "confidential.intelligence":
-        return f"Intelligence-related content: {first_line}"
+        mark_str = f" Marking: {marking}." if marking else ""
+        return f"Intelligence report: {first_line}.{mark_str} Contains source information and assessments. Dissemination restricted per EO 13526."
 
     elif subcategory == "confidential.weapons_systems":
-        return f"Weapons systems or technical defense data: {first_line}"
+        return f"Weapons systems data: {first_line}. Technical specifications for defense systems. ITAR Category IV — export controlled."
 
-    elif subcategory == "confidential.internal":
-        return f"Internal/confidential document: {first_line}"
+    elif subcategory == "confidential.nuclear":
+        return f"Nuclear facility/weapons information: {first_line}. Restricted Data under the Atomic Energy Act. Extremely sensitive — mishandling is a criminal offense."
 
     elif subcategory == "confidential.classified":
-        return f"Classified document with security markings: {first_line}"
+        mark_str = f" Classification: {marking}." if marking else ""
+        return f"Classified document: {first_line}.{mark_str} Requires appropriate clearance and need-to-know for access."
 
-    return f"Confidential content: {first_line}"[:200]
+    elif subcategory == "confidential.internal":
+        return f"Internal/confidential business document: {first_line}. Contains proprietary information not intended for public disclosure. Risk: competitive harm, insider trading."
+
+    elif subcategory == "confidential.geospatial":
+        return f"Classified geospatial data: {first_line}. Contains facility coordinates or military mapping data. Disclosure could compromise operational security."
+
+    elif subcategory == "confidential.education":
+        return f"Education record (FERPA-protected): {first_line}. Student records require written consent for disclosure under federal law."
+
+    return f"Confidential content: {first_line}"[:300]
 
 
 def get_document_context(source_text: str) -> str:
