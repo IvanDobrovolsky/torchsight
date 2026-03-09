@@ -31,12 +31,18 @@ On-premise cybersecurity scanner. Rust CLI + local LLMs (Ollama). Scans text/ima
 - Output: multiple JSON arrays `[{category, subcategory, severity, explanation}]`
 - Known quirk: generates repetitive filler text after findings (hits num_predict 2048 limit)
 
+## Finding Enrichment (implemented)
+- **Image findings** include `visual_description` from vision model and OCR text as evidence
+- **Text findings** include `source_file` name and content preview as evidence
+- **Safe image findings** include the vision description ("Image analyzed: <desc>. No sensitive content.")
+- All findings carry `source_file` in `extracted_data` for traceability
+
 ## Current Status / Known Issues
-- Vision description is computed but NOT included in final findings (wasted work)
-- Findings lack rich detail — should include actual extracted values and document context
 - CPU inference is very slow (~6 min/file). Apple Silicon M1 Max = ~2-5 sec/file
 - HuggingFace upload pending (org: `torchsight`, need write token)
 - PDF reports generated via Python (`uv run`), requires `uv` installed
+- Beam model sometimes generates repetitive filler after valid findings (hits num_predict 2048 limit)
+- `parse_beam_findings` deduplicates by category:subcategory and skips "safe" entries when non-safe findings exist
 
 ## Build & Run
 ```bash
