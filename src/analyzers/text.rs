@@ -56,17 +56,33 @@ pub async fn analyze_text_file(
         parse_llm_findings(&response)?
     };
 
+    // Enrich findings with file context
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+    let content_preview: String = truncated.chars().take(150).collect();
+
+    for finding in &mut findings {
+        finding.extracted_data.insert(
+            "source_file".to_string(),
+            file_name.to_string(),
+        );
+        // Add a content snippet as evidence if empty
+        if finding.evidence.is_empty() && finding.category != "safe" {
+            finding.evidence = content_preview.clone();
+        }
+    }
+
     // If LLM returned nothing, mark as analyzed but unclear
     if findings.is_empty() {
         findings.push(FileFinding {
             category: "safe".to_string(),
-            description: "File analyzed, no sensitive data or concerns detected.".to_string(),
+            description: format!("File analyzed ({}), no sensitive data or concerns detected.", file_name),
             evidence: String::new(),
             severity: Severity::Info,
             source: "llm".to_string(),
             extracted_data: {
                 let mut m = HashMap::new();
                 m.insert("document_type".to_string(), "unknown".to_string());
+                m.insert("source_file".to_string(), file_name.to_string());
                 m
             },
         });

@@ -64,11 +64,40 @@ Examine this content for data leakage, threats, and compliance issues."#,
     };
 
     // Parse LLM response
-    let llm_findings = if is_beam {
+    let mut llm_findings = if is_beam {
         super::text::parse_beam_findings_public(&response)?
     } else {
         parse_findings(&response)?
     };
+
+    // Enrich findings with vision description and OCR evidence
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
+    let ocr_snippet: String = ocr_text
+        .as_ref()
+        .map(|(text, _)| text.chars().take(300).collect())
+        .unwrap_or_default();
+
+    for finding in &mut llm_findings {
+        // Add vision context to description if not already detailed
+        if !vision_description.contains("Could not analyze") {
+            finding.extracted_data.insert(
+                "visual_description".to_string(),
+                vision_description.clone(),
+            );
+        }
+
+        // Add OCR text as evidence instead of generic "[image content]"
+        if !ocr_snippet.is_empty() {
+            finding.evidence = ocr_snippet.clone();
+        }
+
+        // Add source file context
+        finding.extracted_data.insert(
+            "source_file".to_string(),
+            file_name.to_string(),
+        );
+    }
+
     findings.extend(llm_findings);
 
     // If LLM returned nothing, add a basic finding from what we have
@@ -83,13 +112,21 @@ Examine this content for data leakage, threats, and compliance issues."#,
                 extracted_data: {
                     let mut m = HashMap::new();
                     m.insert("ocr_text".to_string(), text.clone());
+                    if !vision_description.contains("Could not analyze") {
+                        m.insert("visual_description".to_string(), vision_description.clone());
+                    }
                     m
                 },
             });
         } else {
+            let desc = if vision_description.contains("Could not analyze") {
+                "No text or sensitive content detected.".to_string()
+            } else {
+                format!("Image analyzed: {}. No sensitive content detected.", vision_description)
+            };
             findings.push(FileFinding {
                 category: "safe".to_string(),
-                description: "No text or sensitive content detected.".to_string(),
+                description: desc,
                 evidence: String::new(),
                 severity: Severity::Info,
                 source: "llm-vision".to_string(),
