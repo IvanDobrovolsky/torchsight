@@ -107,7 +107,7 @@ Examine this content for data leakage, threats, and compliance issues."#,
                 category: "unclassified".to_string(),
                 description: "Image contains text but could not be fully analyzed by LLM.".to_string(),
                 evidence: text.chars().take(200).collect(),
-                severity: Severity::Warning,
+                severity: Severity::Medium,
                 source: "ocr".to_string(),
                 extracted_data: {
                     let mut m = HashMap::new();
@@ -171,7 +171,9 @@ fn parse_findings(response: &str) -> Result<Vec<FileFinding>> {
             evidence: "[image content]".to_string(),
             severity: match f.severity.as_str() {
                 "critical" => Severity::Critical,
-                "warning" => Severity::Warning,
+                "high" => Severity::High,
+                "medium" | "warning" => Severity::Medium,
+                "low" => Severity::Low,
                 _ => Severity::Info,
             },
             source: "llm-vision+ocr".to_string(),

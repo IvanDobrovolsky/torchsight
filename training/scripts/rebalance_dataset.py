@@ -48,7 +48,7 @@ print(f"Loaded {len(all_records)} records across {len(records_by_subcat)} subcat
 # STEP 2: Downsample overrepresented subcategories
 # =============================================================================
 
-MAX_PER_SUBCAT = 15000  # Only cap the extreme outlier (malicious.exploit at 44K)
+MAX_PER_SUBCAT = 5000  # Balance: preserve volume while preventing any subcategory from dominating
 
 balanced = []
 for subcat, recs in records_by_subcat.items():
@@ -90,13 +90,13 @@ CLASSIFICATION_LEVELS = [
     ("TOP SECRET // SCI // NOFORN", "critical"),
     ("SECRET", "critical"),
     ("SECRET // NOFORN", "critical"),
-    ("CONFIDENTIAL", "warning"),
-    ("CONFIDENTIAL // REL TO USA, GBR", "warning"),
-    ("RESTRICTED", "warning"),
+    ("CONFIDENTIAL", "high"),
+    ("CONFIDENTIAL // REL TO USA, GBR", "high"),
+    ("RESTRICTED", "medium"),
     ("FOR OFFICIAL USE ONLY", "info"),
     ("UNCLASSIFIED // FOR OFFICIAL USE ONLY", "info"),
-    ("CUI // SP-INTEL", "warning"),
-    ("CONTROLLED UNCLASSIFIED INFORMATION", "warning"),
+    ("CUI // SP-INTEL", "medium"),
+    ("CONTROLLED UNCLASSIFIED INFORMATION", "medium"),
 ]
 
 CLASSIFIED_TOPICS = [
@@ -132,7 +132,7 @@ for i in range(1400):
 
     subcategory = random.choice([
         "confidential.classified", "confidential.intelligence",
-        "confidential.military", "confidential.government",
+        "confidential.military",
     ])
 
     findings = [{
@@ -350,7 +350,7 @@ for i in range(300):
     ])
     new_samples.append(make_record(context, [{
         "category": "malicious",
-        "subcategory": "malicious.xss",
+        "subcategory": "malicious.injection",
         "severity": "critical",
         "explanation": f"Cross-site scripting (XSS) payload detected. The input contains executable JavaScript that attempts to steal cookies or redirect users. Payload: '{payload[:80]}...'. This can lead to session hijacking, credential theft, or defacement.",
     }]))
@@ -365,7 +365,7 @@ for i in range(300):
     ])
     new_samples.append(make_record(context, [{
         "category": "malicious",
-        "subcategory": "malicious.powershell",
+        "subcategory": "malicious.shell",
         "severity": "critical",
         "explanation": f"Malicious PowerShell execution detected. The command uses obfuscation techniques (encoded commands, bypass flags, hidden windows) to download and execute a remote payload. This is consistent with post-exploitation or initial access tradecraft.",
     }]))
@@ -395,7 +395,7 @@ for i in range(300):
     ])
     new_samples.append(make_record(context, [{
         "category": "malicious",
-        "subcategory": "malicious.command_injection",
+        "subcategory": "malicious.injection",
         "severity": "critical",
         "explanation": f"OS command injection payload detected in user-controlled input. The payload '{payload.strip()[:60]}' attempts to execute arbitrary system commands by breaking out of the intended command context. This can lead to remote code execution and full system compromise.",
     }]))
@@ -530,7 +530,7 @@ Next Review: {random.choice(["2025-03", "2025-06", "2025-09"])}
          "explanation": f"Personal identity information for {name} including SSN ({ssn[:3]}-XX-{ssn[-4:]}), date of birth, and employee ID. This data combined enables identity theft and unauthorized benefits access."},
         {"category": "financial", "subcategory": "financial.bank_account", "severity": "critical",
          "explanation": f"Direct deposit banking information (account and routing numbers) for {name}. Can be used to redirect payroll or initiate unauthorized transfers."},
-        {"category": "confidential", "subcategory": "confidential.internal", "severity": "warning",
+        {"category": "confidential", "subcategory": "confidential.internal", "severity": "high",
          "explanation": f"Confidential compensation data including salary (${salary:,}), bonus, and stock options. Unauthorized disclosure could impact employee relations and competitive positioning."},
     ]
     new_samples.append(make_record(text, findings))
@@ -586,7 +586,7 @@ Emergency Contact: {rand_name()} ({random.choice(["spouse", "parent", "sibling"]
          "explanation": f"Medication information for {name}: {medications}. Prescription data reveals sensitive health conditions and is protected under HIPAA."},
         {"category": "pii", "subcategory": "pii.identity", "severity": "critical",
          "explanation": f"Patient identity information including name, date of birth, and medical record number. Combined with diagnosis, this constitutes a HIPAA breach if disclosed."},
-        {"category": "financial", "subcategory": "financial.insurance", "severity": "warning",
+        {"category": "medical", "subcategory": "medical.insurance", "severity": "medium",
          "explanation": f"Health insurance information: {insurer} #{insurance_id}. Insurance IDs can be used for fraudulent claims."},
     ]
     new_samples.append(make_record(text, findings))
@@ -626,7 +626,7 @@ Employment Verified: Yes - {random.choice(["Google", "Microsoft", "Amazon", "Met
     findings = [
         {"category": "pii", "subcategory": "pii.identity", "severity": "critical",
          "explanation": f"Personally identifiable information for {name}: SSN ({ssn[:3]}-XX-{ssn[-4:]}), email ({email}), phone ({phone}). This data enables identity theft, account takeover, and social engineering attacks."},
-        {"category": "pii", "subcategory": "pii.contact", "severity": "warning",
+        {"category": "pii", "subcategory": "pii.contact", "severity": "medium",
          "explanation": f"Contact information including email address and phone number for {name}. Can be used for phishing, spam, or social engineering."},
     ]
     new_samples.append(make_record(template, findings))

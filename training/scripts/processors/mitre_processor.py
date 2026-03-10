@@ -24,11 +24,11 @@ TACTIC_SEVERITY = {
     "execution": "critical",
     "persistence": "critical",
     "privilege-escalation": "critical",
-    "defense-evasion": "warning",
+    "defense-evasion": "medium",
     "credential-access": "critical",
-    "discovery": "warning",
+    "discovery": "low",
     "lateral-movement": "critical",
-    "collection": "warning",
+    "collection": "medium",
     "command-and-control": "critical",
     "exfiltration": "critical",
     "impact": "critical",
@@ -103,9 +103,9 @@ def process(max_per_type: int = 500, seed: int = 42):
                 continue
 
             # Determine severity from tactics
-            severity = "warning"
+            severity = "medium"
             for tactic in obj["tactics"]:
-                s = TACTIC_SEVERITY.get(tactic, "warning")
+                s = TACTIC_SEVERITY.get(tactic, "medium")
                 if s == "critical":
                     severity = "critical"
                     break

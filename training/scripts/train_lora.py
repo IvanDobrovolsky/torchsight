@@ -31,21 +31,21 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SFT_DIR = Path(os.environ.get("TORCHSIGHT_DATA_DIR", SCRIPT_DIR.parent / "data" / "sft"))
 OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "output"))
 
-# Default hyperparameters — tuned for high-VRAM GPU (GH200/A100/H100)
+# Default hyperparameters — tuned for max quality on 96GB VRAM (H100/A100-80GB)
 DEFAULTS = {
     "base_model": "meta-llama/Llama-3.1-8B-Instruct",
-    "format": "chatml",
-    "epochs": 3,
-    "lr": 1e-4,
-    "batch_size": 16,
-    "grad_accum": 2,
+    "format": "alpaca",
+    "epochs": 5,
+    "lr": 5e-5,
+    "batch_size": 8,
+    "grad_accum": 4,        # effective batch = 32 for smooth gradients
     "max_seq_length": 4096,
-    "lora_r": 64,
-    "lora_alpha": 128,
+    "lora_r": 128,           # doubled from v1 for more adaptation capacity
+    "lora_alpha": 256,       # 2x rank (standard ratio)
     "lora_dropout": 0.05,
-    "warmup_ratio": 0.05,
+    "warmup_ratio": 0.06,   # ~240 steps warmup on 78K samples
     "weight_decay": 0.01,
-    "quantize": None,  # None = full bf16 (best quality)
+    "quantize": None,        # full bf16 — best quality, 96GB can handle it
     "resume": None,
 }
 
@@ -254,10 +254,10 @@ def main():
         "weight_decay": config["weight_decay"],
         "logging_steps": 10,
         "save_strategy": "steps",
-        "save_steps": 250,
-        "save_total_limit": 5,
+        "save_steps": 200,
+        "save_total_limit": 3,
         "eval_strategy": "steps" if has_eval else "no",
-        "eval_steps": 250 if has_eval else None,
+        "eval_steps": 200 if has_eval else None,
         "load_best_model_at_end": has_eval,
         "metric_for_best_model": "eval_loss" if has_eval else None,
         "greater_is_better": False if has_eval else None,

@@ -10,7 +10,8 @@ struct ScanSummary {
     total_files: usize,
     total_findings: usize,
     critical: usize,
-    warnings: usize,
+    high: usize,
+    medium: usize,
     top_categories: Vec<String>,
 }
 
@@ -48,7 +49,8 @@ impl SessionMemory {
             total_files: report.files.len(),
             total_findings: report.total_findings(),
             critical: report.critical_count(),
-            warnings: report.warning_count(),
+            high: report.high_count(),
+            medium: report.medium_count(),
             top_categories,
         });
 

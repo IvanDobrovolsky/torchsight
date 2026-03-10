@@ -252,6 +252,7 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
     }
 
     let mut findings = Vec::new();
+    let mut safe_findings = Vec::new();
     let mut seen = std::collections::HashSet::new();
     let mut pos = 0;
     let bytes = response.as_bytes();
@@ -278,44 +279,59 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
 
                 let severity_str = f.severity.as_deref().unwrap_or("medium");
                 let severity = match severity_str {
-                    "critical" | "high" => Severity::Critical,
-                    "medium" | "warning" => Severity::Warning,
-                    _ => Severity::Info,
+                    "critical" => Severity::Critical,
+                    "high" => Severity::High,
+                    "medium" => Severity::Medium,
+                    "low" => Severity::Low,
+                    "info" => Severity::Info,
+                    // Legacy fallbacks
+                    "warning" => Severity::Medium,
+                    _ => Severity::Medium,
                 };
 
                 let description = f.explanation.unwrap_or_else(|| {
                     format!("Detected {} content", if subcategory.is_empty() { &f.category } else { &subcategory })
                 });
 
-                // Skip "safe" findings that aren't the only result
                 if f.category == "safe" {
-                    continue;
+                    safe_findings.push(FileFinding {
+                        category: f.category,
+                        description,
+                        evidence: subcategory,
+                        severity,
+                        source: "beam".to_string(),
+                        extracted_data: HashMap::new(),
+                    });
+                } else {
+                    findings.push(FileFinding {
+                        category: f.category,
+                        description,
+                        evidence: subcategory,
+                        severity,
+                        source: "beam".to_string(),
+                        extracted_data: HashMap::new(),
+                    });
                 }
-
-                findings.push(FileFinding {
-                    category: f.category,
-                    description,
-                    evidence: subcategory,
-                    severity,
-                    source: "beam".to_string(),
-                    extracted_data: HashMap::new(),
-                });
             }
         }
 
         pos = end;
     }
 
-    // If no non-safe findings, return a safe finding
+    // If no non-safe findings, use beam's safe findings (with its explanation)
     if findings.is_empty() {
-        findings.push(FileFinding {
-            category: "safe".to_string(),
-            description: "No security issues detected.".to_string(),
-            evidence: String::new(),
-            severity: Severity::Info,
-            source: "beam".to_string(),
-            extracted_data: HashMap::new(),
-        });
+        if !safe_findings.is_empty() {
+            findings = safe_findings;
+        } else {
+            findings.push(FileFinding {
+                category: "safe".to_string(),
+                description: "No security issues detected.".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            });
+        }
     }
 
     Ok(findings)
@@ -354,7 +370,9 @@ fn parse_llm_findings(response: &str) -> Result<Vec<FileFinding>> {
             evidence: String::new(),
             severity: match f.severity.as_str() {
                 "critical" => Severity::Critical,
-                "warning" => Severity::Warning,
+                "high" => Severity::High,
+                "medium" | "warning" => Severity::Medium,
+                "low" => Severity::Low,
                 _ => Severity::Info,
             },
             source: "llm".to_string(),

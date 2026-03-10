@@ -97,7 +97,7 @@ def classify_report(title: str, summary: str = "") -> list[dict]:
         findings.append({
             "category": "confidential",
             "subcategory": "confidential.military",
-            "severity": "warning",
+            "severity": "high",
             "compliance": ["NIST-800-53"],
             "fields": {"matched_keywords": military_score},
         })

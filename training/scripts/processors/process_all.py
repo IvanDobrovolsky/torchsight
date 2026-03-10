@@ -24,11 +24,17 @@ PROCESSORS = {
     "seclists": "seclists_processor",
     "mitre": "mitre_processor",
     "nvd": "nvd_processor",
-    "mtsamples": "mtsamples_processor",
     "crs_reports": "crs_processor",
     "prompt_injection": "prompt_injection_processor",
     "ghsa": "ghsa_processor",
     "ossf": "ossf_processor",
+    "ai4privacy": "ai4privacy_processor",
+    "phishing": "phishing_processor",
+    "edgar": "edgar_processor",
+    "fenrir": "fenrir_processor",
+    "payloads": "payloads_processor",
+    "nist": "nist_processor",
+    "loghub": "loghub_processor",
 }
 
 
@@ -59,7 +65,7 @@ def combine_datasets():
     # Gather JSONL files from both processed and synthetic dirs
     all_files = []
     for jsonl_file in sorted(PROCESSED_DIR.glob("*.jsonl")):
-        if jsonl_file.name != "combined_train.jsonl":
+        if jsonl_file.name not in ("combined_train.jsonl", "combined_train_balanced.jsonl"):
             all_files.append(jsonl_file)
     if SYNTHETIC_DIR.exists():
         for jsonl_file in sorted(SYNTHETIC_DIR.glob("*.jsonl")):

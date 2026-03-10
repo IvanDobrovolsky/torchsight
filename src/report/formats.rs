@@ -125,10 +125,12 @@ fn format_markdown(report: &ScanReport) -> String {
     ));
 
     out.push_str(&format!(
-        "**Summary:** {} findings ({} critical, {} warning, {} info)\n\n",
+        "**Summary:** {} findings ({} critical, {} high, {} medium, {} low, {} info)\n\n",
         report.total_findings(),
         report.critical_count(),
-        report.warning_count(),
+        report.high_count(),
+        report.medium_count(),
+        report.low_count(),
         report.info_count(),
     ));
 
@@ -146,7 +148,9 @@ fn format_markdown(report: &ScanReport) -> String {
         for finding in &file.findings {
             let icon = match finding.severity {
                 Severity::Critical => "[CRITICAL]",
-                Severity::Warning => "[WARNING]",
+                Severity::High => "[HIGH]",
+                Severity::Medium => "[MEDIUM]",
+                Severity::Low => "[LOW]",
                 Severity::Info => "[INFO]",
             };
             out.push_str(&format!(
@@ -213,7 +217,9 @@ fn format_terminal(report: &ScanReport) -> String {
 
             let severity_str = match finding.severity {
                 Severity::Critical => format!("{}", style("CRITICAL").red().bold()),
-                Severity::Warning => format!("{}", style("WARNING").yellow().bold()),
+                Severity::High => format!("{}", style("HIGH").red()),
+                Severity::Medium => format!("{}", style("MEDIUM").yellow().bold()),
+                Severity::Low => format!("{}", style("LOW").yellow()),
                 Severity::Info => format!("{}", style("INFO").dim()),
             };
 

@@ -7,7 +7,9 @@ use crate::scanner::classifier::FileKind;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Severity {
     Critical,
-    Warning,
+    High,
+    Medium,
+    Low,
     Info,
 }
 
@@ -15,7 +17,9 @@ impl std::fmt::Display for Severity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Severity::Critical => write!(f, "CRITICAL"),
-            Severity::Warning => write!(f, "WARNING"),
+            Severity::High => write!(f, "HIGH"),
+            Severity::Medium => write!(f, "MEDIUM"),
+            Severity::Low => write!(f, "LOW"),
             Severity::Info => write!(f, "INFO"),
         }
     }
@@ -96,11 +100,27 @@ impl ScanReport {
             .count()
     }
 
-    pub fn warning_count(&self) -> usize {
+    pub fn high_count(&self) -> usize {
         self.files
             .iter()
             .flat_map(|f| &f.findings)
-            .filter(|f| f.severity == Severity::Warning)
+            .filter(|f| f.severity == Severity::High)
+            .count()
+    }
+
+    pub fn medium_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.severity == Severity::Medium)
+            .count()
+    }
+
+    pub fn low_count(&self) -> usize {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.severity == Severity::Low)
             .count()
     }
 

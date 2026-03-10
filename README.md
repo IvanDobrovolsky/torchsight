@@ -47,11 +47,11 @@ PII, credentials, financial records, medical data, classified/military documents
 
 ## How it works
 
-Every file goes through [torchsight/beam](https://huggingface.co/torchsight/beam), a Llama 3.1 8B model fine-tuned on 105K security samples. No regex, no keyword matching — pure LLM classification. Images get OCR + vision analysis first. All local via [Ollama](https://ollama.com).
+Every file goes through [torchsight/beam](https://huggingface.co/torchsight/beam), a Llama 3.1 8B model fine-tuned on 78K balanced security samples from 18 public datasets. No regex, no keyword matching — pure LLM classification. Images get OCR + vision analysis first. All local via [Ollama](https://ollama.com).
 
 ## Training data
 
-All sources are public domain, Apache 2.0, MIT, CC-BY-4.0, or CC0. See [training/](training/) for the full pipeline and dataset details.
+78,358 samples from 18 verified sources. All public domain, Apache 2.0, MIT, CC-BY 4.0, or royalty-free. Zero gray-area licenses. See [training/](training/) for the full pipeline and dataset details.
 
 ## License
 

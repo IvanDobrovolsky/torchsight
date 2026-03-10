@@ -9,20 +9,24 @@ Datasets:
   2. SecLists               — injection payloads (MIT)
   3. MITRE ATT&CK           — threat patterns (royalty-free)
   4. NVD (NIST)             — vulnerability data (public domain)
-  5. MTSamples              — medical transcriptions (CC0)
-  6. OWASP WSTG             — web attack patterns (CC BY-SA 4.0)
-  7. CIA FOIA               — declassified intelligence (public domain)
-  8. CRS Reports            — defense analysis (public domain)
-  9. Army Doctrine           — military publications (public domain)
-  10. GAO Reports            — defense audits (public domain)
-  11. DTIC                   — defense technical reports (public domain)
+  5. CIA FOIA               — declassified intelligence (public domain)
+  6. CRS Reports            — defense analysis (public domain)
+  7. Army Doctrine           — military publications (public domain)
+  8. GAO Reports            — defense audits (public domain)
+  9. DTIC                   — defense technical reports (public domain)
+  10. ai4privacy            — 300K PII-labeled examples (Apache 2.0)
+  11. Phishing Dataset      — phishing email/SMS text (Apache 2.0)
+  12. SEC EDGAR             — financial filings (public domain)
+  13. Fenrir v2.0           — cybersecurity dataset (Apache 2.0)
+  14. PayloadsAllTheThings  — web attack payloads (MIT)
+  15. NIST Training         — cybersecurity training (public domain)
+  16. Loghub                — system log datasets (research)
 
 Excluded (license issues):
   - MIMIC-III: PhysioNet DUA prohibits LLM training
   - Exploit-DB: GPL v2, derivative work status unclear
 
 Not automated (require manual access):
-  - SEC EDGAR: https://www.sec.gov/edgar/ (bulk download)
   - CourtListener: https://www.courtlistener.com/api/ (API access)
   - MIDV-500: https://arxiv.org/abs/1807.05786 (request from authors)
 
@@ -30,6 +34,7 @@ Usage:
   python download_all.py                    # download all
   python download_all.py --skip enron       # skip large downloads
   python download_all.py --only military    # only military datasets
+  python download_all.py --only new         # only new HuggingFace datasets
 """
 
 import argparse
@@ -41,20 +46,26 @@ DATASETS = [
     ("seclists", "download_seclists", "SecLists (~200MB)", "MIT"),
     ("mitre", "download_mitre", "MITRE ATT&CK CTI (~50MB)", "royalty_free"),
     ("nvd", "download_nvd", "NVD CVE Feeds (~50MB)", "public_domain"),
-    ("mtsamples", "download_mtsamples", "MTSamples Medical (~5MB)", "CC0"),
-    ("owasp", "download_owasp", "OWASP WSTG (~30MB)", "CC_BY_SA_4.0"),
     ("cia_foia", "download_cia_foia", "CIA FOIA Declassified (~10MB)", "public_domain"),
     ("crs", "download_crs", "CRS Defense Reports (~20MB)", "public_domain"),
     ("army", "download_army_doctrine", "Army Doctrine Publications (~50MB)", "public_domain"),
     ("gao", "download_gao", "GAO Defense/Nuclear Reports (~10MB)", "public_domain"),
     ("dtic", "download_dtic", "DTIC Public Reports (~10MB)", "public_domain"),
+    ("ai4privacy", "download_ai4privacy", "ai4privacy PII-masking-300k", "Apache_2.0"),
+    ("phishing", "download_phishing", "Phishing Email/SMS Dataset", "Apache_2.0"),
+    ("edgar", "download_edgar", "SEC EDGAR Filings (5K samples)", "public_domain"),
+    ("fenrir", "download_fenrir", "Fenrir Cybersecurity v2.0", "Apache_2.0"),
+    ("payloads", "download_payloads", "PayloadsAllTheThings (~200MB)", "MIT"),
+    ("nist_training", "download_nist_training", "NIST Cybersecurity Training", "public_domain"),
+    ("loghub", "download_loghub", "Loghub System Logs", "research"),
 ]
 
 # Group tags for --only flag
 GROUPS = {
     "military": {"cia_foia", "crs", "army", "gao", "dtic"},
-    "security": {"seclists", "mitre", "nvd", "owasp"},
-    "pii": {"enron", "mtsamples"},
+    "security": {"seclists", "mitre", "nvd", "payloads", "fenrir", "nist_training"},
+    "pii": {"enron", "ai4privacy", "phishing"},
+    "new": {"ai4privacy", "phishing", "edgar", "fenrir", "payloads", "nist_training", "loghub"},
 }
 
 
@@ -98,7 +109,6 @@ def main():
 
     print()
     print("  ── Manual Downloads Required ──")
-    print("  SEC EDGAR:      https://www.sec.gov/edgar/          (public domain)")
     print("  CourtListener:  https://www.courtlistener.com/api/  (public domain)")
     print("  MIDV-500:       https://arxiv.org/abs/1807.05786    (CC/public domain)")
     print()

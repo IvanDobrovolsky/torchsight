@@ -77,7 +77,7 @@ def process(seed: int = 42):
 
             # Get CVSS severity
             metrics = cve.get("metrics", {})
-            severity = "warning"
+            severity = "medium"
             cvss_score = None
             for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
                 if version in metrics:
