@@ -45,7 +45,9 @@ def prepare_report_data(raw: dict) -> dict:
     non_safe = [f for f in all_findings if f.get("category") != "safe"]
 
     critical = sum(1 for f in non_safe if f.get("severity") == "Critical")
-    warning = sum(1 for f in non_safe if f.get("severity") == "Warning")
+    high = sum(1 for f in non_safe if f.get("severity") == "High")
+    medium = sum(1 for f in non_safe if f.get("severity") == "Medium")
+    low = sum(1 for f in non_safe if f.get("severity") == "Low")
     info = sum(1 for f in non_safe if f.get("severity") == "Info")
 
     flagged_files = []
@@ -81,7 +83,9 @@ def prepare_report_data(raw: dict) -> dict:
         "total_files": len(files),
         "total_findings": len(non_safe),
         "critical_count": critical,
-        "warning_count": warning,
+        "high_count": high,
+        "medium_count": medium,
+        "low_count": low,
         "info_count": info,
         "clean_count": len(clean_files),
         "flagged_files": flagged_files,

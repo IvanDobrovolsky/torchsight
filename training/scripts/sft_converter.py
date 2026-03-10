@@ -26,7 +26,7 @@ from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
-COMBINED_PATH = DATA_DIR / "processed" / "combined_train.jsonl"
+COMBINED_PATH = DATA_DIR / "processed" / "combined_train_balanced.jsonl"
 OUTPUT_DIR = DATA_DIR / "sft"
 
 # System prompt for the model

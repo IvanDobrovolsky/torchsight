@@ -122,7 +122,9 @@
   }
 
   .stat-critical .number { color: #DC2626; }
-  .stat-warning .number { color: #D97706; }
+  .stat-high .number { color: #EA580C; }
+  .stat-medium .number { color: #D97706; }
+  .stat-low .number { color: #CA8A04; }
   .stat-info .number { color: #8B83A3; }
   .stat-files .number { color: #7C3AED; }
   .stat-clean .number { color: #059669; }
@@ -200,9 +202,19 @@
     color: #DC2626;
   }
 
-  .severity-warning {
+  .severity-high {
+    background: #FFF7ED;
+    color: #EA580C;
+  }
+
+  .severity-medium {
     background: #FFFBEB;
     color: #D97706;
+  }
+
+  .severity-low {
+    background: #FEFCE8;
+    color: #CA8A04;
   }
 
   .severity-info {
@@ -343,7 +355,7 @@
   <div class="cover-meta">
     <strong>Date:</strong> {{ timestamp }}<br>
     <strong>Files Scanned:</strong> {{ total_files }}<br>
-    <strong>Findings:</strong> {{ total_findings }} ({{ critical_count }} critical, {{ warning_count }} warning, {{ info_count }} info)
+    <strong>Findings:</strong> {{ total_findings }} ({{ critical_count }} critical, {{ high_count }} high, {{ medium_count }} medium, {{ low_count }} low, {{ info_count }} info)
   </div>
 
   <div class="cover-badge">CONFIDENTIAL &mdash; ALL DATA PROCESSED ON-PREMISE &mdash; NO CLOUD TRANSMISSION</div>
@@ -362,9 +374,13 @@
       <div class="number">{{ critical_count }}</div>
       <div class="label">Critical</div>
     </div>
-    <div class="stat-card stat-warning">
-      <div class="number">{{ warning_count }}</div>
-      <div class="label">Warning</div>
+    <div class="stat-card stat-high">
+      <div class="number">{{ high_count }}</div>
+      <div class="label">High</div>
+    </div>
+    <div class="stat-card stat-medium">
+      <div class="number">{{ medium_count }}</div>
+      <div class="label">Medium</div>
     </div>
     <div class="stat-card stat-info">
       <div class="number">{{ info_count }}</div>

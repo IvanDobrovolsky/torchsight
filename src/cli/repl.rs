@@ -313,10 +313,12 @@ async fn run_scan(
         style(clean).green().bold(),
     );
     println!(
-        "  {} total findings ({} critical, {} warning, {} info)",
+        "  {} total findings ({} critical, {} high, {} medium, {} low, {} info)",
         style(report.total_findings()).bold(),
         style(report.critical_count()).red().bold(),
-        style(report.warning_count()).yellow().bold(),
+        style(report.high_count()).red(),
+        style(report.medium_count()).yellow().bold(),
+        style(report.low_count()).yellow(),
         style(report.info_count()).dim(),
     );
 

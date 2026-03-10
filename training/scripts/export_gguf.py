@@ -28,7 +28,7 @@ OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "o
 def parse_args():
     config = {
         "adapter": None,
-        "quant": "q4_k_m",  # Good balance of quality/size
+        "quant": "f16",  # Best quality — also export q8_0 for smaller deployments
         "llama_cpp": None,  # Auto-detect
     }
     args = sys.argv[1:]
@@ -128,7 +128,7 @@ def main():
 
     # Step 2: Convert to GGUF
     print(f"\n[2/3] Converting to GGUF format...")
-    gguf_path = merged_path.parent / f"torchsight-sentinel-{config['quant']}.gguf"
+    gguf_path = merged_path.parent / f"beam-1.0-{config['quant']}.gguf"
 
     convert_script = find_llama_cpp() if not config.get("llama_cpp") else Path(config["llama_cpp"])
 
@@ -152,7 +152,18 @@ def main():
     modelfile_path = merged_path.parent / "Modelfile"
     modelfile_content = f"""FROM {gguf_path}
 
-SYSTEM \"\"\"You are TorchSight Sentinel, a cybersecurity document classifier. Analyze text for security threats, sensitive data, credentials, malicious content, and policy violations. Output findings as a JSON array with category, subcategory, severity, and explanation for each finding.\"\"\"
+SYSTEM \"\"\"You are TorchSight, a cybersecurity document classifier. Analyze the provided text and identify ALL security-relevant findings.
+
+For each finding, output a JSON object with:
+- category: one of [pii, credentials, financial, medical, confidential, malicious, safe]
+- subcategory: specific type (e.g., pii.identity, malicious.injection, credentials.api_key)
+- severity: one of [critical, high, medium, low, info]
+- explanation: detailed explanation including specific values found (redact sensitive parts, e.g., SSN: 412-XX-7890, API key: sk_live_51HG...). Explain what was found, why it matters, and the risk.
+
+If a document contains multiple types of sensitive data, return a finding for EACH one.
+If the text is clean/safe, output a single finding with category "safe".
+
+Respond ONLY with a JSON array of findings.\"\"\"
 
 PARAMETER temperature 0.1
 PARAMETER top_p 0.9
@@ -167,8 +178,8 @@ PARAMETER num_predict 2048
     print(f"\nGGUF model:  {gguf_path}")
     print(f"Modelfile:   {modelfile_path}")
     print(f"\nTo use with Ollama:")
-    print(f"  ollama create torchsight/sentinel -f {modelfile_path}")
-    print(f"  ollama run torchsight/sentinel")
+    print(f"  ollama create torchsight/beam -f {modelfile_path}")
+    print(f"  ollama run torchsight/beam")
 
 
 if __name__ == "__main__":

@@ -120,7 +120,7 @@ def parse_email(path: Path) -> dict | None:
         findings.append({
             "category": "pii",
             "subcategory": "pii.identity",
-            "severity": "critical" if ssns else "warning",
+            "severity": "critical" if ssns else "medium",
             "compliance": ["GDPR", "CCPA"] + (["HIPAA"] if ssns else []),
             "fields": fields_identity,
         })
@@ -136,7 +136,7 @@ def parse_email(path: Path) -> dict | None:
         findings.append({
             "category": "pii",
             "subcategory": "pii.contact",
-            "severity": "warning",
+            "severity": "medium",
             "compliance": ["GDPR", "CCPA"],
             "fields": fields_contact,
         })
@@ -157,7 +157,7 @@ def parse_email(path: Path) -> dict | None:
         findings.append({
             "category": "confidential",
             "subcategory": "confidential.internal",
-            "severity": "warning",
+            "severity": "high",
             "compliance": [],
             "fields": {"markers": conf_matches},
         })
@@ -168,7 +168,7 @@ def parse_email(path: Path) -> dict | None:
         findings.append({
             "category": "financial",
             "subcategory": "financial.transaction",
-            "severity": "warning",
+            "severity": "high",
             "compliance": ["SOX"],
             "fields": {"amounts": list(amounts)[:5], "keywords": fin_matches},
         })

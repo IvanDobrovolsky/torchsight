@@ -25,8 +25,8 @@ On-premise cybersecurity scanner. Rust CLI + local LLMs (Ollama). Scans text/ima
 - `install.sh` — cross-platform installer (Linux + macOS)
 
 ## Beam Model v1.0
-- Llama 3.1 8B + LoRA (r=64, alpha=128), 3 epochs, 86K balanced samples
-- Eval loss: 0.4227, test score: 9.5/10
+- Llama 3.1 8B + LoRA (r=128, alpha=256), 5 epochs, 78,358 balanced samples from 18 sources
+- Training split: 74,441 train / 3,917 val
 - GGUFs in `training/output/`: `beam-1.0-f16.gguf` (15GB), `beam-1.0-q8.gguf` (8GB)
 - Output: multiple JSON arrays `[{category, subcategory, severity, explanation}]`
 - Known quirk: generates repetitive filler text after findings (hits num_predict 2048 limit)
@@ -52,12 +52,27 @@ cargo build --release           # Just build
 ./target/release/torchsight /path  # Scan directly
 ```
 
+## Training Data Sources (all verified safe for AI training)
+- **Public domain (US Gov):** Enron (FERC), NVD/NIST, CIA FOIA, CRS Reports, Army Doctrine, SEC EDGAR
+- **Apache 2.0:** AI4Privacy (300K PII), Phishing Dataset, Fenrir v2.0 (cybersecurity), NIST Training
+- **MIT:** SecLists, PayloadsAllTheThings
+- **Royalty-free:** MITRE ATT&CK
+- **CC-BY 4.0:** GHSA (GitHub Security Advisories)
+- **Research-free:** Loghub (system logs)
+- **Excluded:** OWASP (CC-BY-SA ShareAlike risk), MTSamples (provenance unclear), Exploit-DB (GPL)
+
 ## Training
 ```bash
 cd training
-python scripts/rebalance_dataset.py    # Balance dataset
-python scripts/sft_converter.py        # Convert to SFT format
-python scripts/train_lora.py           # Train LoRA
-python scripts/export_gguf.py          # Export to GGUF
+uv venv && source .venv/bin/activate
+uv pip install requests tqdm datasets beautifulsoup4 lxml
+python scripts/download_all.py              # Download all datasets
+python scripts/processors/process_all.py    # Process raw → JSONL
+python scripts/processors/synth_generator.py  # Generate synthetic data
+python scripts/processors/hard_negatives_generator.py  # Hard negatives
+python scripts/rebalance_dataset.py         # Balance dataset
+python scripts/sft_converter.py             # Convert to SFT format
+python scripts/train_lora.py                # Train LoRA
+python scripts/export_gguf.py               # Export to GGUF
 ```
 Compatible: trl 0.11.4 + transformers 4.45.2 + peft 0.13.2
