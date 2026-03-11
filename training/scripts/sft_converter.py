@@ -55,6 +55,32 @@ INSTRUCTION_TEMPLATES = [
 ]
 
 
+KNOWN_CATEGORIES = {"pii", "credentials", "financial", "medical", "confidential", "malicious", "safe"}
+
+
+def fix_category_subcategory(findings: list[dict]) -> int:
+    """Validate and repair category-subcategory consistency in-place.
+
+    The subcategory prefix (before the '.') is the source of truth.
+    If the prefix is a known category and doesn't match the stated category,
+    override the category with the prefix.
+
+    Returns the number of findings that were fixed.
+    """
+    fixed = 0
+    for finding in findings:
+        subcategory = finding.get("subcategory", "")
+        if not subcategory or "." not in subcategory:
+            continue
+        prefix = subcategory.split(".")[0]
+        if prefix not in KNOWN_CATEGORIES:
+            continue
+        if finding.get("category", "") != prefix:
+            finding["category"] = prefix
+            fixed += 1
+    return fixed
+
+
 def format_findings_output(findings: list[dict], source_text: str = "") -> str:
     """Format findings as the expected model output with rich explanations."""
     output_findings = []
@@ -574,6 +600,15 @@ def main():
                 records.append(json.loads(line))
 
     print(f"  Loaded {len(records):,} records")
+
+    # Validate and repair category-subcategory consistency
+    total_fixed = 0
+    for record in records:
+        findings = record.get("findings", [])
+        if findings:
+            total_fixed += fix_category_subcategory(findings)
+    if total_fixed:
+        print(f"  Fixed {total_fixed} category-subcategory mismatches")
 
     # Shuffle
     random.shuffle(records)

@@ -109,10 +109,10 @@ def process_geekyrakshit():
                     }]
                 })
 
-    # Cap at 2000 to keep balanced
-    if len(samples) > 2000:
+    # Cap at 5000
+    if len(samples) > 5000:
         random.shuffle(samples)
-        samples = samples[:2000]
+        samples = samples[:5000]
 
     print(f"  geekyrakshit: {len(samples)} injection samples")
     return samples
@@ -133,10 +133,10 @@ def main():
             seen_ids.add(s["id"])
             unique.append(s)
 
-    # Cap total at 2500
-    if len(unique) > 2500:
+    # Cap total at 5000
+    if len(unique) > 5000:
         random.shuffle(unique)
-        unique = unique[:2500]
+        unique = unique[:5000]
 
     with open(out_file, "w") as f:
         for s in unique:

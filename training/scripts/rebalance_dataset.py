@@ -22,6 +22,32 @@ OUTPUT = DATA_DIR / "combined_train_balanced.jsonl"
 
 random.seed(42)
 
+KNOWN_CATEGORIES = {"pii", "credentials", "financial", "medical", "confidential", "malicious", "safe"}
+
+
+def fix_category_subcategory(findings: list) -> int:
+    """Validate and repair category-subcategory consistency in-place.
+
+    The subcategory prefix (before the '.') is the source of truth.
+    If the prefix is a known category and doesn't match the stated category,
+    override the category with the prefix.
+
+    Returns the number of findings that were fixed.
+    """
+    fixed = 0
+    for finding in findings:
+        subcategory = finding.get("subcategory", "")
+        if not subcategory or "." not in subcategory:
+            continue
+        prefix = subcategory.split(".")[0]
+        if prefix not in KNOWN_CATEGORIES:
+            continue
+        if finding.get("category", "") != prefix:
+            finding["category"] = prefix
+            fixed += 1
+    return fixed
+
+
 # =============================================================================
 # STEP 1: Load and bucket existing data by primary subcategory
 # =============================================================================
@@ -29,20 +55,24 @@ random.seed(42)
 print("Loading existing data...")
 records_by_subcat = defaultdict(list)
 all_records = []
+total_fixed = 0
 
 with open(INPUT) as f:
     for line in f:
         rec = json.loads(line)
-        all_records.append(rec)
-        # Primary subcategory = first finding's subcategory
+        # Validate and repair category-subcategory consistency
         findings = rec.get("findings", [])
         if findings:
+            total_fixed += fix_category_subcategory(findings)
             subcat = findings[0].get("subcategory", "unknown")
         else:
             subcat = "unknown"
+        all_records.append(rec)
         records_by_subcat[subcat].append(rec)
 
 print(f"Loaded {len(all_records)} records across {len(records_by_subcat)} subcategories")
+if total_fixed:
+    print(f"  Fixed {total_fixed} category-subcategory mismatches")
 
 # =============================================================================
 # STEP 2: Downsample overrepresented subcategories

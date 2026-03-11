@@ -118,7 +118,7 @@ def extract_section_sample(record: dict, section_key: str, config: dict) -> dict
     }
 
 
-def process(max_samples: int = 3000, seed: int = 42):
+def process(max_samples: int = 6000, seed: int = 42):
     """Process EDGAR 10-K filings and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -58,6 +58,7 @@ DATASETS = [
     ("payloads", "download_payloads", "PayloadsAllTheThings (~200MB)", "MIT"),
     ("nist_training", "download_nist_training", "NIST Cybersecurity Training", "public_domain"),
     ("loghub", "download_loghub", "Loghub System Logs", "research"),
+    ("prompt_injection", "download_prompt_injection", "Prompt Injection Datasets (HF)", "Apache_2.0"),
 ]
 
 # Group tags for --only flag
@@ -65,7 +66,7 @@ GROUPS = {
     "military": {"cia_foia", "crs", "army", "gao", "dtic"},
     "security": {"seclists", "mitre", "nvd", "payloads", "fenrir", "nist_training"},
     "pii": {"enron", "ai4privacy", "phishing"},
-    "new": {"ai4privacy", "phishing", "edgar", "fenrir", "payloads", "nist_training", "loghub"},
+    "new": {"ai4privacy", "phishing", "edgar", "fenrir", "payloads", "nist_training", "loghub", "prompt_injection"},
 }
 
 

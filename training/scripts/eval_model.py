@@ -41,7 +41,8 @@ def parse_args():
     config = {
         "adapter": None,
         "model": None,
-        "val_data": str(DATA_DIR / "sft" / "val_chatml.jsonl"),
+        "val_data": str(DATA_DIR / "sft" / "val_alpaca.jsonl"),
+        "format": "alpaca",  # alpaca or chatml
         "max_samples": 0,  # 0 = all
         "batch_size": 1,
         "max_new_tokens": 1024,
@@ -79,16 +80,22 @@ def load_val_data(path: str, max_samples: int) -> list[dict]:
     return records
 
 
-def extract_expected(record: dict) -> tuple[str, list[dict]]:
-    """Extract input text and expected findings from a ChatML record."""
-    messages = record["messages"]
-    user_msg = next(m["content"] for m in messages if m["role"] == "user")
-    assistant_msg = next(m["content"] for m in messages if m["role"] == "assistant")
+def extract_expected(record: dict, fmt: str = "alpaca") -> tuple[str, list[dict]]:
+    """Extract input text and expected findings from a record."""
+    if fmt == "chatml":
+        messages = record["messages"]
+        user_msg = next(m["content"] for m in messages if m["role"] == "user")
+        assistant_msg = next(m["content"] for m in messages if m["role"] == "assistant")
+    else:  # alpaca
+        user_msg = record.get("input", "")
+        assistant_msg = record.get("output", "")
 
     try:
         expected = json.loads(assistant_msg)
     except json.JSONDecodeError:
         expected = []
+    if isinstance(expected, dict):
+        expected = [expected]
 
     return user_msg, expected
 
@@ -223,7 +230,7 @@ def compute_metrics(results: list[dict]) -> dict:
 def print_report(metrics: dict):
     """Print a formatted evaluation report."""
     print(f"\n{'=' * 70}")
-    print("  TorchSight Sentinel — Evaluation Report")
+    print("  TorchSight Beam v1.0 — Evaluation Report")
     print(f"{'=' * 70}")
 
     print(f"\n  Total samples evaluated:  {metrics['total_samples']}")
@@ -365,12 +372,17 @@ def main():
     results = []
     start_time = time.time()
 
+    fmt = config.get("format", "alpaca")
     for i, record in enumerate(val_records):
-        user_msg, expected = extract_expected(record)
+        user_msg, expected = extract_expected(record, fmt)
 
-        # Build prompt (system + user only, no assistant)
-        messages = [m for m in record["messages"] if m["role"] != "assistant"]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        # Build prompt
+        if fmt == "chatml":
+            messages = [m for m in record["messages"] if m["role"] != "assistant"]
+            prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        else:  # alpaca
+            instruction = record.get("instruction", "")
+            prompt = f"### Instruction:\n{instruction}\n\n### Input:\n{user_msg}\n\n### Response:\n"
 
         inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096)
         inputs = {k: v.to(model.device) for k, v in inputs.items()}

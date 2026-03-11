@@ -11,8 +11,8 @@ Requirements:
     git clone https://github.com/ggerganov/llama.cpp && cd llama.cpp && make
 
 Usage:
-    python export_gguf.py --adapter ./output/torchsight-llama-lora
-    python export_gguf.py --adapter ./output/torchsight-llama-lora --quant q4_k_m
+    python export_gguf.py --adapter ./output/torchsight-qwen-lora
+    # Exports both q4_K_M (~17GB) and q8_0 (~28GB) for Qwen 3.5 27B
 """
 
 import json
@@ -28,7 +28,7 @@ OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "o
 def parse_args():
     config = {
         "adapter": None,
-        "quant": "f16",  # Best quality — also export q8_0 for smaller deployments
+        "quant": "q8_0",  # Default: q8 (~34GB for 32B model). Use f16 for max quality (~64GB)
         "llama_cpp": None,  # Auto-detect
     }
     args = sys.argv[1:]
@@ -126,31 +126,37 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    # Step 2: Convert to GGUF
-    print(f"\n[2/3] Converting to GGUF format...")
-    gguf_path = merged_path.parent / f"beam-1.0-{config['quant']}.gguf"
-
+    # Step 2: Convert to GGUF — export q4_K_M (32GB Mac) and q8_0 (48GB+ GPU / 64GB Mac)
+    quant_levels = ["q4_K_M", "q8_0"]
     convert_script = find_llama_cpp() if not config.get("llama_cpp") else Path(config["llama_cpp"])
 
-    if convert_script and convert_script.exists():
-        subprocess.run([
-            sys.executable, str(convert_script),
-            str(merged_path),
-            "--outtype", config["quant"],
-            "--outfile", str(gguf_path),
-        ], check=True)
-    else:
+    if not (convert_script and convert_script.exists()):
         print(f"\n  WARNING: llama.cpp convert script not found.")
         print(f"  To convert manually:")
         print(f"    git clone https://github.com/ggerganov/llama.cpp")
         print(f"    cd llama.cpp && pip install -r requirements.txt")
-        print(f"    python convert_hf_to_gguf.py {merged_path} --outtype {config['quant']} --outfile {gguf_path}")
+        for q in quant_levels:
+            gguf_path = merged_path.parent / f"beam-1.0-{q}.gguf"
+            print(f"    python convert_hf_to_gguf.py {merged_path} --outtype {q} --outfile {gguf_path}")
         return
 
-    # Step 3: Create Ollama Modelfile
+    gguf_paths = {}
+    for i, quant in enumerate(quant_levels):
+        gguf_path = merged_path.parent / f"beam-1.0-{quant}.gguf"
+        gguf_paths[quant] = gguf_path
+        print(f"\n[2.{i+1}/3] Converting to GGUF ({quant})...")
+        subprocess.run([
+            sys.executable, str(convert_script),
+            str(merged_path),
+            "--outtype", quant,
+            "--outfile", str(gguf_path),
+        ], check=True)
+
+    # Step 3: Create Ollama Modelfile (points to q4_K_M — fits 32GB Mac)
     print(f"\n[3/3] Creating Ollama Modelfile...")
+    default_gguf = gguf_paths["q4_K_M"]
     modelfile_path = merged_path.parent / "Modelfile"
-    modelfile_content = f"""FROM {gguf_path}
+    modelfile_content = f"""FROM {default_gguf}
 
 SYSTEM \"\"\"You are TorchSight, a cybersecurity document classifier. Analyze the provided text and identify ALL security-relevant findings.
 
@@ -175,11 +181,14 @@ PARAMETER num_predict 2048
     print(f"\n{'=' * 60}")
     print(f"  Export Complete!")
     print(f"{'=' * 60}")
-    print(f"\nGGUF model:  {gguf_path}")
-    print(f"Modelfile:   {modelfile_path}")
-    print(f"\nTo use with Ollama:")
+    for quant, path in gguf_paths.items():
+        size_gb = path.stat().st_size / (1024**3) if path.exists() else 0
+        print(f"\n  {quant}: {path} ({size_gb:.1f} GB)")
+    print(f"\n  Modelfile: {modelfile_path}")
+    print(f"\nTo use with Ollama (q4_K_M default, fits 32GB Mac):")
     print(f"  ollama create torchsight/beam -f {modelfile_path}")
-    print(f"  ollama run torchsight/beam")
+    print(f"\nFor q8 quality (edit Modelfile FROM line to beam-1.0-q8_0.gguf):")
+    print(f"  q8_0 (~28GB) — requires 48GB+ GPU or 64GB Mac")
 
 
 if __name__ == "__main__":
