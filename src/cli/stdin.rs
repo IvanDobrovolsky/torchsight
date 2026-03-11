@@ -9,7 +9,7 @@ use crate::report::ScanReport;
 use crate::scanner;
 
 /// Scan content from stdin
-pub async fn scan_stdin(_config: &ScanConfig, ollama: &OllamaClient) -> Result<ScanReport> {
+pub async fn scan_stdin(config: &ScanConfig, ollama: &OllamaClient) -> Result<ScanReport> {
     let mut content = String::new();
     std::io::stdin().read_to_string(&mut content)?;
 
@@ -17,11 +17,13 @@ pub async fn scan_stdin(_config: &ScanConfig, ollama: &OllamaClient) -> Result<S
         anyhow::bail!("No input received from stdin");
     }
 
-    println!(
-        "\n  {} Scanning stdin ({} bytes)...\n",
-        style("[STDIN]").cyan().bold(),
-        content.len()
-    );
+    if !config.quiet {
+        eprintln!(
+            "\n  {} Scanning stdin ({} bytes)...\n",
+            style("[STDIN]").cyan().bold(),
+            content.len()
+        );
+    }
 
     let mut report = ScanReport::new();
 
@@ -63,16 +65,18 @@ pub async fn scan_diff(
         .collect();
 
     if changed_files.is_empty() {
-        println!("  No changed files since {}", git_ref);
+        eprintln!("  No changed files since {}", git_ref);
         return Ok(ScanReport::new());
     }
 
-    println!(
-        "\n  {} Scanning {} changed file(s) since {}...\n",
-        style("[DIFF]").cyan().bold(),
-        changed_files.len(),
-        style(git_ref).cyan()
-    );
+    if !config.quiet {
+        eprintln!(
+            "\n  {} Scanning {} changed file(s) since {}...\n",
+            style("[DIFF]").cyan().bold(),
+            changed_files.len(),
+            style(git_ref).cyan()
+        );
+    }
 
     let file_types = vec!["text".into(), "image".into()];
     let mut all_files = Vec::new();
@@ -88,7 +92,7 @@ pub async fn scan_diff(
     }
 
     if all_files.is_empty() {
-        println!("  No scannable files in diff.");
+        eprintln!("  No scannable files in diff.");
         return Ok(ScanReport::new());
     }
 

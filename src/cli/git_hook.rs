@@ -133,6 +133,7 @@ pub async fn scan_staged(ollama_url: &str, text_model: &str, vision_model: &str)
         ollama_url: ollama_url.to_string(),
         max_size_bytes: 50 * 1024 * 1024, // 50MB limit for pre-commit
         format: "terminal".to_string(),
+        quiet: false,
     };
 
     // Discover and scan each staged file

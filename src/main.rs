@@ -93,21 +93,26 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    println!();
-    for line in [
-        r"   _                _         _       _     _   ",
-        r"  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_ ",
-        r"  |  _/ _ \| '_/ __| ' \(_-< | |/ _` | ' \ |  _|",
-        r"   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|",
-        r"                                |___/            ",
-    ] {
-        println!("{}", style(line).magenta());
+    // When outputting structured formats via stdin/diff, suppress banner to keep stdout clean
+    let quiet = (args.stdin || args.diff.is_some()) && args.format != "json";
+
+    if !quiet {
+        println!();
+        for line in [
+            r"   _                _         _       _     _   ",
+            r"  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_ ",
+            r"  |  _/ _ \| '_/ __| ' \(_-< | |/ _` | ' \ |  _|",
+            r"   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|",
+            r"                                |___/            ",
+        ] {
+            println!("{}", style(line).magenta());
+        }
+        println!(
+            "   {} v{}\n",
+            style("on-premise security scanner").dim(),
+            env!("CARGO_PKG_VERSION")
+        );
     }
-    println!(
-        "   {} v{}\n",
-        style("on-premise security scanner").dim(),
-        env!("CARGO_PKG_VERSION")
-    );
 
     // Handle subcommands that don't need full setup
     match &args.command {
@@ -136,20 +141,22 @@ async fn main() -> Result<()> {
     // Health check — only require Ollama for scanning
     let ollama_ok = match ollama.health_check().await {
         Ok(true) => {
-            println!(
-                "   {} Ollama connected (model: {})",
-                style("[OK]").green().bold(),
-                style(ollama.text_model()).cyan(),
-            );
+            if !quiet {
+                println!(
+                    "   {} Ollama connected (model: {})",
+                    style("[OK]").green().bold(),
+                    style(ollama.text_model()).cyan(),
+                );
+            }
             true
         }
         _ => {
-            println!(
+            eprintln!(
                 "   {} Ollama not reachable at {}",
                 style("[ERR]").red().bold(),
                 &ollama_url
             );
-            println!(
+            eprintln!(
                 "   {} Install: ollama serve && ollama pull {}\n",
                 style(">>").dim(),
                 &text_model,
@@ -164,22 +171,24 @@ async fn main() -> Result<()> {
     }
 
     // Check Tesseract
-    if analyzers::ocr::is_available() {
-        println!(
-            "   {} Tesseract OCR available",
-            style("[OK]").green().bold()
-        );
-    } else {
-        println!(
-            "   {} Tesseract not found (image text extraction disabled)",
-            style("[WARN]").yellow().bold()
-        );
+    if !quiet {
+        if analyzers::ocr::is_available() {
+            println!(
+                "   {} Tesseract OCR available",
+                style("[OK]").green().bold()
+            );
+        } else {
+            println!(
+                "   {} Tesseract not found (image text extraction disabled)",
+                style("[WARN]").yellow().bold()
+            );
+        }
+
+        println!();
     }
 
-    println!();
-
     if !ollama_ok {
-        println!(
+        eprintln!(
             "  TorchSight requires Ollama to scan files.\n\
              \n  Quick start:\n\
              \n    1. Install Ollama:   curl -fsSL https://ollama.com/install.sh | sh\
@@ -198,6 +207,7 @@ async fn main() -> Result<()> {
         ollama_url,
         max_size_bytes: max_size_mb * 1024 * 1024,
         format,
+        quiet,
     };
 
     // Handle watch mode

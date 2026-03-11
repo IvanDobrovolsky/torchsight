@@ -142,7 +142,7 @@ pub fn discover_files(
         anyhow::bail!("Path does not exist: {}", root.display());
     }
 
-    println!(
+    eprintln!(
         "  {} Scanning: {}",
         console::style("[PATH]").dim(),
         console::style(root.display()).cyan()
@@ -217,21 +217,21 @@ pub fn discover_files(
     }
 
     if skipped_size > 0 {
-        println!(
+        eprintln!(
             "  {} Skipped {} files exceeding size limit",
             style("[INFO]").dim(),
             skipped_size
         );
     }
     if skipped_type > 0 {
-        println!(
+        eprintln!(
             "  {} Skipped {} files (unsupported type)",
             style("[INFO]").dim(),
             skipped_type
         );
     }
     if skipped_ignored > 0 {
-        println!(
+        eprintln!(
             "  {} Skipped {} files (.torchsightignore)",
             style("[INFO]").dim(),
             skipped_ignored
