@@ -97,6 +97,56 @@ impl OllamaClient {
         Ok(resp.status().is_success())
     }
 
+    /// Check if a model is available locally, and pull it if not
+    pub async fn ensure_model(&self, model: &str) -> Result<bool> {
+        // Check if model exists via /api/show
+        let resp = self
+            .client
+            .post(format!("{}/api/show", self.base_url))
+            .json(&serde_json::json!({ "name": model }))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await;
+
+        match resp {
+            Ok(r) if r.status().is_success() => return Ok(true), // Already installed
+            _ => {}
+        }
+
+        // Model not found — attempt to pull
+        println!(
+            "  {} Model '{}' not found locally. Pulling...",
+            console::style("[AUTO-PULL]").yellow().bold(),
+            model
+        );
+
+        let pull_resp = self
+            .client
+            .post(format!("{}/api/pull", self.base_url))
+            .json(&serde_json::json!({ "name": model, "stream": false }))
+            .timeout(std::time::Duration::from_secs(3600)) // 1 hour for large models
+            .send()
+            .await?;
+
+        if pull_resp.status().is_success() {
+            println!(
+                "  {} Model '{}' pulled successfully.",
+                console::style("[OK]").green().bold(),
+                model
+            );
+            Ok(true)
+        } else {
+            let err = pull_resp.text().await.unwrap_or_default();
+            println!(
+                "  {} Failed to pull '{}': {}",
+                console::style("[ERROR]").red().bold(),
+                model,
+                err
+            );
+            Ok(false)
+        }
+    }
+
     /// Text analysis — uses the fast text model
     pub async fn generate(&self, prompt: &str) -> Result<String> {
         self.generate_with_model(&self.text_model, prompt).await

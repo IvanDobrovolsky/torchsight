@@ -14,7 +14,7 @@ pub async fn run(
     ollama: OllamaClient,
     initial_path: Option<String>,
     interactive: bool,
-) -> Result<()> {
+) -> Result<Option<ScanReport>> {
     let mut session = SessionMemory::new();
     let mut last_report: Option<ScanReport> = None;
 
@@ -48,7 +48,7 @@ pub async fn run(
 
             if !enter_interactive {
                 println!("\n{}\n", style("Done.").dim());
-                return Ok(());
+                return Ok(last_report);
             }
         }
     } else {
@@ -139,7 +139,7 @@ pub async fn run(
         }
     }
 
-    Ok(())
+    Ok(last_report)
 }
 
 /// In interactive mode, try to understand natural language commands
