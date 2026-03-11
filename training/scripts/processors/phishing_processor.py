@@ -86,7 +86,7 @@ def classify_safe(text: str) -> dict:
     }
 
 
-def process(max_samples: int = 3000, seed: int = 42):
+def process(max_samples: int = 8000, seed: int = 42):
     """Process phishing dataset and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -131,8 +131,8 @@ def process(max_samples: int = 3000, seed: int = 42):
     print(f"  Legitimate: {len(safe_samples):,}")
 
     # Sample: 2000 phishing, 1000 safe
-    max_phishing = min(2000, len(phishing_samples))
-    max_safe = min(1000, len(safe_samples))
+    max_phishing = min(6000, len(phishing_samples))
+    max_safe = min(2000, len(safe_samples))
 
     random.shuffle(phishing_samples)
     random.shuffle(safe_samples)

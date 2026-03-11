@@ -139,7 +139,7 @@ def parse_record(record: dict) -> dict | None:
     }
 
 
-def process(max_samples: int = 5000, seed: int = 42):
+def process(max_samples: int = 10000, seed: int = 42):
     """Process AI4Privacy dataset and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)

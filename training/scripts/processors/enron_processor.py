@@ -207,7 +207,7 @@ def score_email(parsed: dict) -> int:
     return score
 
 
-def process(max_samples: int = 2000, seed: int = 42):
+def process(max_samples: int = 8000, seed: int = 42):
     """Process Enron emails and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -229,7 +229,7 @@ def process(max_samples: int = 2000, seed: int = 42):
     print(f"Found {len(all_paths):,} email files")
 
     # Sample a manageable subset for initial pass
-    sample_size = min(50_000, len(all_paths))
+    sample_size = min(150_000, len(all_paths))
     sampled = random.sample(all_paths, sample_size)
 
     print(f"Parsing {sample_size:,} sampled emails...")
@@ -275,5 +275,5 @@ def process(max_samples: int = 2000, seed: int = 42):
 
 
 if __name__ == "__main__":
-    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
+    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     process(max_samples=max_n)

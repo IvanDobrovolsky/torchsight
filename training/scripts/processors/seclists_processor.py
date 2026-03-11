@@ -98,7 +98,7 @@ PASSWORD_CONTEXTS = [
 ]
 
 
-def read_payloads(rel_path: str, max_lines: int = 500) -> list[str]:
+def read_payloads(rel_path: str, max_lines: int = 2000) -> list[str]:
     """Read payload lines from a SecLists file."""
     full_path = RAW_DIR / rel_path
     if not full_path.exists():
@@ -121,7 +121,7 @@ def read_payloads(rel_path: str, max_lines: int = 500) -> list[str]:
     return lines
 
 
-def read_webshells(max_files: int = 61) -> list[dict]:
+def read_webshells(max_files: int = 300) -> list[dict]:
     """Read web shell files as complete samples."""
     shells_dir = RAW_DIR / "Web-Shells"
     if not shells_dir.exists():
@@ -152,7 +152,7 @@ def wrap_payload(payload: str, injection_type: str) -> str:
     return template.format(payload=payload)
 
 
-def process(max_per_category: int = 500, seed: int = 42):
+def process(max_per_category: int = 2000, seed: int = 42):
     """Process SecLists into labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -257,5 +257,5 @@ def process(max_per_category: int = 500, seed: int = 42):
 
 
 if __name__ == "__main__":
-    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 500
+    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
     process(max_per_category=max_n)

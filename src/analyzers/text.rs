@@ -1,4 +1,6 @@
 use anyhow::Result;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -70,6 +72,10 @@ pub async fn analyze_text_file(
             finding.evidence = content_preview.clone();
         }
     }
+
+    // Regex safety net: catch high-confidence attack patterns the model missed
+    let regex_extra = regex_safety_net(&content, &findings);
+    findings.extend(regex_extra);
 
     // If LLM returned nothing, mark as analyzed but unclear
     if findings.is_empty() {
@@ -241,7 +247,64 @@ pub fn parse_beam_findings_public(response: &str) -> Result<Vec<FileFinding>> {
     parse_beam_findings(response)
 }
 
-/// Parse beam model output: multiple separate JSON arrays with text between them
+/// Derive the correct category from the subcategory prefix when they mismatch.
+/// Only overrides "confidential" — the model's main over-predicted catch-all.
+/// E.g., subcategory "pii.identity" with category "confidential" → category "pii".
+fn resolve_category(category: &str, subcategory: &str) -> String {
+    const KNOWN_CATEGORIES: &[&str] = &[
+        "pii", "credentials", "financial", "medical", "confidential", "malicious", "safe",
+    ];
+
+    if category == "confidential" {
+        if let Some(prefix) = subcategory.split('.').next() {
+            if KNOWN_CATEGORIES.contains(&prefix) && prefix != "confidential" {
+                return prefix.to_string();
+            }
+        }
+    }
+
+    category.to_string()
+}
+
+/// Try to repair truncated JSON arrays by finding the last complete object.
+/// The beam model often generates repetitive filler that hits the token limit,
+/// truncating the JSON mid-object. This recovers what we can.
+fn try_repair_json_array(partial: &str) -> Option<String> {
+    // Find the last complete '}' that could end a JSON object
+    let mut depth = 0i32;
+    let mut last_complete_obj_end = None;
+    let mut in_string = false;
+    let mut escape_next = false;
+
+    for (i, ch) in partial.char_indices() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        match ch {
+            '\\' if in_string => escape_next = true,
+            '"' => in_string = !in_string,
+            '{' if !in_string => depth += 1,
+            '}' if !in_string => {
+                depth -= 1;
+                if depth == 0 {
+                    last_complete_obj_end = Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(end) = last_complete_obj_end {
+        let repaired = format!("{}]", &partial[..=end]);
+        return Some(repaired);
+    }
+
+    None
+}
+
+/// Parse beam model output: multiple separate JSON arrays with text between them.
+/// Handles truncated JSON (from token limit) and fixes category-subcategory mismatches.
 fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
     #[derive(serde::Deserialize)]
     struct BeamFinding {
@@ -258,20 +321,35 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
     let bytes = response.as_bytes();
 
     while pos < bytes.len() {
-        // Find next '[' ... ']' block
+        // Find next '[' start
         let start = match response[pos..].find('[') {
             Some(i) => pos + i,
             None => break,
         };
-        let end = match response[start..].find(']') {
-            Some(i) => start + i + 1,
-            None => break,
+
+        // Try to find matching ']'
+        let (json_str, next_pos) = match response[start..].find(']') {
+            Some(i) => {
+                let end = start + i + 1;
+                (response[start..end].to_string(), end)
+            }
+            None => {
+                // No closing ']' — try to repair truncated JSON
+                match try_repair_json_array(&response[start..]) {
+                    Some(repaired) => {
+                        let next = bytes.len(); // consumed everything
+                        (repaired, next)
+                    }
+                    None => break,
+                }
+            }
         };
 
-        if let Ok(parsed) = serde_json::from_str::<Vec<BeamFinding>>(&response[start..end]) {
+        if let Ok(parsed) = serde_json::from_str::<Vec<BeamFinding>>(&json_str) {
             for f in parsed {
                 let subcategory = f.subcategory.unwrap_or_default();
-                let key = format!("{}:{}", f.category, subcategory);
+                let category = resolve_category(&f.category, &subcategory);
+                let key = format!("{}:{}", category, subcategory);
                 if seen.contains(&key) {
                     continue;
                 }
@@ -290,12 +368,12 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
                 };
 
                 let description = f.explanation.unwrap_or_else(|| {
-                    format!("Detected {} content", if subcategory.is_empty() { &f.category } else { &subcategory })
+                    format!("Detected {} content", if subcategory.is_empty() { &category } else { &subcategory })
                 });
 
-                if f.category == "safe" {
+                if category == "safe" {
                     safe_findings.push(FileFinding {
-                        category: f.category,
+                        category,
                         description,
                         evidence: subcategory,
                         severity,
@@ -304,7 +382,7 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
                     });
                 } else {
                     findings.push(FileFinding {
-                        category: f.category,
+                        category,
                         description,
                         evidence: subcategory,
                         severity,
@@ -315,7 +393,7 @@ fn parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
             }
         }
 
-        pos = end;
+        pos = next_pos;
     }
 
     // If no non-safe findings, use beam's safe findings (with its explanation)
@@ -383,6 +461,175 @@ fn parse_llm_findings(response: &str) -> Result<Vec<FileFinding>> {
                 .collect(),
         })
         .collect())
+}
+
+// ---------------------------------------------------------------------------
+// Regex safety net — catches high-confidence attack patterns the LLM misses
+// ---------------------------------------------------------------------------
+
+struct SafetyPattern {
+    regex: &'static Lazy<Regex>,
+    subcategory: &'static str,
+    description: &'static str,
+    severity: Severity,
+}
+
+macro_rules! lazy_re {
+    ($name:ident, $pat:expr) => {
+        static $name: Lazy<Regex> = Lazy::new(|| Regex::new($pat).expect(concat!("bad regex: ", $pat)));
+    };
+}
+
+// --- A. SSTI ---
+lazy_re!(RE_SSTI_CLASS, r"\{\{[^}]*__class__");
+lazy_re!(RE_SSTI_MRO, r"\{\{[^}]*__mro__");
+lazy_re!(RE_SSTI_SUBCLASSES, r"\{\{[^}]*__subclasses__");
+lazy_re!(RE_SSTI_CONFIG, r"\{\{[^}]*config\s*\.");
+lazy_re!(RE_SSTI_REQUEST, r"\{\{[^}]*request\s*\.");
+lazy_re!(RE_SSTI_JAVA_RUNTIME, r"\$\{[^}]*Runtime\s*\.");
+lazy_re!(RE_SSTI_JAVA_GETRUNTIME, r"\$\{[^}]*getRuntime");
+lazy_re!(RE_SSTI_VELOCITY, r"#set\s*\(\s*\$[^)]*class\s*\.");
+
+// --- B. XXE ---
+lazy_re!(RE_XXE_DOCTYPE, r"(?s)<!DOCTYPE[^>]*\[.*<!ENTITY");
+lazy_re!(RE_XXE_SYSTEM, r#"<!ENTITY[^>]*SYSTEM\s*["']"#);
+lazy_re!(RE_XXE_PUBLIC, r#"<!ENTITY[^>]*PUBLIC\s*["']"#);
+
+// --- C. Deserialization ---
+lazy_re!(RE_PICKLE, r"pickle\.loads\s*\(");
+lazy_re!(RE_YAML_UNSAFE, r"yaml\.load\s*\([^)]*\)");
+lazy_re!(RE_YAML_SAFE, r"Loader\s*=\s*SafeLoader");
+lazy_re!(RE_OBJINPUTSTREAM, r"ObjectInputStream");
+lazy_re!(RE_UNSERIALIZE, r"unserialize\s*\(");
+lazy_re!(RE_MARSHAL_LOAD, r"Marshal\.load\s*\(");
+lazy_re!(RE_BINARYFORMATTER, r"BinaryFormatter\.Deserialize");
+
+// --- D. Shell / RCE ---
+lazy_re!(RE_EVAL_ATOB, r"\beval\s*\(\s*atob\b");
+lazy_re!(RE_EXEC_COMPILE, r"\bexec\s*\(\s*compile\b");
+lazy_re!(RE_IMPORT_OS, r#"\b__import__\s*\(\s*['"]os['"]\s*\)"#);
+lazy_re!(RE_REVSHELL_NC, r"\b(nc|ncat|netcat)\s+.*-e\s+/bin/(sh|bash)");
+lazy_re!(RE_REVSHELL_DEVTCP, r"/dev/tcp/");
+
+// --- E. SSRF ---
+lazy_re!(RE_SSRF_AWS, r"169\.254\.169\.254");
+lazy_re!(RE_SSRF_GCP, r"metadata\.google\.internal");
+lazy_re!(RE_SSRF_ALIBABA, r"100\.100\.100\.200");
+
+// --- F. Supply chain ---
+lazy_re!(RE_NPM_CURL, r#""(preinstall|postinstall|preuninstall)":\s*"[^"]*curl\s"#);
+lazy_re!(RE_NPM_WGET, r#""(preinstall|postinstall)":\s*"[^"]*wget\s"#);
+lazy_re!(RE_SETUP_PY, r"(?s)cmdclass.*install.*os\.system");
+
+// --- G. Prompt injection ---
+lazy_re!(RE_PROMPT_IGNORE, r"(?i)ignore\s+(all\s+)?previous\s+instructions");
+lazy_re!(RE_PROMPT_DAN, r"(?i)you\s+are\s+now\s+(DAN|an?\s+unrestricted)");
+lazy_re!(RE_PROMPT_OVERRIDE, r"(?i)system:\s*override");
+
+fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<FileFinding> {
+    // If the model already detected "malicious", don't add duplicates
+    let model_found_malicious = existing_findings
+        .iter()
+        .any(|f| f.category == "malicious");
+
+    if model_found_malicious {
+        return Vec::new();
+    }
+
+    let patterns: &[SafetyPattern] = &[
+        // A. SSTI
+        SafetyPattern { regex: &RE_SSTI_CLASS, subcategory: "malicious.injection", description: "Jinja2 SSTI: __class__ access in template expression", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSTI_MRO, subcategory: "malicious.injection", description: "Jinja2 SSTI: __mro__ traversal in template expression", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSTI_SUBCLASSES, subcategory: "malicious.injection", description: "Jinja2 SSTI: __subclasses__ enumeration in template expression", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSTI_CONFIG, subcategory: "malicious.injection", description: "Jinja2 SSTI: config object access in template expression", severity: Severity::High },
+        SafetyPattern { regex: &RE_SSTI_REQUEST, subcategory: "malicious.injection", description: "Jinja2 SSTI: request object access in template expression", severity: Severity::High },
+        SafetyPattern { regex: &RE_SSTI_JAVA_RUNTIME, subcategory: "malicious.injection", description: "Java SSTI: Runtime class access in expression", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSTI_JAVA_GETRUNTIME, subcategory: "malicious.injection", description: "Java SSTI: getRuntime() call in expression", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSTI_VELOCITY, subcategory: "malicious.injection", description: "Velocity SSTI: class access via #set directive", severity: Severity::Critical },
+
+        // B. XXE
+        SafetyPattern { regex: &RE_XXE_DOCTYPE, subcategory: "malicious.injection", description: "XXE: DOCTYPE with ENTITY declaration", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_XXE_SYSTEM, subcategory: "malicious.injection", description: "XXE: external SYSTEM entity declaration", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_XXE_PUBLIC, subcategory: "malicious.injection", description: "XXE: PUBLIC entity declaration", severity: Severity::High },
+
+        // C. Deserialization
+        SafetyPattern { regex: &RE_PICKLE, subcategory: "malicious.exploit", description: "Unsafe deserialization: pickle.loads() can execute arbitrary code", severity: Severity::Critical },
+        // yaml.load is handled separately below
+        SafetyPattern { regex: &RE_OBJINPUTSTREAM, subcategory: "malicious.exploit", description: "Java deserialization: ObjectInputStream can execute arbitrary code", severity: Severity::High },
+        SafetyPattern { regex: &RE_UNSERIALIZE, subcategory: "malicious.exploit", description: "PHP deserialization: unserialize() can trigger object injection", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_MARSHAL_LOAD, subcategory: "malicious.exploit", description: "Ruby deserialization: Marshal.load() can execute arbitrary code", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_BINARYFORMATTER, subcategory: "malicious.exploit", description: ".NET deserialization: BinaryFormatter.Deserialize can execute arbitrary code", severity: Severity::Critical },
+
+        // D. Shell / RCE
+        SafetyPattern { regex: &RE_EVAL_ATOB, subcategory: "malicious.shell", description: "Obfuscated code execution: eval(atob()) decodes and runs hidden payload", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_EXEC_COMPILE, subcategory: "malicious.shell", description: "Dynamic code execution: exec(compile()) runs dynamically constructed code", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_IMPORT_OS, subcategory: "malicious.shell", description: "Suspicious OS import: __import__('os') used to access system commands", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_REVSHELL_NC, subcategory: "malicious.shell", description: "Reverse shell: netcat with -e flag piping to shell", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_REVSHELL_DEVTCP, subcategory: "malicious.shell", description: "Reverse shell: /dev/tcp used for network connection", severity: Severity::Critical },
+
+        // E. SSRF
+        SafetyPattern { regex: &RE_SSRF_AWS, subcategory: "malicious.ssrf", description: "SSRF: AWS metadata endpoint (169.254.169.254)", severity: Severity::High },
+        SafetyPattern { regex: &RE_SSRF_GCP, subcategory: "malicious.ssrf", description: "SSRF: GCP metadata endpoint (metadata.google.internal)", severity: Severity::High },
+        SafetyPattern { regex: &RE_SSRF_ALIBABA, subcategory: "malicious.ssrf", description: "SSRF: Alibaba Cloud metadata endpoint (100.100.100.200)", severity: Severity::High },
+
+        // F. Supply chain
+        SafetyPattern { regex: &RE_NPM_CURL, subcategory: "malicious.exploit", description: "Supply chain attack: npm lifecycle hook executes curl", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_NPM_WGET, subcategory: "malicious.exploit", description: "Supply chain attack: npm lifecycle hook executes wget", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SETUP_PY, subcategory: "malicious.exploit", description: "Supply chain attack: setup.py cmdclass runs os.system()", severity: Severity::Critical },
+
+        // G. Prompt injection
+        SafetyPattern { regex: &RE_PROMPT_IGNORE, subcategory: "malicious.prompt_injection", description: "Prompt injection: attempt to override previous instructions", severity: Severity::High },
+        SafetyPattern { regex: &RE_PROMPT_DAN, subcategory: "malicious.prompt_injection", description: "Prompt injection: jailbreak attempt (DAN / unrestricted mode)", severity: Severity::High },
+        SafetyPattern { regex: &RE_PROMPT_OVERRIDE, subcategory: "malicious.prompt_injection", description: "Prompt injection: system override attempt", severity: Severity::High },
+    ];
+
+    let mut results = Vec::new();
+    let mut seen_subcategories = std::collections::HashSet::new();
+
+    for pat in patterns {
+        if seen_subcategories.contains(pat.subcategory) {
+            continue;
+        }
+
+        if let Some(m) = pat.regex.find(content) {
+            let matched_text = m.as_str();
+            let evidence: String = matched_text.chars().take(200).collect();
+
+            results.push(FileFinding {
+                category: "malicious".to_string(),
+                description: pat.description.to_string(),
+                evidence,
+                severity: pat.severity.clone(),
+                source: "regex".to_string(),
+                extracted_data: HashMap::new(),
+            });
+
+            seen_subcategories.insert(pat.subcategory);
+        }
+    }
+
+    // Special handling: yaml.load without SafeLoader
+    if !seen_subcategories.contains("malicious.exploit") {
+        if let Some(m) = RE_YAML_UNSAFE.find(content) {
+            let match_start = m.start();
+            // Check if SafeLoader appears near the match (within 100 chars after)
+            let search_end = (match_start + m.len() + 100).min(content.len());
+            let vicinity = &content[match_start..search_end];
+            if !RE_YAML_SAFE.is_match(vicinity) {
+                let evidence: String = m.as_str().chars().take(200).collect();
+                results.push(FileFinding {
+                    category: "malicious".to_string(),
+                    description: "Unsafe deserialization: yaml.load() without SafeLoader can execute arbitrary code".to_string(),
+                    evidence,
+                    severity: Severity::Critical,
+                    source: "regex".to_string(),
+                    extracted_data: HashMap::new(),
+                });
+            }
+        }
+    }
+
+    results
 }
 
 fn read_text_safe(path: &Path) -> Result<String> {

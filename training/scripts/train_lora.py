@@ -2,21 +2,27 @@
 """
 TorchSight LoRA Fine-Tuning Script
 
-Fine-tunes a base model (Llama 3.2 / Qwen2.5) on the TorchSight
+Fine-tunes a base model (Qwen 3.5 / Llama 3.x) on the TorchSight
 security classification dataset using LoRA/QLoRA.
+
+Auto-detects model family (Qwen, Llama, Mistral, etc.) from the model
+name to select appropriate LoRA targets and chat template.
 
 Requirements:
     pip install torch transformers peft datasets accelerate bitsandbytes trl
 
 Usage:
-    # Full fine-tune on Lambda cluster (~60GB VRAM, 90GB available)
-    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct
+    # Default: Qwen 3.5 27B dense (requires ~55GB VRAM for LoRA, fits H100 80GB)
+    python train_lora.py
 
-    # QLoRA 4-bit (requires ~16GB VRAM)
-    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct --quantize 4bit
+    # QLoRA 4-bit (fits in ~24GB VRAM)
+    python train_lora.py --quantize 4bit
+
+    # Use Llama instead
+    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct --batch-size 8 --max-seq-length 4096
 
     # Custom settings
-    python train_lora.py --base-model meta-llama/Llama-3.1-8B-Instruct --epochs 3 --lr 2e-4
+    python train_lora.py --epochs 3 --lr 2e-4
 
     # Resume from checkpoint
     python train_lora.py --resume ./output/checkpoint-1000
@@ -31,21 +37,21 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SFT_DIR = Path(os.environ.get("TORCHSIGHT_DATA_DIR", SCRIPT_DIR.parent / "data" / "sft"))
 OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "output"))
 
-# Default hyperparameters — tuned for max quality on 96GB VRAM (H100/A100-80GB)
+# Default hyperparameters — tuned for Qwen 3.5 27B on H100 80GB
 DEFAULTS = {
-    "base_model": "meta-llama/Llama-3.1-8B-Instruct",
+    "base_model": "Qwen/Qwen3.5-27B",
     "format": "alpaca",
     "epochs": 5,
     "lr": 5e-5,
-    "batch_size": 8,
-    "grad_accum": 4,        # effective batch = 32 for smooth gradients
-    "max_seq_length": 4096,
-    "lora_r": 128,           # doubled from v1 for more adaptation capacity
+    "batch_size": 4,         # fits H100 80GB with LoRA + gradient checkpointing
+    "grad_accum": 4,         # effective batch = 16
+    "max_seq_length": 2048,  # our outputs are short JSON; saves memory
+    "lora_r": 128,           # high rank for maximum adaptation capacity
     "lora_alpha": 256,       # 2x rank (standard ratio)
     "lora_dropout": 0.05,
-    "warmup_ratio": 0.06,   # ~240 steps warmup on 78K samples
+    "warmup_ratio": 0.06,
     "weight_decay": 0.01,
-    "quantize": None,        # full bf16 — best quality, 96GB can handle it
+    "quantize": None,        # full bf16 — best quality, H100 80GB can handle 27B
     "resume": None,
 }
 
@@ -60,11 +66,25 @@ LORA_TARGETS = {
 
 
 def detect_model_family(model_name: str) -> str:
+    """Auto-detect model family from the model name/path.
+
+    Used to select LoRA target modules and chat template behavior.
+    Checks for known family names in the model identifier.
+    """
     name_lower = model_name.lower()
-    for family in LORA_TARGETS:
-        if family in name_lower:
-            return family
-    return "llama"  # default
+    # Check in priority order (qwen2 before qwen to catch both)
+    family_patterns = {
+        "qwen": ["qwen3.5", "qwen3", "qwen2.5", "qwen2", "qwen"],
+        "llama": ["llama"],
+        "mistral": ["mistral"],
+        "phi": ["phi"],
+        "gemma": ["gemma"],
+    }
+    for family, patterns in family_patterns.items():
+        for pattern in patterns:
+            if pattern in name_lower:
+                return family
+    return "llama"  # default fallback
 
 
 def parse_args():
@@ -182,8 +202,9 @@ def main():
     # LoRA config
     family = detect_model_family(config["base_model"])
     target_modules = LORA_TARGETS.get(family, LORA_TARGETS["llama"])
-    print(f"\nModel family: {family}")
-    print(f"LoRA targets: {target_modules}")
+    print(f"\nModel family:  {family}")
+    print(f"LoRA targets:  {target_modules}")
+    print(f"Chat template: {'native (tokenizer.apply_chat_template)' if family in ('qwen', 'llama', 'mistral', 'gemma') else 'generic'}")
 
     lora_config = LoraConfig(
         r=config["lora_r"],

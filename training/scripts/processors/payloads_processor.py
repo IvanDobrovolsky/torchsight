@@ -107,7 +107,7 @@ def read_payload_file(path: Path) -> str | None:
     return text[:4000]
 
 
-def process(max_samples: int = 3000, seed: int = 42):
+def process(max_samples: int = 15000, seed: int = 42):
     """Process PayloadsAllTheThings and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -235,5 +235,5 @@ def process(max_samples: int = 3000, seed: int = 42):
 
 
 if __name__ == "__main__":
-    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
+    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 15000
     process(max_samples=max_n)

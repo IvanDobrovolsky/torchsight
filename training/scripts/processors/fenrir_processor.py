@@ -86,7 +86,7 @@ def classify_text(text: str) -> tuple[str, str] | None:
     return None
 
 
-def process(max_samples: int = 5000, seed: int = 42):
+def process(max_samples: int = 10000, seed: int = 42):
     """Process Fenrir cybersecurity dataset and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)

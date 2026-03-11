@@ -5,12 +5,12 @@ On-premise cybersecurity scanner. Rust CLI + local LLMs (Ollama). Scans text/ima
 
 ## Architecture
 - **Rust CLI** with interactive REPL (`src/cli/repl.rs`)
-- **Beam model** (`torchsight/beam`) — custom LoRA fine-tune of Llama 3.1 8B, uses `/api/chat` endpoint
+- **Beam model** (`torchsight/beam`) — custom LoRA fine-tune of Qwen 3.5 27B, uses `/api/chat` endpoint
 - **Vision model** (`llama3.2-vision`) — describes images, uses `/api/generate` endpoint
 - **Tesseract OCR** — extracts text from images (system binary, not Rust crate)
 - **Image pipeline**: OCR text + vision description → beam deep analysis
 - **Text pipeline**: read file (or pdftotext for PDFs) → truncate to 6000 chars → beam chat
-- **No regex** — pure LLM analysis for all classification
+- **Regex safety net** — 35 compiled patterns as fallback for attacks the LLM misses
 
 ## Key Files
 - `src/main.rs` — CLI args, health checks, entry point
@@ -25,11 +25,11 @@ On-premise cybersecurity scanner. Rust CLI + local LLMs (Ollama). Scans text/ima
 - `install.sh` — cross-platform installer (Linux + macOS)
 
 ## Beam Model v1.0
-- Llama 3.1 8B + LoRA (r=128, alpha=256), 5 epochs, 78,358 balanced samples from 18 sources
-- Training split: 74,441 train / 3,917 val
-- GGUFs in `training/output/`: `beam-1.0-f16.gguf` (15GB), `beam-1.0-q8.gguf` (8GB)
-- Output: multiple JSON arrays `[{category, subcategory, severity, explanation}]`
-- Known quirk: generates repetitive filler text after findings (hits num_predict 2048 limit)
+- Qwen 3.5 27B (dense) + LoRA (r=128, alpha=256), 5 epochs, ~175K balanced samples from 18+ sources
+- GGUFs in `training/output/`: `beam-1.0-q4_K_M.gguf` (~17GB), `beam-1.0-q8_0.gguf` (~28GB)
+- q4_K_M = default (fits 32GB M1 Mac), q8_0 = higher quality (48GB+ GPU or 64GB Mac)
+- Output: JSON arrays `[{category, subcategory, severity, explanation}]`
+- Training GPU: H100 80GB PCIe (~55GB VRAM for LoRA training)
 
 ## Finding Enrichment (implemented)
 - **Image findings** include `visual_description` from vision model and OCR text as evidence
@@ -54,7 +54,7 @@ cargo build --release           # Just build
 
 ## Training Data Sources (all verified safe for AI training)
 - **Public domain (US Gov):** Enron (FERC), NVD/NIST, CIA FOIA, CRS Reports, Army Doctrine, SEC EDGAR
-- **Apache 2.0:** AI4Privacy (300K PII), Phishing Dataset, Fenrir v2.0 (cybersecurity), NIST Training
+- **Apache 2.0:** AI4Privacy (300K PII), Phishing Dataset, Fenrir v2.0 (cybersecurity), NIST Training, Prompt Injection (deepset + geekyrakshit)
 - **MIT:** SecLists, PayloadsAllTheThings
 - **Royalty-free:** MITRE ATT&CK
 - **CC-BY 4.0:** GHSA (GitHub Security Advisories)

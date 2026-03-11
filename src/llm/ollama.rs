@@ -3,6 +3,19 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde::{Deserialize, Serialize};
 
+const BEAM_SYSTEM_PROMPT: &str = r#"You are TorchSight, a cybersecurity document classifier. Analyze the provided text and identify ALL security-relevant findings.
+
+For each finding, output a JSON object with:
+- category: one of [pii, credentials, financial, medical, confidential, malicious, safe]
+- subcategory: specific type (e.g., pii.identity, malicious.injection, credentials.api_key)
+- severity: one of [critical, high, medium, low, info]
+- explanation: detailed explanation including specific values found (redact sensitive parts, e.g., SSN: 412-XX-7890, API key: sk_live_51HG...). Explain what was found, why it matters, and the risk.
+
+If a document contains multiple types of sensitive data, return a finding for EACH one.
+If the text is clean/safe, output a single finding with category "safe".
+
+Respond ONLY with a JSON array of findings."#;
+
 #[derive(Clone)]
 pub struct OllamaClient {
     base_url: String,
@@ -32,10 +45,18 @@ struct ChatMessage {
 }
 
 #[derive(Serialize)]
+struct ChatOptions {
+    num_predict: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
 struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
     stream: bool,
+    options: ChatOptions,
 }
 
 #[derive(Deserialize)]
@@ -90,11 +111,23 @@ impl OllamaClient {
     pub async fn chat(&self, user_message: &str) -> Result<String> {
         let req = ChatRequest {
             model: self.text_model.clone(),
-            messages: vec![ChatMessage {
-                role: "user".to_string(),
-                content: user_message.to_string(),
-            }],
+            messages: vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: BEAM_SYSTEM_PROMPT.to_string(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: user_message.to_string(),
+                },
+            ],
             stream: false,
+            options: ChatOptions {
+                num_predict: 2048,
+                stop: Some(vec![
+                    "\n\n\n".to_string(),
+                ]),
+            },
         };
 
         let resp = self

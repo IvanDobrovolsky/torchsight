@@ -91,7 +91,7 @@ def classify_nist_text(text: str) -> tuple[str, str, str, str]:
     )
 
 
-def process(max_samples: int = 3000, seed: int = 42):
+def process(max_samples: int = 8000, seed: int = 42):
     """Process NIST cybersecurity dataset and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -104,9 +104,9 @@ def process(max_samples: int = 3000, seed: int = 42):
 
     print("Streaming NIST cybersecurity dataset (large file)...")
 
-    # Target: 2000 safe, 1000 confidential
-    max_safe = 2000
-    max_confidential = 1000
+    # Target: 5000 safe, 3000 confidential
+    max_safe = 5000
+    max_confidential = 3000
 
     safe_samples = []
     confidential_samples = []
@@ -121,9 +121,9 @@ def process(max_samples: int = 3000, seed: int = 42):
             if total_read % 100000 == 0:
                 print(f"  ...streamed {total_read:,}")
 
-            # Early exit if we have enough samples
-            if (len(safe_samples) >= max_safe * 3 and
-                    len(confidential_samples) >= max_confidential * 3):
+            # Early exit if we have enough candidates to sample from
+            if (len(safe_samples) >= max_safe * 5 and
+                    len(confidential_samples) >= max_confidential * 5):
                 break
 
             try:
@@ -204,5 +204,5 @@ def process(max_samples: int = 3000, seed: int = 42):
 
 
 if __name__ == "__main__":
-    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
+    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     process(max_samples=max_n)

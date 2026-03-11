@@ -98,7 +98,7 @@ def classify_log_chunk(lines: list[str], source: str) -> dict:
     }
 
 
-def process(max_samples: int = 2000, seed: int = 42):
+def process(max_samples: int = 5000, seed: int = 42):
     """Process Loghub system logs and output labeled JSONL."""
     random.seed(seed)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -185,5 +185,5 @@ def process(max_samples: int = 2000, seed: int = 42):
 
 
 if __name__ == "__main__":
-    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
+    max_n = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     process(max_samples=max_n)
