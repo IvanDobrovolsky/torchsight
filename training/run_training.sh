@@ -27,20 +27,23 @@ echo "[0/8] Setting up Python virtual environment..."
 cd "$TRAINING_DIR"
 
 if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+    python3 -m venv --system-site-packages .venv
 fi
 source .venv/bin/activate
 
 pip install --upgrade pip wheel setuptools
 
-# Core training deps
-pip install torch transformers peft datasets accelerate bitsandbytes trl
+# Core training deps (--system-site-packages inherits CUDA torch if present)
+pip install transformers peft datasets accelerate bitsandbytes trl
 
 # Data download/processing deps
 pip install requests tqdm beautifulsoup4 lxml
 
 # GGUF export deps
 pip install sentencepiece protobuf
+
+# Fix common Pillow version issue
+pip install --upgrade Pillow
 
 echo ""
 echo "  Python: $(python --version)"
@@ -95,17 +98,37 @@ echo "[6/8] Training LoRA on Qwen 3.5 27B..."
 echo "  This will take 2-6 hours depending on GPU"
 echo ""
 
-# On B200 with 179GB VRAM we can use larger batch size
+NUM_GPUS=$(python -c "import torch; print(torch.cuda.device_count())" 2>/dev/null || echo "1")
 VRAM_GB=$(python -c "import torch; print(int(torch.cuda.get_device_properties(0).total_mem / 1e9))" 2>/dev/null || echo "0")
-if [ "$VRAM_GB" -gt 120 ]; then
-    echo "  Detected ${VRAM_GB}GB VRAM — using batch_size=8"
-    python train_lora.py --batch-size 8
+TOTAL_VRAM=$((VRAM_GB * NUM_GPUS))
+
+echo "  GPUs:  ${NUM_GPUS}x ${VRAM_GB}GB (${TOTAL_VRAM}GB total)"
+
+if [ "$NUM_GPUS" -gt 1 ] && [ "$VRAM_GB" -gt 120 ]; then
+    # Multi-GPU with 140GB+ VRAM (H200/B200) — max throughput
+    echo "  Strategy: DDP across ${NUM_GPUS} GPUs (${VRAM_GB}GB each)"
+    torchrun --nproc_per_node="$NUM_GPUS" train_lora.py \
+        --batch-size 8 \
+        --grad-accum 2 \
+        --epochs 3 \
+        --max-seq-length 1024
+elif [ "$NUM_GPUS" -gt 1 ] && [ "$VRAM_GB" -gt 70 ]; then
+    # Multi-GPU with 80GB VRAM (A100/H100)
+    echo "  Strategy: DDP across ${NUM_GPUS} GPUs (${VRAM_GB}GB each)"
+    torchrun --nproc_per_node="$NUM_GPUS" train_lora.py \
+        --batch-size 3 \
+        --grad-accum 4 \
+        --epochs 3 \
+        --max-seq-length 1024
+elif [ "$VRAM_GB" -gt 120 ]; then
+    echo "  Strategy: Single GPU, batch_size=8"
+    python train_lora.py --batch-size 8 --max-seq-length 1024
 elif [ "$VRAM_GB" -gt 70 ]; then
-    echo "  Detected ${VRAM_GB}GB VRAM — using batch_size=4"
-    python train_lora.py --batch-size 4
+    echo "  Strategy: Single GPU, batch_size=4"
+    python train_lora.py --batch-size 4 --max-seq-length 1024
 else
-    echo "  Detected ${VRAM_GB}GB VRAM — using QLoRA 4-bit"
-    python train_lora.py --quantize 4bit --batch-size 4
+    echo "  Strategy: Single GPU, QLoRA 4-bit"
+    python train_lora.py --quantize 4bit --batch-size 4 --max-seq-length 1024
 fi
 
 # ------------------------------------------------------------
