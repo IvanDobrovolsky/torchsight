@@ -6,7 +6,7 @@ import hashlib
 import random
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "raw"
 OUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "processed"
 
 # Contexts to wrap raw injection attempts in realistic scenarios
@@ -45,8 +45,8 @@ def process_deepset():
             if not text or len(text) < 10:
                 continue
 
-            # label=1 means injection attempt
-            if label == 1:
+            # label=1 means injection attempt (may be string or int)
+            if str(label) == "1":
                 context = random.choice(CONTEXTS).format(text=text)
                 samples.append({
                     "id": f"pi-deepset-{make_id(text)}",
@@ -92,7 +92,7 @@ def process_geekyrakshit():
                 continue
             seen.add(key)
 
-            if label == 1:
+            if str(label) == "1":
                 context = random.choice(CONTEXTS).format(text=text)
                 samples.append({
                     "id": f"pi-geeky-{make_id(text)}",

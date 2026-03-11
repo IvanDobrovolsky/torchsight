@@ -42,14 +42,14 @@ DEFAULTS = {
     "base_model": "Qwen/Qwen3.5-27B",
     "format": "alpaca",
     "epochs": 5,
-    "lr": 5e-5,
+    "lr": 2e-5,
     "batch_size": 4,         # fits H100 80GB with LoRA + gradient checkpointing
     "grad_accum": 4,         # effective batch = 16
     "max_seq_length": 2048,  # our outputs are short JSON; saves memory
     "lora_r": 128,           # high rank for maximum adaptation capacity
     "lora_alpha": 256,       # 2x rank (standard ratio)
     "lora_dropout": 0.05,
-    "warmup_ratio": 0.06,
+    "warmup_ratio": 0.10,
     "weight_decay": 0.01,
     "quantize": None,        # full bf16 — best quality, H100 80GB can handle 27B
     "resume": None,
@@ -57,11 +57,11 @@ DEFAULTS = {
 
 # LoRA target modules per model family — all linear layers for maximum adaptation
 LORA_TARGETS = {
-    "llama": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
-    "qwen": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
-    "mistral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
-    "phi": ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2", "lm_head"],
-    "gemma": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"],
+    "llama": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    "qwen": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    "mistral": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    "phi": ["q_proj", "k_proj", "v_proj", "dense", "fc1", "fc2"],
+    "gemma": ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
 }
 
 
@@ -186,10 +186,16 @@ def main():
     model_kwargs = {
         "trust_remote_code": True,
         "torch_dtype": torch.bfloat16,
-        "device_map": "auto",
     }
     if bnb_config:
         model_kwargs["quantization_config"] = bnb_config
+
+    # In distributed mode (torchrun), each process loads onto its own GPU
+    local_rank = int(os.environ.get("LOCAL_RANK", -1))
+    if local_rank >= 0:
+        model_kwargs["device_map"] = {"": local_rank}
+    else:
+        model_kwargs["device_map"] = "auto"
 
     model = AutoModelForCausalLM.from_pretrained(
         config["base_model"],
@@ -284,13 +290,15 @@ def main():
         "greater_is_better": False if has_eval else None,
         "bf16": torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
         "fp16": not torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
+        "max_grad_norm": 0.5,
         "gradient_checkpointing": True,
         "optim": "paged_adamw_8bit" if config["quantize"] else "adamw_torch_fused",
         "lr_scheduler_type": "cosine",
+        "logging_nan_inf_filter": False,
         "report_to": "none",
         "dataloader_num_workers": 4,
         "dataloader_pin_memory": True,
-        "seed": 42,
+        "seed": 3407,
     }
     # max_seq_length moved in newer trl versions
     import inspect
@@ -298,15 +306,19 @@ def main():
         sft_kwargs["max_seq_length"] = config["max_seq_length"]
     training_args = SFTConfig(**sft_kwargs)
 
-    # Trainer
-    trainer = SFTTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset.get("validation"),
-        tokenizer=tokenizer,
-        formatting_func=formatting_func,
-    )
+    # Trainer — trl 0.29+ renamed tokenizer to processing_class
+    trainer_kwargs = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": dataset["train"],
+        "eval_dataset": dataset.get("validation"),
+        "formatting_func": formatting_func,
+    }
+    if "processing_class" in inspect.signature(SFTTrainer.__init__).parameters:
+        trainer_kwargs["processing_class"] = tokenizer
+    else:
+        trainer_kwargs["tokenizer"] = tokenizer
+    trainer = SFTTrainer(**trainer_kwargs)
 
     # Train
     print(f"\n{'=' * 60}")
