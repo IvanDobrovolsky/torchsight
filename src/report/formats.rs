@@ -190,7 +190,7 @@ fn format_html(report: &ScanReport) -> String {
     let json_data = serde_json::to_string(report).unwrap_or_default();
     let timestamp = report.timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string();
 
-    // Collect severity and category counts
+    // Collect category counts (including safe for classification view)
     let mut category_counts: std::collections::HashMap<String, usize> =
         std::collections::HashMap::new();
     for file in &report.files {
@@ -204,6 +204,10 @@ fn format_html(report: &ScanReport) -> String {
     }
 
     let categories_json = serde_json::to_string(&category_counts).unwrap_or_default();
+
+    // Count clean vs flagged files
+    let flagged_files = report.files.iter().filter(|f| f.findings.iter().any(|fin| fin.category != "safe")).count();
+    let clean_files = report.files.len() - flagged_files;
 
     format!(
         r#"<!DOCTYPE html>
@@ -222,6 +226,8 @@ h1 {{ color: #58a6ff; margin-bottom: 5px; font-size: 1.8em; }}
 .card {{ background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px; min-width: 140px; text-align: center; }}
 .card .num {{ font-size: 2em; font-weight: bold; }}
 .card .label {{ color: #8b949e; font-size: 0.85em; margin-top: 4px; }}
+.clean {{ color: #3fb950; }}
+.flagged {{ color: #f0883e; }}
 .critical {{ color: #f85149; }} .high {{ color: #f0883e; }} .medium {{ color: #d29922; }} .low {{ color: #58a6ff; }} .info {{ color: #8b949e; }}
 .charts {{ display: flex; gap: 20px; margin-bottom: 25px; flex-wrap: wrap; }}
 .chart-box {{ background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; flex: 1; min-width: 300px; }}
@@ -230,10 +236,18 @@ h1 {{ color: #58a6ff; margin-bottom: 5px; font-size: 1.8em; }}
 .bar-label {{ width: 120px; font-size: 0.85em; color: #8b949e; }}
 .bar-fill {{ height: 20px; border-radius: 3px; min-width: 2px; transition: width 0.3s; }}
 .bar-val {{ margin-left: 8px; font-size: 0.85em; }}
-.controls {{ margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }}
+h2 {{ color: #c9d1d9; font-size: 1.2em; margin: 25px 0 15px 0; }}
+.tabs {{ display: flex; gap: 0; margin-bottom: 0; }}
+.tab {{ padding: 10px 20px; background: #161b22; border: 1px solid #30363d; cursor: pointer; font-size: 0.9em; color: #8b949e; }}
+.tab:first-child {{ border-radius: 8px 0 0 0; }}
+.tab:last-child {{ border-radius: 0 8px 0 0; }}
+.tab.active {{ background: #1c2128; color: #c9d1d9; border-bottom-color: #1c2128; }}
+.tab-content {{ display: none; }}
+.tab-content.active {{ display: block; }}
+.controls {{ margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding-top: 15px; }}
 .controls select, .controls input {{ background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 5px; padding: 6px 10px; font-size: 0.9em; }}
 .controls input {{ flex: 1; min-width: 200px; }}
-table {{ width: 100%; border-collapse: collapse; background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }}
+table {{ width: 100%; border-collapse: collapse; background: #161b22; border: 1px solid #30363d; border-radius: 0 0 8px 8px; overflow: hidden; }}
 th {{ background: #1c2128; color: #8b949e; text-align: left; padding: 10px 12px; font-size: 0.85em; cursor: pointer; user-select: none; }}
 th:hover {{ color: #c9d1d9; }}
 td {{ padding: 10px 12px; border-top: 1px solid #21262d; font-size: 0.85em; }}
@@ -244,18 +258,22 @@ tr:hover td {{ background: #1c2128; }}
 .badge.Medium {{ background: #d2992222; color: #d29922; }}
 .badge.Low {{ background: #58a6ff22; color: #58a6ff; }}
 .badge.Info {{ background: #8b949e22; color: #8b949e; }}
+.badge.Clean {{ background: #3fb95022; color: #3fb950; }}
 .evidence {{ color: #8b949e; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+.clean-table td {{ color: #8b949e; }}
+.clean-table td:first-child {{ color: #c9d1d9; }}
 footer {{ text-align: center; color: #484f58; margin-top: 30px; padding: 15px; font-size: 0.8em; }}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>TorchSight Scan Report</h1>
+<h1>TorchSight Scan &amp; Classification Report</h1>
 <p class="subtitle">{timestamp} &middot; v{version}</p>
 
 <div class="summary">
-  <div class="card"><div class="num">{total_files}</div><div class="label">Files Scanned</div></div>
-  <div class="card"><div class="num">{total_findings}</div><div class="label">Total Findings</div></div>
+  <div class="card"><div class="num">{total_files}</div><div class="label">Files Analyzed</div></div>
+  <div class="card"><div class="num clean">{clean_files}</div><div class="label">Clean</div></div>
+  <div class="card"><div class="num flagged">{flagged_files}</div><div class="label">Flagged</div></div>
   <div class="card"><div class="num critical">{critical}</div><div class="label">Critical</div></div>
   <div class="card"><div class="num high">{high}</div><div class="label">High</div></div>
   <div class="card"><div class="num medium">{medium}</div><div class="label">Medium</div></div>
@@ -274,6 +292,12 @@ footer {{ text-align: center; color: #484f58; margin-top: 30px; padding: 15px; f
   </div>
 </div>
 
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('findings')">Findings ({total_findings})</div>
+  <div class="tab" onclick="switchTab('classified')">All Files ({total_files})</div>
+</div>
+
+<div id="tab-findings" class="tab-content active">
 <div class="controls">
   <select id="filter-severity"><option value="">All Severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option></select>
   <select id="filter-category"><option value="">All Categories</option></select>
@@ -284,6 +308,14 @@ footer {{ text-align: center; color: #484f58; margin-top: 30px; padding: 15px; f
 <thead><tr><th onclick="sortTable(0)">File</th><th onclick="sortTable(1)">Severity</th><th onclick="sortTable(2)">Category</th><th onclick="sortTable(3)">Description</th><th>Evidence</th></tr></thead>
 <tbody id="findings-body"></tbody>
 </table>
+</div>
+
+<div id="tab-classified" class="tab-content">
+<table class="clean-table">
+<thead><tr><th>File</th><th>Type</th><th>Status</th><th>Classification</th></tr></thead>
+<tbody id="classified-body"></tbody>
+</table>
+</div>
 
 <footer>Generated by TorchSight v{version}</footer>
 </div>
@@ -294,13 +326,47 @@ const CATS = {categories_json};
 const SCOLORS = {{Critical:'#f85149',High:'#f0883e',Medium:'#d29922',Low:'#58a6ff',Info:'#8b949e'}};
 const SORDER = ['Critical','High','Medium','Low','Info'];
 
-// Build rows
+// Build finding rows (flagged only)
 let rows = [];
 DATA.files.forEach(f => {{
   f.findings.forEach(fin => {{
     if (fin.category === 'safe') return;
     rows.push({{ file: f.path, severity: fin.severity, category: fin.category, description: fin.description, evidence: fin.evidence || '' }});
   }});
+}});
+
+// Build classified rows (all files)
+let classifiedBody = document.getElementById('classified-body');
+DATA.files.forEach(f => {{
+  let hasFlagged = f.findings.some(fin => fin.category !== 'safe');
+  let safeFinding = f.findings.find(fin => fin.category === 'safe');
+  let classification = '';
+  let status = '';
+
+  if (hasFlagged) {{
+    let cats = [...new Set(f.findings.filter(fin => fin.category !== 'safe').map(fin => fin.category))];
+    let maxSev = f.findings.filter(fin => fin.category !== 'safe').reduce((max, fin) => {{
+      let idx = SORDER.indexOf(fin.severity);
+      let maxIdx = SORDER.indexOf(max);
+      return idx < maxIdx ? fin.severity : max;
+    }}, 'Info');
+    status = `<span class="badge ${{maxSev}}">${{maxSev}}</span>`;
+    classification = cats.join(', ');
+  }} else {{
+    status = '<span class="badge Clean">Clean</span>';
+    if (safeFinding) {{
+      classification = safeFinding.description;
+      // Also check for summary/subject in extracted_data
+      let ed = safeFinding.extracted_data || {{}};
+      if (ed.summary) classification = ed.summary;
+      else if (ed.subject) classification = ed.subject;
+      else if (ed.visual_description) classification = ed.visual_description;
+    }} else {{
+      classification = 'No findings';
+    }}
+  }}
+
+  classifiedBody.innerHTML += `<tr><td>${{f.path}}</td><td>${{f.kind}}</td><td>${{status}}</td><td>${{classification}}</td></tr>`;
 }});
 
 // Populate category filter
@@ -363,6 +429,18 @@ function sortTable(col) {{
   applyFilters();
 }}
 
+function switchTab(name) {{
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (name === 'findings') {{
+    document.querySelector('.tab:first-child').classList.add('active');
+    document.getElementById('tab-findings').classList.add('active');
+  }} else {{
+    document.querySelector('.tab:last-child').classList.add('active');
+    document.getElementById('tab-classified').classList.add('active');
+  }}
+}}
+
 render(rows);
 </script>
 </body>
@@ -371,6 +449,8 @@ render(rows);
         version = env!("CARGO_PKG_VERSION"),
         total_files = report.files.len(),
         total_findings = report.total_findings(),
+        clean_files = clean_files,
+        flagged_files = flagged_files,
         critical = report.critical_count(),
         high = report.high_count(),
         medium = report.medium_count(),
@@ -384,13 +464,19 @@ render(rows);
 fn format_markdown(report: &ScanReport) -> String {
     let mut out = String::new();
 
+    let flagged = report.files.iter().filter(|f| f.findings.iter().any(|fin| fin.category != "safe")).count();
+    let clean = report.files.len() - flagged;
+
     out.push_str(&format!(
-        "# TorchSight Scan Report\n\n**Date:** {}\n\n",
+        "# TorchSight Scan & Classification Report\n\n**Date:** {}\n\n",
         report.timestamp.format("%Y-%m-%d %H:%M:%S UTC")
     ));
 
     out.push_str(&format!(
-        "**Summary:** {} findings ({} critical, {} high, {} medium, {} low, {} info)\n\n",
+        "**Summary:** {} files analyzed ({} clean, {} flagged) — {} findings ({} critical, {} high, {} medium, {} low, {} info)\n\n",
+        report.files.len(),
+        clean,
+        flagged,
         report.total_findings(),
         report.critical_count(),
         report.high_count(),
