@@ -1,25 +1,23 @@
 # TorchSight — Next Steps
 
-## Priority 1: CI/DevOps Integration
+## Implemented
 
-### Git Pre-Commit Hook
-Scan staged files before commit. Catches secrets/PII before they enter git history.
+### Git Pre-Commit Hook ✅
 ```
 torchsight git-hook install    # installs .git/hooks/pre-commit
+torchsight git-hook uninstall  # removes the hook
 torchsight git-hook scan       # called by the hook, scans staged files only
 ```
 - Exit code 1 if critical/high findings → blocks commit
-- Direct comparison point vs detect-secrets in evaluations
+- Graceful degradation if Ollama is unreachable
 
-### Diff Mode / Stdin Pipe
-Scan only changed content, not entire files. Essential for CI pipelines.
+### Diff Mode / Stdin Pipe ✅
 ```
-git diff | torchsight scan --stdin
-torchsight scan --diff HEAD~1
+cat file.txt | torchsight --stdin
+torchsight --diff HEAD~1
 ```
 
-### Policy Engine (YAML rules)
-User-defined policies for automated enforcement:
+### Policy Engine (YAML rules) ✅
 ```yaml
 # .torchsight/policy.yml
 block:
@@ -29,42 +27,30 @@ block:
 warn:
   - category: pii
 ignore:
-  - subcategory: safe.*
+  - safe*
 ```
-`--fail-on` flag for CI exit codes: `torchsight scan /path --fail-on high`
+`--fail-on` flag for CI exit codes: `torchsight /path --fail-on high`
+`--policy` flag for custom policy file path
 
-## Priority 2: Output & Reporting
-
-### SARIF Output Format
-SARIF (Static Analysis Results Interchange Format) is the standard for GitHub Code Scanning, VS Code, and other tools.
+### SARIF Output Format ✅
 ```
-torchsight scan /path --format sarif
+torchsight /path --format sarif
 ```
-Findings appear directly as GitHub PR annotations.
+SARIF 2.1.0 compliant output for GitHub Code Scanning integration.
 
-### HTML Report with Interactive Dashboard
-Self-contained HTML file — no Python dependency:
-- Severity distribution charts
-- Category breakdown pie chart
-- Filterable/sortable findings table
-- Inline JS/CSS, single file output
+### HTML Report with Interactive Dashboard ✅
+```
+torchsight /path --format html
+```
+Self-contained HTML file with severity/category charts, filterable/sortable table, dark theme.
 
-## Priority 3: Real-Time Monitoring
-
-### Watch Mode (File System Watcher)
-Monitor directories in real-time using `notify` crate:
+### Watch Mode (File System Watcher) ✅
 ```
 torchsight watch /path/to/dir --interval 5s
 ```
-Flags new/modified files as they appear. Useful for shared drives, upload folders, CI artifact directories.
+Uses `notify` crate with debouncing. Scans new/modified files as they appear.
 
-## Priority 4: Performance & UX
-
-### Parallel Scanning with Rayon
-`rayon::par_iter` on file discovery for large directory scans. Scan thousands of files across all CPU cores simultaneously.
-
-### Config File (`.torchsight.toml`)
-Persistent settings instead of CLI flags:
+### Config File (`.torchsight.toml`) ✅
 ```toml
 [model]
 text = "torchsight/beam"
@@ -80,12 +66,25 @@ fail_on = "high"
 format = "json"
 auto_pdf = true
 ```
+CLI args override config file values.
 
-### `.torchsightignore`
-Gitignore-style patterns to skip paths during scans.
+### `.torchsightignore` ✅
+Gitignore-style patterns to skip paths during scans. Supports:
+- Directory names: `node_modules`
+- Extension globs: `*.pyc`
+- Path globs: `build/`
+- Recursive globs: `**/*.test.js`
 
-### Ollama Auto-Pull
+### Ollama Auto-Pull ✅
 If model isn't installed, automatically `ollama pull` it before scanning.
 
+---
+
+## Remaining
+
+### Parallel Scanning with Rayon
+`rayon::par_iter` on file discovery for large directory scans.
+
 ### Structured Logging
-`tracing` crate for production deployments — log levels, JSON output, file rotation.
+`tracing` crate for production deployments — JSON output, file rotation.
+Already has `tracing` + `tracing-subscriber` as dependencies.

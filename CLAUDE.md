@@ -13,16 +13,35 @@ On-premise cybersecurity scanner. Rust CLI + local LLMs (Ollama). Scans text/ima
 - **Regex safety net** — 35 compiled patterns as fallback for attacks the LLM misses
 
 ## Key Files
-- `src/main.rs` — CLI args, health checks, entry point
+- `src/main.rs` — CLI args, subcommands, health checks, entry point
+- `src/config.rs` — `.torchsight.toml` config file loader
 - `src/analyzers/text.rs` — text/PDF analysis, `parse_beam_findings()` parser
 - `src/analyzers/image.rs` — OCR + vision + beam hybrid pipeline
-- `src/llm/ollama.rs` — Ollama HTTP client (600s timeouts for CPU compat)
+- `src/llm/ollama.rs` — Ollama HTTP client (600s timeouts, auto-pull)
 - `src/scanner/pipeline.rs` — file discovery, progress bar, error handling
-- `src/report/` — JSON, Markdown, Terminal, PDF output
+- `src/scanner/discovery.rs` — file discovery, `.torchsightignore` support
+- `src/cli/git_hook.rs` — pre-commit hook install/uninstall/scan
+- `src/cli/watch.rs` — real-time file system watcher
+- `src/cli/stdin.rs` — stdin pipe and git diff scanning
+- `src/cli/policy.rs` — YAML policy engine (block/warn/ignore rules)
+- `src/report/` — JSON, Markdown, Terminal, PDF, SARIF, HTML output
 - `report/generate.py` — PDF report generator (called via `uv run`)
 - `training/output/Modelfile` — Ollama model definition (system prompt must match training)
 - `training/scripts/sft_converter.py` — SYSTEM_PROMPT is the source of truth
 - `install.sh` — cross-platform installer (Linux + macOS)
+
+## CI/DevOps Features
+- **`--fail-on <severity>`** — exit code 1 if findings at/above threshold (for CI)
+- **`--stdin`** — scan piped content: `cat file | torchsight --stdin`
+- **`--diff <ref>`** — scan changed files since git ref: `torchsight --diff HEAD~1`
+- **`--policy <path>`** — custom policy file (default: `.torchsight/policy.yml`)
+- **`--format sarif`** — SARIF 2.1.0 output for GitHub Code Scanning
+- **`--format html`** — self-contained HTML report with interactive dashboard
+- **`git-hook install/uninstall/scan`** — pre-commit hook management
+- **`watch <path> --interval 5s`** — real-time file system monitoring
+- **`.torchsight.toml`** — config file (CLI args override)
+- **`.torchsightignore`** — gitignore-style path exclusions
+- **Auto-pull** — automatically `ollama pull` missing models
 
 ## Beam Model v1.0
 - Qwen 3.5 27B (dense) + LoRA (r=128, alpha=256), 5 epochs, ~175K balanced samples from 18+ sources
