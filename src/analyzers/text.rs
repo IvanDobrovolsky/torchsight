@@ -97,6 +97,75 @@ pub async fn analyze_text_file(
     Ok(findings)
 }
 
+/// Analyze raw text content (for stdin/diff mode)
+pub async fn analyze_text_content(
+    label: &str,
+    content: &str,
+    ollama: &OllamaClient,
+) -> Result<Vec<FileFinding>> {
+    if content.trim().is_empty() {
+        return Ok(vec![FileFinding {
+            category: "safe".to_string(),
+            description: "Empty content.".to_string(),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "scanner".to_string(),
+            extracted_data: HashMap::new(),
+        }]);
+    }
+
+    let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
+    let is_beam = ollama.text_model().contains("beam");
+
+    let response = if is_beam {
+        let message = format!(
+            "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
+            truncated
+        );
+        ollama.chat(&message).await?
+    } else {
+        let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
+        let prompt = build_detailed_prompt(label, content.len(), was_truncated, &truncated);
+        ollama.generate(&prompt).await?
+    };
+
+    let mut findings = if is_beam {
+        parse_beam_findings(&response)?
+    } else {
+        parse_llm_findings(&response)?
+    };
+
+    let content_preview: String = truncated.chars().take(150).collect();
+    for finding in &mut findings {
+        finding
+            .extracted_data
+            .insert("source_file".to_string(), label.to_string());
+        if finding.evidence.is_empty() && finding.category != "safe" {
+            finding.evidence = content_preview.clone();
+        }
+    }
+
+    let regex_extra = regex_safety_net(content, &findings);
+    findings.extend(regex_extra);
+
+    if findings.is_empty() {
+        findings.push(FileFinding {
+            category: "safe".to_string(),
+            description: format!("Content analyzed ({}), no concerns detected.", label),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "llm".to_string(),
+            extracted_data: {
+                let mut m = HashMap::new();
+                m.insert("source_file".to_string(), label.to_string());
+                m
+            },
+        });
+    }
+
+    Ok(findings)
+}
+
 fn build_detailed_prompt(file_name: &str, content_len: usize, was_truncated: bool, truncated: &str) -> String {
     format!(
         r#"You are a cybersecurity forensics analyst performing a deep security assessment of a file.

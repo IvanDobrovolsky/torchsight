@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 use crate::scanner::classifier::FileKind;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
-    Critical,
-    High,
-    Medium,
-    Low,
     Info,
+    Low,
+    Medium,
+    High,
+    Critical,
 }
 
 impl std::fmt::Display for Severity {
@@ -130,5 +130,24 @@ impl ScanReport {
             .flat_map(|f| &f.findings)
             .filter(|f| f.severity == Severity::Info)
             .count()
+    }
+
+    /// Check if any finding meets or exceeds the given severity threshold
+    pub fn has_severity_at_or_above(&self, threshold: &Severity) -> bool {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.category != "safe")
+            .any(|f| f.severity >= *threshold)
+    }
+
+    /// Get the highest severity found in the report
+    pub fn max_severity(&self) -> Option<&Severity> {
+        self.files
+            .iter()
+            .flat_map(|f| &f.findings)
+            .filter(|f| f.category != "safe")
+            .map(|f| &f.severity)
+            .max()
     }
 }

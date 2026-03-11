@@ -5,6 +5,102 @@ use walkdir::WalkDir;
 
 use super::classifier::FileKind;
 
+/// Load ignore patterns from .torchsightignore file (gitignore-style)
+fn load_ignore_patterns(root: &std::path::Path) -> Vec<String> {
+    let mut patterns = Vec::new();
+
+    // Check root directory
+    let ignore_file = if root.is_file() {
+        root.parent()
+            .unwrap_or(std::path::Path::new("."))
+            .join(".torchsightignore")
+    } else {
+        root.join(".torchsightignore")
+    };
+
+    if let Ok(content) = std::fs::read_to_string(&ignore_file) {
+        for line in content.lines() {
+            let line = line.trim();
+            if !line.is_empty() && !line.starts_with('#') {
+                patterns.push(line.to_string());
+            }
+        }
+    }
+
+    // Also check cwd
+    if let Ok(cwd) = std::env::current_dir() {
+        let cwd_ignore = cwd.join(".torchsightignore");
+        if cwd_ignore.exists() && cwd_ignore != ignore_file {
+            if let Ok(content) = std::fs::read_to_string(&cwd_ignore) {
+                for line in content.lines() {
+                    let line = line.trim();
+                    if !line.is_empty() && !line.starts_with('#') {
+                        patterns.push(line.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    patterns
+}
+
+/// Check if a path matches any ignore pattern (simple glob matching)
+fn is_ignored(path: &std::path::Path, root: &std::path::Path, patterns: &[String]) -> bool {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    let rel_str = relative.to_string_lossy();
+
+    for pattern in patterns {
+        // Directory prefix match: "node_modules" matches any path containing it
+        if !pattern.contains('*') && !pattern.contains('/') {
+            for component in relative.components() {
+                if component.as_os_str().to_string_lossy() == pattern.as_str() {
+                    return true;
+                }
+            }
+            // Also check filename
+            if let Some(name) = path.file_name() {
+                if name.to_string_lossy() == pattern.as_str() {
+                    return true;
+                }
+            }
+        }
+        // Extension glob: "*.pyc"
+        else if let Some(ext_pattern) = pattern.strip_prefix("*.") {
+            if let Some(ext) = path.extension() {
+                if ext.to_string_lossy() == ext_pattern {
+                    return true;
+                }
+            }
+        }
+        // Path glob with ** : "src/**/*.test.js"
+        else if pattern.contains("**") {
+            let parts: Vec<&str> = pattern.split("**").collect();
+            if parts.len() == 2 {
+                let prefix = parts[0].trim_end_matches('/');
+                let suffix = parts[1].trim_start_matches('/');
+                let rel = rel_str.as_ref();
+                let prefix_ok = prefix.is_empty() || rel.starts_with(prefix);
+                let suffix_ok = suffix.is_empty() || rel.ends_with(suffix);
+                if prefix_ok && suffix_ok {
+                    return true;
+                }
+            }
+        }
+        // Simple path prefix: "build/"
+        else if pattern.ends_with('/') {
+            let dir_name = pattern.trim_end_matches('/');
+            for component in relative.components() {
+                if component.as_os_str().to_string_lossy() == dir_name {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
 pub struct ScannableFile {
     pub path: PathBuf,
     pub size: u64,
@@ -52,12 +148,14 @@ pub fn discover_files(
         console::style(root.display()).cyan()
     );
 
+    let ignore_patterns = load_ignore_patterns(&root);
     let scan_text = file_types.iter().any(|t| t == "text" || t == "all");
     let scan_images = file_types.iter().any(|t| t == "image" || t == "all");
 
     let mut files = Vec::new();
     let mut skipped_size = 0u64;
     let mut skipped_type = 0u64;
+    let mut skipped_ignored = 0u64;
 
     let walker = if root.is_file() {
         WalkDir::new(&root).max_depth(0)
@@ -84,6 +182,12 @@ pub fn discover_files(
         }
 
         if size == 0 {
+            continue;
+        }
+
+        // Check ignore patterns
+        if !ignore_patterns.is_empty() && is_ignored(&file_path, &root, &ignore_patterns) {
+            skipped_ignored += 1;
             continue;
         }
 
@@ -124,6 +228,13 @@ pub fn discover_files(
             "  {} Skipped {} files (unsupported type)",
             style("[INFO]").dim(),
             skipped_type
+        );
+    }
+    if skipped_ignored > 0 {
+        println!(
+            "  {} Skipped {} files (.torchsightignore)",
+            style("[INFO]").dim(),
+            skipped_ignored
         );
     }
 
