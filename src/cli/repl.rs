@@ -305,22 +305,24 @@ async fn run_scan(
     let flagged = report.files.iter().filter(|f| !f.findings.is_empty()).count();
     let clean = total - flagged;
 
-    println!("\n  {}", style("-- Scan Complete --").bold());
+    println!("\n  {}", style("-- Scan & Classification Complete --").bold());
     println!(
-        "  {} files scanned ({} flagged, {} clean)",
+        "  {} files analyzed ({} clean, {} flagged)",
         style(total).bold(),
-        style(flagged).yellow().bold(),
         style(clean).green().bold(),
+        style(flagged).yellow().bold(),
     );
-    println!(
-        "  {} total findings ({} critical, {} high, {} medium, {} low, {} info)",
-        style(report.total_findings()).bold(),
-        style(report.critical_count()).red().bold(),
-        style(report.high_count()).red(),
-        style(report.medium_count()).yellow().bold(),
-        style(report.low_count()).yellow(),
-        style(report.info_count()).dim(),
-    );
+    if report.total_findings() > 0 {
+        println!(
+            "  {} findings ({} critical, {} high, {} medium, {} low, {} info)",
+            style(report.total_findings()).bold(),
+            style(report.critical_count()).red().bold(),
+            style(report.high_count()).red(),
+            style(report.medium_count()).yellow().bold(),
+            style(report.low_count()).yellow(),
+            style(report.info_count()).dim(),
+        );
+    }
 
     // Auto-save PDF report
     match report::save_report(&report, "pdf") {
