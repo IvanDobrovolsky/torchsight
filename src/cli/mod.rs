@@ -15,4 +15,7 @@ pub struct ScanConfig {
     pub ollama_url: String,
     pub max_size_bytes: u64,
     pub format: String,
+    /// Suppress status messages (for clean structured output to stdout)
+    #[serde(default)]
+    pub quiet: bool,
 }
