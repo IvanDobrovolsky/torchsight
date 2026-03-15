@@ -442,15 +442,25 @@
   <!-- ── Clean files ── -->
   {% if clean_files %}
   <div class="section-title">Clean Files</div>
-  <ul class="clean-list">
-    {% for file in clean_files %}
-    <li class="clean-item">
-      <span class="clean-check">&check;</span>
-      <span class="clean-path">{{ file.path }}</span>
-      <span class="clean-summary">{{ file.kind }} &middot; {{ file.size_human }}</span>
-    </li>
+  {% for file in clean_files %}
+  <div class="file-card">
+    <div class="file-header">
+      <span class="file-path"><span style="color:#059669;font-size:12px;margin-right:6px;">&#10003;</span>{{ file.path }}</span>
+      <span class="file-meta">{{ file.kind }} &middot; {{ file.size_human }}</span>
+    </div>
+    {% for finding in file.findings %}
+    {% if finding.category == "safe" and finding.description %}
+    <div class="finding" style="border-bottom:none;">
+      <div class="finding-header">
+        <span class="severity-badge severity-info">SAFE</span>
+        <span class="category-badge" style="background:#ECFDF5;color:#059669;">{{ finding.subcategory or "safe" }}</span>
+      </div>
+      <div class="finding-desc">{{ finding.description }}</div>
+    </div>
+    {% endif %}
     {% endfor %}
-  </ul>
+  </div>
+  {% endfor %}
   {% endif %}
 
   <!-- ── Footer ── -->

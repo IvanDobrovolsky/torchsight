@@ -324,15 +324,29 @@ async fn run_scan(
         );
     }
 
-    // Auto-save PDF report
-    match report::save_report(&report, "pdf") {
-        Ok(path) => println!("  Report saved: {}\n", style(&path).green()),
+    // Auto-save JSON report (always)
+    match report::save_report(&report, "json") {
+        Ok(path) => println!("  Report saved: {}", style(&path).green()),
         Err(e) => println!(
-            "  {} Could not save PDF: {}. Use 'save' for JSON/Markdown.\n",
+            "  {} Could not save JSON: {}",
             style("[WARN]").yellow(),
             e
         ),
     }
+
+    // Auto-save in the configured format (if not json)
+    if config.format != "json" && config.format != "terminal" {
+        match report::save_report(&report, &config.format) {
+            Ok(path) => println!("  Report saved: {}", style(&path).green()),
+            Err(e) => println!(
+                "  {} Could not save {}: {}",
+                style("[WARN]").yellow(),
+                config.format,
+                e
+            ),
+        }
+    }
+    println!();
 
     // Print findings to terminal
     let terminal_output = report::format_report(&report, "terminal")?;
