@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TorchSight</title>
+  <script type="module" src="/main.js" defer></script>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1>TorchSight</h1>
+        <div class="version">v0.1.0 &middot; desktop</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-view="scan">
+          <span class="nav-icon">&#9906;</span>
+          Scan
+        </div>
+        <div class="nav-item" data-view="results">
+          <span class="nav-icon">&#9670;</span>
+          Results
+          <span class="nav-badge" id="findings-badge" style="display:none">0</span>
+        </div>
+        <div class="nav-item" data-view="settings">
+          <span class="nav-icon">&#9881;</span>
+          Settings
+        </div>
+      </nav>
+
+      <div class="sidebar-status">
+        <span class="status-dot offline" id="ollama-dot"></span>
+        <span id="ollama-status">Checking Ollama...</span>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <div class="accent-bar"></div>
+
+      <div class="topbar">
+        <span class="topbar-title" id="view-title">Scan</span>
+        <span class="topbar-spacer"></span>
+        <button class="topbar-btn primary" id="scan-folder-btn">Select Folder</button>
+      </div>
+
+      <div class="content">
+        <!-- ══ Scan View ══ -->
+        <div class="view active" id="view-scan">
+          <div class="scan-drop-zone" id="drop-zone">
+            <div class="scan-drop-icon">&#128274;</div>
+            <div class="scan-drop-text">Drop files or folders here to scan</div>
+            <div class="scan-drop-hint">Or click "Select Folder" above</div>
+            <button class="scan-btn" id="scan-btn">Start Scan</button>
+          </div>
+
+          <div class="scan-progress" id="scan-progress">
+            <div class="progress-status" id="progress-status">Preparing scan...</div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill indeterminate" id="progress-fill"></div>
+            </div>
+          </div>
+
+          <!-- Quick path input -->
+          <div style="margin-top: 20px; text-align: center;">
+            <input
+              type="text"
+              class="setting-input"
+              id="path-input"
+              placeholder="Or enter a path: /Users/you/Documents"
+              style="width: 100%; max-width: 500px; text-align: center;"
+            >
+          </div>
+        </div>
+
+        <!-- ══ Results View ══ -->
+        <div class="view" id="view-results">
+          <div id="results-empty" class="empty-state">
+            <div class="empty-state-icon">&#128269;</div>
+            <h3>No scan results yet</h3>
+            <p>Run a scan to see findings here. Results will appear with severity badges and detailed explanations.</p>
+          </div>
+
+          <div id="results-content" style="display:none">
+            <div class="stats-grid" id="stats-grid"></div>
+            <div id="flagged-files"></div>
+            <div id="clean-files"></div>
+          </div>
+        </div>
+
+        <!-- ══ Settings View ══ -->
+        <div class="view" id="view-settings">
+          <div class="settings-group">
+            <h3>Ollama Connection</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Server URL</div>
+                <div class="setting-desc">Ollama must be running locally or on your network</div>
+              </div>
+              <input class="setting-input" id="ollama-url" value="http://localhost:11434">
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Text Model</div>
+                <div class="setting-desc">Beam model for document classification</div>
+              </div>
+              <input class="setting-input" id="text-model" value="torchsight/beam">
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Vision Model</div>
+                <div class="setting-desc">For image analysis and description</div>
+              </div>
+              <input class="setting-input" id="vision-model" value="llama3.2-vision">
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>Available Models</h3>
+            <div class="model-list" id="model-list">
+              <span class="model-tag" style="color: var(--text-muted)">Connect to Ollama to see models</span>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3>About</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">TorchSight Desktop</div>
+                <div class="setting-desc">On-premise cybersecurity scanner powered by local LLMs. Apache 2.0 license.</div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Platform</div>
+                <div class="setting-desc" id="platform-info">Tauri v2 &middot; Cross-platform (macOS, Linux, Windows)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>
