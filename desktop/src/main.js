@@ -18,8 +18,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 function setupNavigation() {
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
-      const view = item.dataset.view;
-      switchView(view);
+      switchView(item.dataset.view);
     });
   });
 }
@@ -72,7 +71,7 @@ async function loadModels() {
 
     list.innerHTML = models.map(m => {
       const isActive = m.includes(textModel.split('/').pop()) || m.includes(visionModel);
-      return `<span class="model-tag${isActive ? ' active' : ''}">${m}</span>`;
+      return `<span class="model-tag${isActive ? ' active' : ''}">${escapeHtml(m)}</span>`;
     }).join('');
   } catch {
     // ignore
@@ -83,59 +82,34 @@ async function loadModels() {
 function setupScanControls() {
   const scanFolderBtn = document.getElementById('scan-folder-btn');
   const scanBtn = document.getElementById('scan-btn');
-  const pathInput = document.getElementById('path-input');
   const dropZone = document.getElementById('drop-zone');
 
-  scanFolderBtn.addEventListener('click', async () => {
-    // Use Tauri dialog to pick a folder
-    try {
-      const selected = await window.__TAURI__.dialog.open({
-        directory: true,
-        multiple: false,
-        title: 'Select folder to scan',
-      });
-      if (selected) {
-        selectedPath = selected;
-        pathInput.value = selected;
-      }
-    } catch {
-      // dialog plugin not available, fall back to path input
-    }
+  // Folder picker — the only way to select a path
+  scanFolderBtn.addEventListener('click', pickFolder);
+  dropZone.addEventListener('click', (e) => {
+    if (e.target !== scanBtn) pickFolder();
   });
 
   scanBtn.addEventListener('click', () => {
-    const path = pathInput.value.trim() || selectedPath;
-    if (path) startScan(path);
+    if (selectedPath) startScan(selectedPath);
   });
+}
 
-  pathInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const path = pathInput.value.trim();
-      if (path) startScan(path);
+async function pickFolder() {
+  try {
+    const selected = await window.__TAURI__.dialog.open({
+      directory: true,
+      multiple: false,
+      title: 'Select folder to scan',
+    });
+    if (selected) {
+      selectedPath = selected;
+      document.getElementById('selected-path').textContent = selected;
+      document.getElementById('scan-btn').disabled = false;
     }
-  });
-
-  // Drop zone visual feedback
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('drag-over');
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    // Tauri handles file drops differently; use path input as fallback
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      const path = files[0].path || files[0].name;
-      pathInput.value = path;
-      startScan(path);
-    }
-  });
+  } catch (err) {
+    console.error('Folder picker error:', err);
+  }
 }
 
 async function startScan(path) {
@@ -147,6 +121,7 @@ async function startScan(path) {
   // Show progress
   progress.classList.add('active');
   progressFill.className = 'progress-bar-fill indeterminate';
+  progressFill.style.background = '';
   progressStatus.textContent = `Scanning: ${path}`;
   scanBtn.disabled = true;
 
@@ -250,7 +225,7 @@ function renderResults(result) {
             <span class="file-path">
               <span style="color:var(--safe);margin-right:6px;">&#10003;</span>${escapeHtml(f.path)}
             </span>
-            <span class="file-meta">${f.kind}</span>
+            <span class="file-meta">${escapeHtml(f.kind)}</span>
           </div>
         </div>
       `).join('')}
@@ -266,7 +241,7 @@ function renderFileCard(file) {
     .map(f => `
       <div class="finding">
         <div class="finding-header">
-          <span class="severity-badge severity-${f.severity}">${f.severity}</span>
+          <span class="severity-badge severity-${escapeHtml(f.severity)}">${escapeHtml(f.severity)}</span>
           <span class="category-badge">${escapeHtml(f.subcategory || f.category)}</span>
         </div>
         <div class="finding-desc">${escapeHtml(f.explanation)}</div>
@@ -277,7 +252,7 @@ function renderFileCard(file) {
     <div class="file-card">
       <div class="file-header">
         <span class="file-path">${escapeHtml(file.path)}</span>
-        <span class="file-meta">${file.kind}</span>
+        <span class="file-meta">${escapeHtml(file.kind)}</span>
       </div>
       ${findings}
     </div>

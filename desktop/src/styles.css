@@ -403,6 +403,22 @@ body {
   color: var(--text-muted);
 }
 
+.selected-path {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--purple);
+  margin-top: 16px;
+  padding: 6px 14px;
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: var(--radius-sm);
+  word-break: break-all;
+  min-height: 0;
+}
+
+.selected-path:empty {
+  display: none;
+}
+
 .scan-btn {
   display: inline-block;
   margin-top: 20px;
