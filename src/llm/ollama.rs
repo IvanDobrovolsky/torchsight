@@ -157,41 +157,36 @@ impl OllamaClient {
         self.generate_with_model(&self.vision_model, prompt).await
     }
 
-    /// Chat-based text analysis (for models trained with chat format)
+    /// Beam text analysis — uses /api/generate with system prompt baked into prompt string
+    /// (Beam's Modelfile template is `{{ .Prompt }}`, so /api/chat doesn't format correctly)
     pub async fn chat(&self, user_message: &str) -> Result<String> {
-        let req = ChatRequest {
-            model: self.text_model.clone(),
-            messages: vec![
-                ChatMessage {
-                    role: "system".to_string(),
-                    content: BEAM_SYSTEM_PROMPT.to_string(),
-                },
-                ChatMessage {
-                    role: "user".to_string(),
-                    content: user_message.to_string(),
-                },
-            ],
-            stream: false,
-            options: ChatOptions {
-                num_predict: 2048,
-                stop: Some(vec![
-                    "\n\n\n".to_string(),
-                ]),
-            },
-        };
+        let prompt = format!(
+            "{}\n\n### Instruction:\n{}\n\n### Response:\n",
+            BEAM_SYSTEM_PROMPT, user_message
+        );
+
+        let req = serde_json::json!({
+            "model": self.text_model,
+            "prompt": prompt,
+            "stream": false,
+            "options": {
+                "num_predict": 2048,
+                "stop": ["\n\n\n"]
+            }
+        });
 
         let resp = self
             .client
-            .post(format!("{}/api/chat", self.base_url))
+            .post(format!("{}/api/generate", self.base_url))
             .json(&req)
             .timeout(std::time::Duration::from_secs(600))
             .send()
             .await?
             .error_for_status()?
-            .json::<ChatResponse>()
+            .json::<GenerateResponse>()
             .await?;
 
-        Ok(resp.message.content)
+        Ok(resp.response)
     }
 
     /// Image description — uses the vision model (llama3.2-vision)

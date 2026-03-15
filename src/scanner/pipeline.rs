@@ -15,20 +15,33 @@ pub async fn run_scan(
     ollama: &OllamaClient,
 ) -> Result<ScanReport> {
     let total = files.len() as u64;
-    let pb = ProgressBar::new(total);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("  {spinner:.cyan} [{bar:30.cyan/dim}] {msg}")?
-            .progress_chars("##-"),
-    );
+
+    // Use progress bar for interactive terminals, plain text for redirected output
+    let is_terminal = atty::is(atty::Stream::Stderr);
+    let pb = if is_terminal {
+        let pb = ProgressBar::new(total);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("  {spinner:.cyan} [{bar:30.cyan/dim}] {msg}")?
+                .progress_chars("##-"),
+        );
+        Some(pb)
+    } else {
+        None
+    };
 
     // Check OCR availability once
     let ocr_available = analyzers::ocr::is_available();
     if !ocr_available {
-        pb.println(format!(
+        let msg = format!(
             "  {} Tesseract not found. Image text extraction disabled. Install: pacman -S tesseract tesseract-data-eng",
             style("[WARN]").yellow()
-        ));
+        );
+        if let Some(ref pb) = pb {
+            pb.println(&msg);
+        } else {
+            eprintln!("{}", msg);
+        }
     }
 
     let mut report = ScanReport::new();
@@ -39,20 +52,29 @@ pub async fn run_scan(
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
-        pb.set_position(i as u64);
-        pb.set_message(format!("{}/{} | {}", i + 1, total, filename));
+        if let Some(ref pb) = pb {
+            pb.set_position(i as u64);
+            pb.set_message(format!("{}/{} | {}", i + 1, total, filename));
+        } else {
+            eprintln!("  [{}/{}] Scanning: {}", i + 1, total, filename);
+        }
 
         let findings = match file.kind {
             FileKind::Text => {
                 match analyzers::text::analyze_text_file(&file.path, ollama).await {
                     Ok(results) => results,
                     Err(e) => {
-                        pb.println(format!(
+                        let msg = format!(
                             "  {} Failed to analyze {}: {}",
                             style("[WARN]").yellow(),
                             filename,
                             e
-                        ));
+                        );
+                        if let Some(ref pb) = pb {
+                            pb.println(&msg);
+                        } else {
+                            eprintln!("{}", msg);
+                        }
                         vec![]
                     }
                 }
@@ -61,12 +83,17 @@ pub async fn run_scan(
                 match analyzers::image::analyze_image(&file.path, ollama).await {
                     Ok(findings) => findings,
                     Err(e) => {
-                        pb.println(format!(
+                        let msg = format!(
                             "  {} Failed to analyze {}: {}",
                             style("[WARN]").yellow(),
                             filename,
                             e
-                        ));
+                        );
+                        if let Some(ref pb) = pb {
+                            pb.println(&msg);
+                        } else {
+                            eprintln!("{}", msg);
+                        }
                         vec![]
                     }
                 }
@@ -82,8 +109,12 @@ pub async fn run_scan(
         );
     }
 
-    pb.set_position(total);
-    pb.finish_with_message("done");
+    if let Some(ref pb) = pb {
+        pb.set_position(total);
+        pb.finish_with_message("done");
+    } else {
+        eprintln!("  Scan complete: {} files processed", total);
+    }
 
     Ok(report)
 }

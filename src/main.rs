@@ -32,8 +32,8 @@ struct Args {
     #[arg(long, default_value = "1024")]
     max_size_mb: u64,
 
-    /// Output report format (json, markdown, sarif, html)
-    #[arg(long, default_value = "json")]
+    /// Output report format (json, html, markdown, sarif, pdf). JSON is always saved; this controls the additional format.
+    #[arg(long, default_value = "html")]
     format: String,
 
     /// Interactive mode — enables LLM-powered Q&A after scan
@@ -132,7 +132,7 @@ async fn main() -> Result<()> {
     let vision_model = if args.vision_model != "llama3.2-vision" { args.vision_model } else { file_config.model.vision };
     let ollama_url = if args.ollama_url != "http://localhost:11434" { args.ollama_url } else { file_config.model.ollama_url };
     let max_size_mb = if args.max_size_mb != 1024 { args.max_size_mb } else { file_config.scan.max_size_mb };
-    let format_was_explicit = args.format != "json";
+    let format_was_explicit = args.format != "html";
     let format = if format_was_explicit { args.format } else { file_config.report.format };
     let fail_on_str = args.fail_on.or(file_config.scan.fail_on);
 
