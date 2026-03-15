@@ -53,9 +53,10 @@
         <div class="view active" id="view-scan">
           <div class="scan-drop-zone" id="drop-zone">
             <div class="scan-drop-icon">&#128274;</div>
-            <div class="scan-drop-text">Drop files or folders here to scan</div>
-            <div class="scan-drop-hint">Or click "Select Folder" above</div>
-            <button class="scan-btn" id="scan-btn">Start Scan</button>
+            <div class="scan-drop-text">Select a folder to scan for sensitive content</div>
+            <div class="scan-drop-hint">Click "Select Folder" above to pick a directory</div>
+            <div class="selected-path" id="selected-path"></div>
+            <button class="scan-btn" id="scan-btn" disabled>Start Scan</button>
           </div>
 
           <div class="scan-progress" id="scan-progress">
@@ -63,17 +64,6 @@
             <div class="progress-bar-bg">
               <div class="progress-bar-fill indeterminate" id="progress-fill"></div>
             </div>
-          </div>
-
-          <!-- Quick path input -->
-          <div style="margin-top: 20px; text-align: center;">
-            <input
-              type="text"
-              class="setting-input"
-              id="path-input"
-              placeholder="Or enter a path: /Users/you/Documents"
-              style="width: 100%; max-width: 500px; text-align: center;"
-            >
           </div>
         </div>
 
