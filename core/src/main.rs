@@ -109,15 +109,14 @@ async fn main() -> Result<()> {
     }
 
     // Handle subcommands that don't need full setup
-    match &args.command {
-        Some(SubCommand::GitHook { action }) => match action {
+    if let Some(SubCommand::GitHook { action }) = &args.command {
+        match action {
             GitHookAction::Install => return cli::git_hook::install(),
             GitHookAction::Uninstall => return cli::git_hook::uninstall(),
             GitHookAction::Scan => {
                 return cli::git_hook::scan_staged(&args.ollama_url, &args.text_model, &args.vision_model).await;
             }
-        },
-        _ => {}
+        }
     }
 
     // Load config file (CLI args override config)
@@ -263,10 +262,10 @@ fn check_policy_and_exit(
     }
 
     // Check --fail-on
-    if let Some(threshold) = fail_on {
-        if report.has_severity_at_or_above(threshold) {
-            std::process::exit(1);
-        }
+    if let Some(threshold) = fail_on
+        && report.has_severity_at_or_above(threshold)
+    {
+        std::process::exit(1);
     }
 
     Ok(())
@@ -274,15 +273,15 @@ fn check_policy_and_exit(
 
 fn parse_duration(s: &str) -> std::time::Duration {
     let s = s.trim();
-    if let Some(secs) = s.strip_suffix('s') {
-        if let Ok(n) = secs.parse::<u64>() {
-            return std::time::Duration::from_secs(n);
-        }
+    if let Some(secs) = s.strip_suffix('s')
+        && let Ok(n) = secs.parse::<u64>()
+    {
+        return std::time::Duration::from_secs(n);
     }
-    if let Some(mins) = s.strip_suffix('m') {
-        if let Ok(n) = mins.parse::<u64>() {
-            return std::time::Duration::from_secs(n * 60);
-        }
+    if let Some(mins) = s.strip_suffix('m')
+        && let Ok(n) = mins.parse::<u64>()
+    {
+        return std::time::Duration::from_secs(n * 60);
     }
     std::time::Duration::from_secs(5)
 }

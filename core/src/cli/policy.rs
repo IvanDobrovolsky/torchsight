@@ -27,16 +27,16 @@ impl Policy {
         };
 
         for path in &candidates {
-            if Path::new(path).exists() {
-                if let Ok(content) = std::fs::read_to_string(path) {
-                    match Self::parse_yaml(&content) {
-                        Ok(policy) => {
-                            tracing::debug!("Loaded policy from {}", path);
-                            return policy;
-                        }
-                        Err(e) => {
-                            eprintln!("Warning: Failed to parse policy {}: {}", path, e);
-                        }
+            if Path::new(path).exists()
+                && let Ok(content) = std::fs::read_to_string(path)
+            {
+                match Self::parse_yaml(&content) {
+                    Ok(policy) => {
+                        tracing::debug!("Loaded policy from {}", path);
+                        return policy;
+                    }
+                    Err(e) => {
+                        eprintln!("Warning: Failed to parse policy {}: {}", path, e);
                     }
                 }
             }

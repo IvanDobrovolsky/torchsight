@@ -50,6 +50,12 @@ pub struct ScanReport {
     pub files: Vec<FileResult>,
 }
 
+impl Default for ScanReport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScanReport {
     pub fn new() -> Self {
         Self {
