@@ -143,11 +143,15 @@ fn save_pdf(report: &ScanReport, timestamp: &str) -> Result<String> {
 }
 
 fn find_report_script() -> Result<std::path::PathBuf> {
-    // Compile-time project root (works in dev builds)
-    let project_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let from_manifest = project_root.join("report/generate.py");
-    if from_manifest.exists() {
-        return Ok(from_manifest.canonicalize()?);
+    // Compile-time: CARGO_MANIFEST_DIR is core/, report/ is one level up
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    for candidate in &[
+        manifest_dir.join("report/generate.py"),       // if report/ is inside core/
+        manifest_dir.join("../report/generate.py"),     // workspace layout: core/ + report/
+    ] {
+        if candidate.exists() {
+            return Ok(candidate.canonicalize()?);
+        }
     }
 
     // Try relative to executable (installed binary)
