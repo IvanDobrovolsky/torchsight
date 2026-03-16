@@ -696,15 +696,34 @@ lazy_re!(RE_PROMPT_IGNORE, r"(?i)ignore\s+(all\s+)?previous\s+instructions");
 lazy_re!(RE_PROMPT_DAN, r"(?i)you\s+are\s+now\s+(DAN|an?\s+unrestricted)");
 lazy_re!(RE_PROMPT_OVERRIDE, r"(?i)system:\s*override");
 
-fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<FileFinding> {
-    // If the model already detected "malicious", don't add duplicates
-    let model_found_malicious = existing_findings
-        .iter()
-        .any(|f| f.category == "malicious");
+// --- H. PII patterns ---
+lazy_re!(RE_SSN_FULL, r"\b\d{3}-\d{2}-\d{4}\b");
+lazy_re!(RE_SSN_PARTIAL, r"(?i)(\*{3}-\*{2}-\d{4}|XXX-XX-\d{4}|xxx-xx-\d{4}|\*{5,}\d{4})");
+lazy_re!(RE_EMAIL, r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b");
+lazy_re!(RE_PHONE_US, r"\b(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}-\d{3}-\d{4})\b");
+lazy_re!(RE_DOB_PATTERN, r"(?i)\b(DOB|date\s+of\s+birth|birth\s*date)\s*[:=]\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}");
 
-    if model_found_malicious {
-        return Vec::new();
-    }
+// --- I. Financial patterns ---
+lazy_re!(RE_CREDIT_CARD_VISA, r"\b4\d{3}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b");
+lazy_re!(RE_CREDIT_CARD_MC, r"\b5[1-5]\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b");
+lazy_re!(RE_CREDIT_CARD_AMEX, r"\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b");
+lazy_re!(RE_BANK_ACCT_MASKED, r"\*{4,}\d{4}");
+lazy_re!(RE_IBAN, r"\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?\d{0,16})\b");
+
+// --- J. Credential patterns ---
+lazy_re!(RE_AWS_KEY, r"\bAKIA[A-Z0-9]{16}\b");
+lazy_re!(RE_STRIPE_KEY, r"\b(sk|pk)_(live|test)_[a-zA-Z0-9]{20,}");
+lazy_re!(RE_GITHUB_TOKEN, r"\b(ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36,}\b");
+lazy_re!(RE_PRIVATE_KEY, r"-----BEGIN\s+(RSA|EC|DSA|OPENSSH|PGP)\s+PRIVATE\s+KEY-----");
+lazy_re!(RE_GENERIC_SECRET, r#"(?i)(password|passwd|pwd|secret|token)\s*[:=]\s*["']?[^\s"']{8,}"#);
+lazy_re!(RE_CONNECTION_STRING, r"(?i)(mongodb|postgres|mysql|redis|amqp)://[^\s]+@[^\s]+");
+
+fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<FileFinding> {
+    // Track which categories the model already found
+    let model_categories: std::collections::HashSet<&str> = existing_findings
+        .iter()
+        .map(|f| f.category.as_str())
+        .collect();
 
     let patterns: &[SafetyPattern] = &[
         // A. SSTI
@@ -751,6 +770,28 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
         SafetyPattern { regex: &RE_PROMPT_IGNORE, subcategory: "malicious.prompt_injection", description: "Prompt injection: attempt to override previous instructions", severity: Severity::High },
         SafetyPattern { regex: &RE_PROMPT_DAN, subcategory: "malicious.prompt_injection", description: "Prompt injection: jailbreak attempt (DAN / unrestricted mode)", severity: Severity::High },
         SafetyPattern { regex: &RE_PROMPT_OVERRIDE, subcategory: "malicious.prompt_injection", description: "Prompt injection: system override attempt", severity: Severity::High },
+
+        // H. PII
+        SafetyPattern { regex: &RE_SSN_FULL, subcategory: "pii.identity", description: "Social Security Number detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_SSN_PARTIAL, subcategory: "pii.identity", description: "Partially redacted SSN detected (last 4 digits exposed)", severity: Severity::High },
+        SafetyPattern { regex: &RE_EMAIL, subcategory: "pii.contact", description: "Email address detected", severity: Severity::Medium },
+        SafetyPattern { regex: &RE_PHONE_US, subcategory: "pii.contact", description: "Phone number detected", severity: Severity::Medium },
+        SafetyPattern { regex: &RE_DOB_PATTERN, subcategory: "pii.identity", description: "Date of birth detected", severity: Severity::High },
+
+        // I. Financial
+        SafetyPattern { regex: &RE_CREDIT_CARD_VISA, subcategory: "financial.credit_card", description: "Visa credit card number detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_CREDIT_CARD_MC, subcategory: "financial.credit_card", description: "Mastercard credit card number detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_CREDIT_CARD_AMEX, subcategory: "financial.credit_card", description: "American Express card number detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_BANK_ACCT_MASKED, subcategory: "financial.bank_account", description: "Masked bank account number detected", severity: Severity::High },
+        SafetyPattern { regex: &RE_IBAN, subcategory: "financial.bank_account", description: "IBAN detected", severity: Severity::Critical },
+
+        // J. Credentials
+        SafetyPattern { regex: &RE_AWS_KEY, subcategory: "credentials.api_key", description: "AWS access key ID detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_STRIPE_KEY, subcategory: "credentials.api_key", description: "Stripe API key detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_GITHUB_TOKEN, subcategory: "credentials.token", description: "GitHub token detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_PRIVATE_KEY, subcategory: "credentials.private_key", description: "Private key detected", severity: Severity::Critical },
+        SafetyPattern { regex: &RE_GENERIC_SECRET, subcategory: "credentials.password", description: "Hardcoded password or secret detected", severity: Severity::High },
+        SafetyPattern { regex: &RE_CONNECTION_STRING, subcategory: "credentials.connection_string", description: "Database connection string with credentials detected", severity: Severity::Critical },
     ];
 
     let mut results = Vec::new();
@@ -761,14 +802,22 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
             continue;
         }
 
+        // Extract the top-level category from subcategory (e.g., "pii" from "pii.identity")
+        let category = pat.subcategory.split('.').next().unwrap_or(pat.subcategory);
+
+        // Skip if the model already found this category
+        if model_categories.contains(category) {
+            continue;
+        }
+
         if let Some(m) = pat.regex.find(content) {
             let matched_text = m.as_str();
             let evidence: String = matched_text.chars().take(200).collect();
 
             results.push(FileFinding {
-                category: "malicious".to_string(),
-                description: pat.description.to_string(),
-                evidence,
+                category: category.to_string(),
+                description: format!("{}: {}", pat.description, evidence),
+                evidence: pat.subcategory.to_string(),
                 severity: pat.severity.clone(),
                 source: "regex".to_string(),
                 extracted_data: HashMap::new(),
@@ -779,10 +828,9 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
     }
 
     // Special handling: yaml.load without SafeLoader
-    if !seen_subcategories.contains("malicious.exploit") {
+    if !model_categories.contains("malicious") && !seen_subcategories.contains("malicious.exploit") {
         if let Some(m) = RE_YAML_UNSAFE.find(content) {
             let match_start = m.start();
-            // Check if SafeLoader appears near the match (within 100 chars after)
             let search_end = (match_start + m.len() + 100).min(content.len());
             let vicinity = &content[match_start..search_end];
             if !RE_YAML_SAFE.is_match(vicinity) {
