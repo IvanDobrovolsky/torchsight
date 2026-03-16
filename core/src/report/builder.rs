@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::scanner::classifier::FileKind;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Severity {
     Info,
     Low,
