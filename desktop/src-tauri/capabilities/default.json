@@ -8,6 +8,8 @@
     "opener:default",
     "dialog:default",
     "dialog:allow-open",
+    "dialog:allow-save",
+    "opener:allow-open-path",
     "shell:default",
     "shell:allow-open"
   ]
