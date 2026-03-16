@@ -11,7 +11,7 @@ use crate::report::ScanReport;
 
 pub async fn run_scan(
     files: Vec<ScannableFile>,
-    config: &ScanConfig,
+    _config: &ScanConfig,
     ollama: &OllamaClient,
 ) -> Result<ScanReport> {
     let total = files.len() as u64;
