@@ -2,6 +2,8 @@
 
 On-premise document classifier trained to detect sensitive data, credentials, security threats, and classified content in text, images, and PDFs.
 
+[Ollama](https://ollama.com/torchsight/beam) | [HuggingFace](https://huggingface.co/torchsight)
+
 ## Model Overview
 
 | | |
@@ -10,7 +12,7 @@ On-premise document classifier trained to detect sensitive data, credentials, se
 | **Base model** | Qwen 3.5 27B (dense) |
 | **Method** | LoRA fine-tuning (r=128, alpha=256) |
 | **Epochs** | 5 |
-| **Training data** | ~175K balanced samples across 51 subcategories |
+| **Training data** | 78,358 balanced samples (74,441 train / 3,917 val) across 51 subcategories |
 | **Training GPU** | H100 80GB PCIe (~55GB VRAM) |
 | **Output formats** | GGUF q4\_K\_M (~17GB), q8\_0 (~28GB) |
 | **Inference** | temperature=0 (deterministic) |
@@ -117,7 +119,7 @@ mindmap
 
 ## Training Data
 
-### Sources (~175K total samples)
+### Sources (78,358 samples after rebalancing)
 
 | Source | Samples | License | Provides |
 |--------|---------|---------|----------|
@@ -161,15 +163,6 @@ mindmap
 | Dangerous-looking safe | 2,500 | Tutorial credentials, pentest reports, test code, public records |
 | Boundary cases | 900 | Multi-category docs, partial redaction, decodable tokens (JWT/base64 with PII) |
 
-### Excluded Datasets
-
-| Dataset | License | Reason |
-|---------|---------|--------|
-| OWASP WSTG | CC-BY-SA 4.0 | ShareAlike clause may apply to model weights per Creative Commons legal guidance (May 2025). Replaced by Fenrir v2.0 + PayloadsAllTheThings. |
-| MTSamples | Claimed CC0 | Original site terms restrict to "educational purposes." Provenance chain unclear. Replaced with synthetic medical data. |
-| MIMIC-III | PhysioNet DUA | DUA explicitly prohibits sharing data with LLM services. |
-| Exploit-DB | GPL v2 | Whether training creates a "derivative work" under GPL is legally debated. Replaced by NVD + Fenrir + PayloadsAllTheThings. |
-
 ---
 
 ## Training Pipeline
@@ -195,8 +188,8 @@ graph LR
 | Rank (r) | 128 |
 | Alpha | 256 |
 | Target layers | All attention (q,k,v,o\_proj) + gate,up,down\_proj + lm\_head |
-| Batch size | 16 x 2 grad accum = 32 effective |
-| Learning rate | 1e-4 with cosine decay |
+| Batch size | 4 x 4 grad accum = 16 effective |
+| Learning rate | 2e-5 with cosine decay |
 | Precision | bf16 |
 | Optimizer | AdamW fused |
 | Checkpoint selection | Best model by eval loss |

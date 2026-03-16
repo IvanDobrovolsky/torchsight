@@ -328,7 +328,7 @@ JSON is the canonical format. All other formats are generated from the same `Sca
 |-----------|-----------|-----------------|
 | Scanner CLI | Rust | clap, walkdir, indicatif, reqwest, serde |
 | Desktop app | Tauri v2 | Rust backend + webview frontend |
-| Text model | Qwen 3.5 27B + LoRA | r=128, alpha=256, 5 epochs, ~175K samples |
+| Text model | Qwen 3.5 27B + LoRA | r=128, alpha=256, 5 epochs, 78K samples |
 | Vision model | llama3.2-vision | Image description via Ollama |
 | LLM runtime | Ollama | Local inference, `/api/generate` endpoint |
 | OCR | Tesseract | System binary, not Rust crate |
