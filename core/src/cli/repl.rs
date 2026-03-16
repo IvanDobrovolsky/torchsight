@@ -129,9 +129,19 @@ async fn run_scan(
     }
 
     println!(
-        "  Found {} files to scan\n",
+        "  Found {} files to scan",
         style(files.len()).cyan().bold()
     );
+    if files.len() > 2 {
+        println!(
+            "  {} Open another terminal → {} → type {}\n",
+            style("Bored?").dim(),
+            style("torchsight").cyan(),
+            style("snake").cyan()
+        );
+    } else {
+        println!();
+    }
 
     let report = scanner::pipeline::run_scan(files, config, ollama).await?;
 
