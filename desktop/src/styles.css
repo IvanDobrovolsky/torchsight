@@ -460,6 +460,24 @@ body {
   transform: none;
 }
 
+.scan-btn.secondary {
+  background: transparent;
+  border: 1px solid var(--violet);
+  color: var(--purple);
+}
+
+.scan-btn.secondary:hover {
+  background: rgba(124, 58, 237, 0.1);
+  opacity: 1;
+}
+
+.results-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 /* ── Progress ── */
 .scan-progress {
   margin-top: 32px;

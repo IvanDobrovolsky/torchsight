@@ -485,6 +485,82 @@ fn get_gpu_stats_linux() -> (f64, f64, f64) {
     (0.0, 0.0, 0.0)
 }
 
+/// Export the last scan report as PDF using the CLI's report generator
+#[tauri::command]
+async fn export_pdf(save_path: String) -> Result<String, String> {
+    let report_dir = std::env::temp_dir().join("torchsight-desktop");
+
+    // Find the latest JSON report
+    let entries = std::fs::read_dir(&report_dir).map_err(|e| e.to_string())?;
+    let mut reports: Vec<_> = entries.filter_map(|e| e.ok())
+        .filter(|e| {
+            let n = e.file_name().to_string_lossy().to_string();
+            n.starts_with("torchsight_report") && n.ends_with(".json")
+        }).collect();
+    reports.sort_by_key(|e| std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified().ok())));
+
+    let json_path = reports.first()
+        .ok_or("No scan report found. Run a scan first.")?
+        .path();
+
+    let binary = find_torchsight_binary()?;
+    let save = save_path.clone();
+
+    // The CLI's --format pdf writes to cwd, so we run it from a temp dir
+    // then move the output to the user's chosen path
+    let output = tokio::task::spawn_blocking(move || {
+        // Use the CLI to generate PDF from the existing JSON report
+        // The CLI reads the path arg and scans, but we already have results.
+        // Instead, use uv + generate.py directly with the JSON file.
+
+        // Find report/generate.py relative to the binary
+        let mut script_path = None;
+        if let Ok(exe) = std::env::current_exe() {
+            for ancestor in exe.ancestors().skip(1) {
+                let candidate = ancestor.join("report/generate.py");
+                if candidate.exists() {
+                    script_path = Some(candidate);
+                    break;
+                }
+            }
+        }
+        // Also check relative to the CLI binary
+        for ancestor in binary.ancestors().skip(1) {
+            let candidate = ancestor.join("report/generate.py");
+            if candidate.exists() {
+                script_path = Some(candidate);
+                break;
+            }
+        }
+
+        let script = script_path.ok_or("Could not find report/generate.py. Make sure the TorchSight repo is available.")?;
+        let project_dir = script.parent().unwrap();
+
+        let result = Command::new("uv")
+            .args([
+                "run",
+                "--project", project_dir.to_str().unwrap(),
+                "python",
+                script.to_str().unwrap(),
+                json_path.to_str().unwrap(),
+                "-o", &save,
+            ])
+            .output()
+            .map_err(|e| format!("Failed to run uv: {}. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh", e))?;
+
+        if !result.status.success() {
+            let stderr = String::from_utf8_lossy(&result.stderr);
+            return Err(format!("PDF generation failed: {}", stderr.trim()));
+        }
+
+        Ok(save)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    Ok(output)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -492,7 +568,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            check_ollama, list_models, list_files, get_system_stats, scan_path,
+            check_ollama, list_models, list_files, get_system_stats, scan_path, export_pdf,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TorchSight desktop");
