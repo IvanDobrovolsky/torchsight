@@ -117,3 +117,73 @@ impl TorchsightConfig {
         Self::default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_values() {
+        let config = TorchsightConfig::default();
+        assert_eq!(config.model.text, "torchsight/beam");
+        assert_eq!(config.model.vision, "llama3.2-vision");
+        assert_eq!(config.model.ollama_url, "http://localhost:11434");
+        assert_eq!(config.scan.max_size_mb, 1024);
+        assert!(config.scan.exclude.is_empty());
+        assert!(config.scan.fail_on.is_none());
+        assert_eq!(config.report.format, "json");
+        assert!(config.report.auto_pdf);
+    }
+
+    #[test]
+    fn parse_partial_toml_uses_defaults() {
+        let toml_str = r#"
+[model]
+text = "custom/model"
+"#;
+        let config: TorchsightConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.model.text, "custom/model");
+        // Other model fields should use defaults
+        assert_eq!(config.model.vision, "llama3.2-vision");
+        assert_eq!(config.model.ollama_url, "http://localhost:11434");
+        // Scan and report should use defaults
+        assert_eq!(config.scan.max_size_mb, 1024);
+        assert_eq!(config.report.format, "json");
+    }
+
+    #[test]
+    fn parse_full_toml() {
+        let toml_str = r#"
+[model]
+text = "my/beam"
+vision = "my/vision"
+ollama_url = "http://gpu-server:11434"
+
+[scan]
+max_size_mb = 512
+exclude = ["*.log", "node_modules"]
+fail_on = "high"
+
+[report]
+format = "html"
+auto_pdf = false
+"#;
+        let config: TorchsightConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.model.text, "my/beam");
+        assert_eq!(config.model.vision, "my/vision");
+        assert_eq!(config.model.ollama_url, "http://gpu-server:11434");
+        assert_eq!(config.scan.max_size_mb, 512);
+        assert_eq!(config.scan.exclude, vec!["*.log", "node_modules"]);
+        assert_eq!(config.scan.fail_on, Some("high".to_string()));
+        assert_eq!(config.report.format, "html");
+        assert!(!config.report.auto_pdf);
+    }
+
+    #[test]
+    fn parse_empty_toml_uses_all_defaults() {
+        let config: TorchsightConfig = toml::from_str("").unwrap();
+        assert_eq!(config.model.text, "torchsight/beam");
+        assert_eq!(config.scan.max_size_mb, 1024);
+        assert_eq!(config.report.format, "json");
+    }
+}

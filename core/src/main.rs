@@ -1,10 +1,8 @@
-mod analyzers;
-mod cli;
-mod config;
-mod llm;
-mod memory;
-mod report;
-mod scanner;
+use torchsight::analyzers;
+use torchsight::cli;
+use torchsight::config;
+use torchsight::llm;
+use torchsight::report;
 
 use anyhow::Result;
 use clap::Parser;
@@ -20,7 +18,7 @@ struct Args {
     #[arg(long, default_value = "torchsight/beam")]
     text_model: String,
 
-    /// Vision model (for image analysis and interactive Q&A)
+    /// Vision model (for image analysis)
     #[arg(long, default_value = "llama3.2-vision")]
     vision_model: String,
 
@@ -35,10 +33,6 @@ struct Args {
     /// Output report format (json, html, markdown, sarif, pdf). JSON is always saved; this controls the additional format.
     #[arg(long, default_value = "html")]
     format: String,
-
-    /// Interactive mode — enables LLM-powered Q&A after scan
-    #[arg(short, long)]
-    interactive: bool,
 
     /// Exit with code 1 if findings meet or exceed this severity (critical, high, medium, low, info)
     #[arg(long)]
@@ -238,10 +232,7 @@ async fn main() -> Result<()> {
         return check_policy_and_exit(&report, fail_on.as_ref(), &policy);
     }
 
-    // Two modes:
-    // 1. Command mode (default): scan, report, exit
-    // 2. Interactive mode (-i): scan + LLM-powered Q&A about results
-    let report = cli::repl::run(config, ollama, args.path, args.interactive).await?;
+    let report = cli::repl::run(config, ollama, args.path).await?;
 
     // Check --fail-on threshold and policy
     if let Some(ref report) = report {

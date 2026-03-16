@@ -609,3 +609,204 @@ fn format_terminal(report: &ScanReport) -> String {
 
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scanner::classifier::FileKind;
+    use std::collections::HashMap;
+
+    fn make_report_with_finding(category: &str, severity: Severity) -> ScanReport {
+        let mut report = ScanReport::new();
+        report.add_file_findings(
+            "test_file.txt".to_string(),
+            FileKind::Text,
+            256,
+            vec![super::super::builder::FileFinding {
+                category: category.to_string(),
+                description: format!("Test {} finding", category),
+                evidence: "some evidence".to_string(),
+                severity,
+                source: "test".to_string(),
+                extracted_data: HashMap::new(),
+            }],
+        );
+        report
+    }
+
+    fn make_empty_report() -> ScanReport {
+        ScanReport::new()
+    }
+
+    // =========================================================================
+    // JSON output
+    // =========================================================================
+
+    #[test]
+    fn json_output_is_valid_json() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert!(parsed.get("files").is_some());
+        assert!(parsed.get("timestamp").is_some());
+    }
+
+    #[test]
+    fn json_output_contains_findings() {
+        let report = make_report_with_finding("credentials", Severity::Critical);
+        let output = format_report(&report, "json").unwrap();
+        assert!(output.contains("credentials"));
+        assert!(output.contains("test_file.txt"));
+    }
+
+    #[test]
+    fn json_empty_report() {
+        let report = make_empty_report();
+        let output = format_report(&report, "json").unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["files"].as_array().unwrap().len(), 0);
+    }
+
+    // =========================================================================
+    // Markdown output
+    // =========================================================================
+
+    #[test]
+    fn markdown_contains_header() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "markdown").unwrap();
+        assert!(output.contains("# TorchSight Scan"));
+    }
+
+    #[test]
+    fn markdown_contains_summary() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "markdown").unwrap();
+        assert!(output.contains("**Summary:**"));
+        assert!(output.contains("1 files analyzed"));
+    }
+
+    #[test]
+    fn markdown_contains_severity_labels() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "markdown").unwrap();
+        assert!(output.contains("[HIGH]"));
+    }
+
+    #[test]
+    fn markdown_contains_file_path() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "markdown").unwrap();
+        assert!(output.contains("test_file.txt"));
+    }
+
+    #[test]
+    fn markdown_contains_evidence() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "markdown").unwrap();
+        assert!(output.contains("some evidence"));
+    }
+
+    // =========================================================================
+    // Terminal output
+    // =========================================================================
+
+    #[test]
+    fn terminal_is_default_for_unknown_format() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let terminal = format_report(&report, "terminal").unwrap();
+        let unknown = format_report(&report, "foobar").unwrap();
+        // Both should produce terminal format (same structure)
+        assert_eq!(terminal, unknown);
+    }
+
+    #[test]
+    fn terminal_shows_clean_label_for_safe_files() {
+        let mut report = ScanReport::new();
+        report.add_file_findings(
+            "clean.txt".to_string(),
+            FileKind::Text,
+            50,
+            vec![super::super::builder::FileFinding {
+                category: "safe".to_string(),
+                description: "No issues".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "test".to_string(),
+                extracted_data: HashMap::new(),
+            }],
+        );
+        let output = format_report(&report, "terminal").unwrap();
+        assert!(output.contains("CLEAN"));
+    }
+
+    // =========================================================================
+    // SARIF output
+    // =========================================================================
+
+    #[test]
+    fn sarif_is_valid_json() {
+        let report = make_report_with_finding("malicious", Severity::Critical);
+        let output = format_sarif(&report);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        assert_eq!(parsed["version"], "2.1.0");
+        assert!(parsed["runs"].is_array());
+    }
+
+    #[test]
+    fn sarif_contains_results() {
+        let report = make_report_with_finding("malicious", Severity::Critical);
+        let output = format_sarif(&report);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let results = parsed["runs"][0]["results"].as_array().unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0]["level"], "error");
+    }
+
+    #[test]
+    fn sarif_skips_safe_findings() {
+        let report = make_report_with_finding("safe", Severity::Info);
+        let output = format_sarif(&report);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let results = parsed["runs"][0]["results"].as_array().unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn sarif_severity_mapping() {
+        // Critical/High -> error, Medium -> warning, Low/Info -> note
+        let cases = vec![
+            (Severity::Critical, "error"),
+            (Severity::High, "error"),
+            (Severity::Medium, "warning"),
+            (Severity::Low, "note"),
+            (Severity::Info, "note"),
+        ];
+        for (severity, expected_level) in cases {
+            let report = make_report_with_finding("test", severity.clone());
+            let output = format_sarif(&report);
+            let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+            let level = parsed["runs"][0]["results"][0]["level"].as_str().unwrap();
+            assert_eq!(level, expected_level, "Severity {:?} should map to '{}'", severity, expected_level);
+        }
+    }
+
+    // =========================================================================
+    // HTML output
+    // =========================================================================
+
+    #[test]
+    fn html_contains_doctype() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "html").unwrap();
+        assert!(output.starts_with("<!DOCTYPE html>"));
+    }
+
+    #[test]
+    fn html_contains_report_data() {
+        let report = make_report_with_finding("pii", Severity::High);
+        let output = format_report(&report, "html").unwrap();
+        assert!(output.contains("TorchSight"));
+        assert!(output.contains("test_file.txt"));
+    }
+}
