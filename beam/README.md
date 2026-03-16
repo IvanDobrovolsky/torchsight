@@ -103,18 +103,6 @@ mindmap
 | `low` | Minor risk. Minimal exposure, public information with some sensitivity. | Email address alone, file metadata with author name, safe-looking config with commented credentials |
 | `info` | No risk. Clean file, safe content. | Documentation, clean source code, stock photos |
 
-### Severity Assignment Rules
-
-- Full SSN, credit card, active credential, exploit code, classified markings with content --> `critical`
-- Military operations data, intelligence reports, nuclear information (RD/FRD/CNWDI) --> `critical`
-- Prompt injection, supply chain attack, reverse shell, C2 beacon --> `critical`
-- Cloud config with IAM keys, CI/CD secrets, container secrets in plaintext --> `critical`
-- Name + DOB or name + address (no SSN/ID) --> `medium`
-- EXIF GPS coordinates, behavioral tracking data --> `medium`
-- Internal/confidential marking without sensitive data --> `medium`
-- Email address alone --> `low`
-- Safe/clean files --> `info`
-
 ---
 
 ## Training Data
@@ -197,39 +185,16 @@ graph LR
 
 ---
 
-## Quick Start (Retrain)
+## Retrain
 
 ```bash
 cd beam
-uv venv && source .venv/bin/activate
-uv pip install requests tqdm datasets beautifulsoup4 lxml
-
-# 1. Download all datasets
-python scripts/download_all.py
-
-# 2. Process raw data into normalized JSONL
-python scripts/processors/process_all.py
-
-# 3. Generate synthetic data
-python scripts/processors/synth_generator.py
-
-# 4. Generate hard negatives
-python scripts/processors/hard_negatives_generator.py
-
-# 5. Rebalance dataset
-python scripts/rebalance_dataset.py
-
-# 6. Convert to ChatML SFT format
-python scripts/sft_converter.py
-
-# 7. Train LoRA (requires GPU -- H100 80GB recommended)
-python scripts/train_lora.py
-
-# 8. Export to GGUF for Ollama
-python scripts/export_gguf.py
+./train.sh
 ```
 
-Requires: trl 0.11.4, transformers 4.45.2, peft 0.13.2. Training takes ~2-4 hours on a single H100.
+Handles everything: venv setup, dependency install, data download, processing, synthetic generation, rebalancing, SFT conversion, LoRA training, and GGUF export. Auto-detects GPU count and VRAM to select the optimal training strategy.
+
+Requires 80GB+ VRAM per GPU. Beam v1.0 was trained on 8x GH200.
 
 ---
 
