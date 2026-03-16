@@ -11,6 +11,9 @@ use crate::report::{FileFinding, Severity};
 
 const MAX_TEXT_READ: usize = 10 * 1024 * 1024; // 10MB
 const LLM_CONTEXT_LIMIT: usize = 6000; // chars to send to LLM
+const CHUNK_SIZE: usize = 5000; // chars per chunk sent to LLM
+const CHUNK_OVERLAP: usize = 500; // overlap between chunks to avoid mid-sentence splits
+const MAX_CHUNKS: usize = 10; // cap at 10 chunks (~50K chars)
 
 pub async fn analyze_text_file(
     path: &Path,
@@ -41,34 +44,41 @@ pub async fn analyze_text_file(
         }]);
     }
 
-    let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
-
     let is_beam = ollama.text_model().contains("beam");
-    let response = if is_beam {
-        let message = format!(
-            "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
-            truncated
-        );
-        ollama.chat(&message).await?
+
+    let mut findings = if is_beam {
+        // Chunked scanning: split large documents and analyze each chunk
+        let chunks = chunk_content(&content, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNKS);
+        let mut all_findings = Vec::new();
+        for chunk in &chunks {
+            let message = format!(
+                "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
+                chunk
+            );
+            let response = ollama.chat(&message).await?;
+            let mut chunk_findings = parse_beam_findings(&response)?;
+            all_findings.append(&mut chunk_findings);
+        }
+        if chunks.len() > 1 {
+            deduplicate_findings(all_findings)
+        } else {
+            all_findings
+        }
     } else {
+        let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
         let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
         let file_name = path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
         let prompt = build_detailed_prompt(&file_name, content.len(), was_truncated, &truncated);
-        ollama.generate(&prompt).await?
-    };
-
-    let mut findings = if is_beam {
-        parse_beam_findings(&response)?
-    } else {
+        let response = ollama.generate(&prompt).await?;
         parse_llm_findings(&response)?
     };
 
     // Enrich findings with file context
     let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-    let content_preview: String = truncated.chars().take(150).collect();
+    let content_preview: String = content.chars().take(150).collect();
 
     for finding in &mut findings {
         finding.extracted_data.insert(
@@ -122,28 +132,35 @@ pub async fn analyze_text_content(
         }]);
     }
 
-    let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
     let is_beam = ollama.text_model().contains("beam");
 
-    let response = if is_beam {
-        let message = format!(
-            "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
-            truncated
-        );
-        ollama.chat(&message).await?
+    let mut findings = if is_beam {
+        // Chunked scanning: split large content and analyze each chunk
+        let chunks = chunk_content(content, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNKS);
+        let mut all_findings = Vec::new();
+        for chunk in &chunks {
+            let message = format!(
+                "Analyze the following text for security threats, sensitive data, and policy violations.\n\n{}",
+                chunk
+            );
+            let response = ollama.chat(&message).await?;
+            let mut chunk_findings = parse_beam_findings(&response)?;
+            all_findings.append(&mut chunk_findings);
+        }
+        if chunks.len() > 1 {
+            deduplicate_findings(all_findings)
+        } else {
+            all_findings
+        }
     } else {
+        let truncated: String = content.chars().take(LLM_CONTEXT_LIMIT).collect();
         let was_truncated = content.len() > LLM_CONTEXT_LIMIT;
         let prompt = build_detailed_prompt(label, content.len(), was_truncated, &truncated);
-        ollama.generate(&prompt).await?
-    };
-
-    let mut findings = if is_beam {
-        parse_beam_findings(&response)?
-    } else {
+        let response = ollama.generate(&prompt).await?;
         parse_llm_findings(&response)?
     };
 
-    let content_preview: String = truncated.chars().take(150).collect();
+    let content_preview: String = content.chars().take(150).collect();
     for finding in &mut findings {
         finding
             .extracted_data
@@ -850,6 +867,76 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
     results
 }
 
+/// Split content into chunks of approximately `chunk_size` chars with `overlap` char overlap.
+/// If content fits in one chunk, returns it as-is. Caps at `max_chunks` chunks.
+fn chunk_content(content: &str, chunk_size: usize, overlap: usize, max_chunks: usize) -> Vec<String> {
+    let char_count = content.chars().count();
+    if char_count <= chunk_size {
+        return vec![content.to_string()];
+    }
+
+    let chars: Vec<char> = content.chars().collect();
+    let mut chunks = Vec::new();
+    let mut start = 0;
+
+    while start < chars.len() && chunks.len() < max_chunks {
+        let end = (start + chunk_size).min(chars.len());
+        let chunk: String = chars[start..end].iter().collect();
+        chunks.push(chunk);
+
+        if end >= chars.len() {
+            break;
+        }
+
+        // Advance by chunk_size - overlap
+        let advance = if chunk_size > overlap {
+            chunk_size - overlap
+        } else {
+            chunk_size
+        };
+        start += advance;
+    }
+
+    chunks
+}
+
+/// Deduplicate findings by category:subcategory (evidence field holds subcategory for beam findings).
+/// When duplicates exist, keeps the one with the highest severity.
+fn deduplicate_findings(findings: Vec<FileFinding>) -> Vec<FileFinding> {
+    let mut seen: HashMap<String, FileFinding> = HashMap::new();
+    let mut safe_findings = Vec::new();
+
+    for finding in findings {
+        if finding.category == "safe" {
+            // Collect safe findings separately; we only use them if no non-safe findings exist
+            safe_findings.push(finding);
+            continue;
+        }
+
+        let key = format!("{}:{}", finding.category, finding.evidence);
+        match seen.get(&key) {
+            Some(existing) => {
+                // Keep the higher-severity finding
+                if finding.severity > existing.severity {
+                    seen.insert(key, finding);
+                }
+            }
+            None => {
+                seen.insert(key, finding);
+            }
+        }
+    }
+
+    let mut result: Vec<FileFinding> = seen.into_values().collect();
+
+    // If no non-safe findings, return the safe ones
+    if result.is_empty() {
+        return safe_findings;
+    }
+
+    result
+}
+
 // Make these available for in-module tests
 #[cfg(test)]
 pub(crate) fn test_parse_beam_findings(response: &str) -> Result<Vec<FileFinding>> {
@@ -911,7 +998,7 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
             anyhow::bail!("pdftotext failed: {}", err)
         }
         Err(_) => {
-            anyhow::bail!("pdftotext not found. Install with: brew install poppler (macOS) or apt install poppler-utils (Linux)")
+            anyhow::bail!("pdftotext not found. Install with: {}", crate::platform::install_hint("poppler"))
         }
     }
 }
@@ -921,10 +1008,10 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
 fn extract_pdf_via_ocr(path: &Path) -> Result<String> {
     // Check that both pdftoppm and tesseract are available
     if Command::new("pdftoppm").arg("--help").output().is_err() {
-        anyhow::bail!("PDF is scanned/image-only and pdftoppm is not installed. Install with: brew install poppler (macOS) or apt install poppler-utils (Linux)");
+        anyhow::bail!("PDF is scanned/image-only and pdftoppm is not installed. Install with: {}", crate::platform::install_hint("poppler"));
     }
     if !crate::analyzers::ocr::is_available() {
-        anyhow::bail!("PDF is scanned/image-only and Tesseract is not installed for OCR. Install with: brew install tesseract (macOS) or apt install tesseract-ocr (Linux)");
+        anyhow::bail!("PDF is scanned/image-only and Tesseract is not installed for OCR. Install with: {}", crate::platform::install_hint("tesseract"));
     }
 
     let tmp_dir = std::env::temp_dir().join(format!("torchsight-pdf-ocr-{}", std::process::id()));

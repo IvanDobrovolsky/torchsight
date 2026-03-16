@@ -31,19 +31,26 @@ pub async fn run_scan(
         None
     };
 
-    // Check OCR availability once
-    let ocr_available = analyzers::ocr::is_available();
-    if !ocr_available {
-        let msg = format!(
-            "  {} Tesseract not found. Image text extraction disabled. Install: pacman -S tesseract tesseract-data-eng",
-            style("[WARN]").yellow()
-        );
-        if let Some(ref pb) = pb {
-            pb.println(&msg);
-        } else {
-            eprintln!("{}", msg);
+    // Check OCR availability once — only warn if there are image files to scan
+    let has_images = files.iter().any(|f| matches!(f.kind, FileKind::Image));
+    let _ocr_available = if has_images {
+        let available = analyzers::ocr::is_available();
+        if !available {
+            let msg = format!(
+                "  {} Tesseract not found. Image text extraction disabled. Install: {}",
+                style("[WARN]").yellow(),
+                crate::platform::install_hint("tesseract"),
+            );
+            if let Some(ref pb) = pb {
+                pb.println(&msg);
+            } else {
+                eprintln!("{}", msg);
+            }
         }
-    }
+        available
+    } else {
+        false
+    };
 
     let mut report = ScanReport::new();
 
