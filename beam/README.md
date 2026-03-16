@@ -1,6 +1,6 @@
 # Beam -- TorchSight's Classification Model
 
-On-premise document classifier trained to detect sensitive data, credentials, security threats, and classified content in text, images, and PDFs.
+LoRA fine-tuned LLM with adjusted weights built to detect cybersecurity threats, classify and describe documents locally on your machine.
 
 [Ollama](https://ollama.com/torchsight/beam) | [HuggingFace](https://huggingface.co/torchsight)
 
@@ -14,7 +14,7 @@ On-premise document classifier trained to detect sensitive data, credentials, se
 | **Epochs** | 5 |
 | **Training data** | 78,358 balanced samples (74,441 train / 3,917 val) across 51 subcategories |
 | **Training GPU** | H100 80GB PCIe (~55GB VRAM) |
-| **Output formats** | GGUF q4\_K\_M (~17GB), q8\_0 (~28GB) |
+| **Output formats** | GGUF q4\_K\_M (~17GB), q8\_0 (~28GB), f16 (~54GB) |
 | **Inference** | temperature=0 (deterministic) |
 | **License** | Apache 2.0 |
 
@@ -29,66 +29,50 @@ q4\_K\_M fits 32GB Apple Silicon. q8\_0 requires 48GB+ GPU or 64GB Mac.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#7C3AED','primaryTextColor': '#EEEDF5','primaryBorderColor': '#6366F1','lineColor': '#38BDF8','secondaryColor': '#1A1926','tertiaryColor': '#222136','background': '#0F0E17','mainBkg': '#1A1926','nodeBorder': '#6366F1','clusterBkg': '#222136','titleColor': '#A855F7','edgeLabelBackground': '#1A1926'}}}%%
 
-mindmap
-  root((Beam<br/>51 subcategories))
-    Malicious **14**
-      injection
-      exploit
-      shell
-      phishing
-      malware
-      prompt_injection
-      supply_chain
-      deserialization
-      ssrf
-      redos
-      steganography
-      prototype_pollution
-      xxe
-      ssti
-    Confidential **9**
-      classified
-      internal
-      military
-      military_comms
-      intelligence
-      weapons_systems
-      nuclear
-      geospatial
-      education
-    Credentials **8**
-      password
-      api_key
-      token
-      private_key
-      connection_string
-      cloud_config
-      cicd
-      container
-    PII **6**
-      identity
-      contact
-      government_id
-      biometric
-      metadata
-      behavioral
-    Safe **6**
-      documentation
-      code
-      config
-      media
-      email
-      business
-    Financial **4**
-      credit_card
-      bank_account
-      tax
-      transaction
-    Medical **4**
-      diagnosis
-      prescription
-      lab_result
-      insurance
+graph LR
+    BEAM((Beam<br/>51 subcategories))
+
+    MAL["Malicious (14)"]
+    CONF["Confidential (9)"]
+    CRED["Credentials (8)"]
+    PII["PII (6)"]
+    SAFE["Safe (6)"]
+    FIN["Financial (4)"]
+    MED["Medical (4)"]
+
+    BEAM --- MAL
+    BEAM --- CONF
+    BEAM --- CRED
+    BEAM --- PII
+    BEAM --- SAFE
+    BEAM --- FIN
+    BEAM --- MED
+
+    MAL --- M1["injection<br/>exploit<br/>shell<br/>phishing<br/>malware<br/>prompt_injection<br/>supply_chain"]
+    MAL --- M2["deserialization<br/>ssrf · redos<br/>steganography<br/>prototype_pollution<br/>xxe · ssti"]
+    CONF --- C1["classified · internal<br/>military · military_comms<br/>intelligence<br/>weapons_systems<br/>nuclear · geospatial<br/>education"]
+    CRED --- CR1["password · api_key<br/>token · private_key<br/>connection_string<br/>cloud_config<br/>cicd · container"]
+    PII --- P1["identity · contact<br/>government_id<br/>biometric<br/>metadata · behavioral"]
+    SAFE --- S1["documentation · code<br/>config · media<br/>email · business"]
+    FIN --- F1["credit_card<br/>bank_account<br/>tax · transaction"]
+    MED --- MD1["diagnosis<br/>prescription<br/>lab_result · insurance"]
+
+    style BEAM fill:#7C3AED,stroke:#6366F1,color:#EEEDF5
+    style MAL fill:#DC2626,stroke:#DC2626,color:#EEEDF5
+    style CONF fill:#6366F1,stroke:#6366F1,color:#EEEDF5
+    style CRED fill:#EA580C,stroke:#EA580C,color:#EEEDF5
+    style PII fill:#A855F7,stroke:#A855F7,color:#EEEDF5
+    style SAFE fill:#059669,stroke:#059669,color:#EEEDF5
+    style FIN fill:#D97706,stroke:#D97706,color:#EEEDF5
+    style MED fill:#38BDF8,stroke:#06B6D4,color:#0F0E17
+    style M1 fill:#222136,stroke:#DC2626,color:#EEEDF5
+    style M2 fill:#222136,stroke:#DC2626,color:#EEEDF5
+    style C1 fill:#222136,stroke:#6366F1,color:#EEEDF5
+    style CR1 fill:#222136,stroke:#EA580C,color:#EEEDF5
+    style P1 fill:#222136,stroke:#A855F7,color:#EEEDF5
+    style S1 fill:#222136,stroke:#059669,color:#EEEDF5
+    style F1 fill:#222136,stroke:#D97706,color:#EEEDF5
+    style MD1 fill:#222136,stroke:#38BDF8,color:#EEEDF5
 ```
 
 ---
