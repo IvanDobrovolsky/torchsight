@@ -89,6 +89,33 @@ graph LR
 
 ---
 
+## Evaluation
+
+1,000 text samples across all 7 categories, evaluated with identical system prompts and temperature=0.
+
+| Model | Type | Category Accuracy | Subcategory Accuracy | Avg Time/Sample |
+|---|---|---|---|---|
+| **Beam q4_K_M** | Local (27B LoRA) | **95.1%** | **48.5%** | 4.4s |
+| Beam f16 | Local (27B LoRA) | 93.0% | 51.3% | 4.6s |
+| Beam q8_0 | Local (27B LoRA) | 92.7% | 51.3% | 3.2s |
+| Claude Sonnet 4 | Commercial API | 79.9% | 23.0% | ~5.5s |
+| Claude Opus 4 | Commercial API | 79.9% | 22.5% | ~22s |
+| Gemini 2.5 Pro | Commercial API | 75.4% | 21.0% | ~10s |
+| Qwen 3.5 27B (base) | Local (no fine-tune) | 43.3% | 4.3% | ~40s |
+
+All three Beam quantizations (92.7--95.1%) outperform every commercial frontier model tested (75.4--79.9%) by 13--20 points. Fine-tuning adds ~52 percentage points over the base Qwen 3.5 27B model.
+
+With the full TorchSight pipeline (Beam + Vision + OCR + regex safety net), accuracy reaches **97.6%** on 1,018 files (966 text + 52 images).
+
+| Model | Cost per 1,000 files | Data leaves machine | Latency |
+|---|---|---|---|
+| **Beam (any quant)** | $0 | No | 3--5s/file |
+| Claude Sonnet 4 | ~$3--5 | Yes | ~5.5s/file |
+| Gemini 2.5 Pro | ~$5--10 | Yes | ~10s/file |
+| Claude Opus 4 | ~$15--30 | Yes | ~22s/file |
+
+---
+
 ## Training Data
 
 ### Sources (78,358 samples after rebalancing)
