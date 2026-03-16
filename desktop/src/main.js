@@ -137,42 +137,12 @@ function setupScanControls() {
 }
 
 async function exportPdf() {
-  const btn = document.getElementById('export-pdf-btn');
-  btn.disabled = true;
-  btn.textContent = 'Generating...';
-
-  try {
-    // Ask user where to save
-    const savePath = await window.__TAURI__.dialog.save({
-      title: 'Save PDF Report',
-      defaultPath: 'torchsight_report.pdf',
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    });
-
-    if (!savePath) {
-      btn.disabled = false;
-      btn.textContent = 'Export PDF';
-      return;
-    }
-
-    const result = await invoke('export_pdf', { savePath });
-    btn.textContent = 'PDF Saved!';
-
-    // Open the PDF
-    try {
-      await window.__TAURI__.opener.openPath(result);
-    } catch { /* ignore if opener fails */ }
-
-    setTimeout(() => {
-      btn.disabled = false;
-      btn.textContent = 'Export PDF';
-    }, 2000);
-
-  } catch (err) {
-    btn.textContent = 'Export PDF';
-    btn.disabled = false;
-    alert('PDF export failed: ' + err);
+  // Stamp the current date/time so the print CSS header can show it
+  const el = document.getElementById('results-content');
+  if (el) {
+    el.setAttribute('data-timestamp', new Date().toLocaleString());
   }
+  window.print();
 }
 
 function resetScan() {
