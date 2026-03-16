@@ -13,6 +13,13 @@ const {
 
 const ogImage = '/og.png';
 const siteUrl = 'https://torchsight.io';
+const currentPath = Astro.url.pathname;
+
+const nav = [
+  { label: 'Home', href: '/' },
+  { label: 'CLI', href: '/cli/' },
+  { label: 'Desktop', href: '/desktop/' },
+];
 ---
 
 <!DOCTYPE html>
@@ -23,10 +30,8 @@ const siteUrl = 'https://torchsight.io';
   <meta name="description" content={description} />
   <title>{title}</title>
 
-  <!-- Search engines -->
   <meta name="robots" content="index, follow" />
 
-  <!-- Open Graph (link sharing) -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
@@ -34,7 +39,6 @@ const siteUrl = 'https://torchsight.io';
   <meta property="og:url" content={siteUrl} />
   <meta property="og:site_name" content="TorchSight" />
 
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={title} />
   <meta name="twitter:description" content={description} />
@@ -46,6 +50,31 @@ const siteUrl = 'https://torchsight.io';
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body class="min-h-screen">
-  <slot />
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-void/80 backdrop-blur-md border-b border-border-subtle">
+    <div class="max-w-3xl mx-auto px-6 h-12 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors">
+        <img src="/logo.svg" alt="" class="w-5 h-5" />
+        <span class="text-xs font-mono tracking-[0.15em]">TORCHSIGHT</span>
+      </a>
+      <div class="flex items-center gap-6">
+        {nav.map(({ label, href }) => (
+          <a
+            href={href}
+            class:list={[
+              'text-xs font-mono transition-colors',
+              currentPath === href || (href !== '/' && currentPath.startsWith(href))
+                ? 'text-violet-400'
+                : 'text-text-muted hover:text-text-secondary',
+            ]}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+    </div>
+  </nav>
+  <div class="pt-12">
+    <slot />
+  </div>
 </body>
 </html>

@@ -4,61 +4,35 @@ import Layout from '../layouts/Layout.astro';
 
 <Layout>
   <main class="relative flex flex-col items-center px-6 overflow-hidden">
-    <!-- Ambient glow -->
     <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/5 rounded-full blur-[120px] pointer-events-none" />
-    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-cyan-400/5 rounded-full blur-[80px] pointer-events-none" />
 
-    <!-- Logo -->
-    <img
-      src="/logo.svg"
-      alt="TorchSight"
-      class="w-48 h-48 md:w-56 md:h-56 mt-16 mb-4 drop-shadow-[0_0_40px_rgba(139,92,246,0.15)]"
-    />
+    <img src="/logo.svg" alt="TorchSight" class="w-44 h-44 md:w-52 md:h-52 mt-14 mb-4 drop-shadow-[0_0_40px_rgba(139,92,246,0.15)]" />
 
-    <!-- Title -->
     <h1 class="text-2xl md:text-3xl font-light tracking-[0.2em] text-text-secondary/80 mb-2">TORCHSIGHT</h1>
 
-    <!-- One-liner -->
-    <p class="text-text-muted text-sm mb-10">
-      Open-source security scanner powered by local LLMs. Nothing leaves your machine.
+    <p class="text-text-muted text-sm mb-8 text-center max-w-md">
+      Open-source security scanner and document classifier powered by local LLMs.
     </p>
+
+    <!-- Links -->
+    <div class="flex gap-5 mb-10 text-xs font-mono">
+      <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300 transition-colors">GitHub</a>
+      <a href="https://ollama.com" class="text-cyan-400 hover:text-cyan-300 transition-colors">Ollama</a>
+      <a href="https://huggingface.co/torchsight" class="text-cyan-400 hover:text-cyan-300 transition-colors">HuggingFace</a>
+    </div>
 
     <!-- Feature pills -->
     <div class="flex flex-wrap justify-center gap-2 mb-12 max-w-lg">
       {[
-        'PII Detection',
-        'Credentials & Secrets',
-        'Military / Classified',
-        'Malicious Payloads',
-        'Financial & Medical',
-        'Compliance Mapping',
-        '100% Local',
-        'Open Source',
+        'PII Detection', 'Credentials & Secrets', 'Military / Classified',
+        'Malicious Payloads', 'Financial & Medical', 'Compliance Mapping',
+        '100% Local', 'Open Source',
       ].map(tag => (
         <span class="px-3 py-1.5 text-[13px] font-mono text-text-muted border border-border-visible rounded-full">
           {tag}
         </span>
       ))}
     </div>
-
-    <!-- Install snippet -->
-    <section id="install" class="w-full max-w-xl mb-20">
-      <div class="bg-deep border border-border-subtle rounded-lg overflow-hidden">
-        <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
-          <div class="w-2.5 h-2.5 rounded-full bg-error/60" />
-          <div class="w-2.5 h-2.5 rounded-full bg-warning/60" />
-          <div class="w-2.5 h-2.5 rounded-full bg-success/60" />
-          <span class="ml-2 text-xs text-text-dim font-mono">terminal</span>
-        </div>
-        <div class="p-5 font-mono text-sm leading-relaxed">
-          <p class="text-text-muted mb-1"># clone and install</p>
-          <p><span class="text-cyan-400">$</span> <span class="text-text-secondary">git clone https://github.com/torchsight/torchsight</span></p>
-          <p><span class="text-cyan-400">$</span> <span class="text-text-secondary">cd torchsight && ./install.sh</span></p>
-          <p class="text-text-muted mt-4 mb-1"># scan a directory</p>
-          <p><span class="text-cyan-400">$</span> <span class="text-text-secondary">torchsight</span></p>
-        </div>
-      </div>
-    </section>
 
     <!-- Video placeholder -->
     <section class="w-full max-w-2xl mb-20">
@@ -72,7 +46,6 @@ import Layout from '../layouts/Layout.astro';
       </div>
     </section>
 
-    <!-- Footer -->
     <footer class="pb-10 text-center">
       <p class="text-text-dim text-xs font-mono">
         Apache 2.0 &middot; Built with local LLMs &middot; No data leaves your machine
