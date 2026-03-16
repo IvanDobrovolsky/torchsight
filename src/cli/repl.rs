@@ -30,7 +30,12 @@ pub async fn run(
         }
 
         // In non-interactive mode, ask if user wants to explore
+        // Skip prompt entirely when there's no TTY (e.g. launched from desktop app)
         if !interactive && last_report.is_some() {
+            if !atty::is(atty::Stream::Stdin) {
+                return Ok(last_report);
+            }
+
             println!(
                 "\n  {} Interactive mode loads {} (~4.9GB) for Q&A about results.",
                 style("TIP:").cyan().bold(),
