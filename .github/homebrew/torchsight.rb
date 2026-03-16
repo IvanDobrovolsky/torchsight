@@ -1,5 +1,5 @@
 class Torchsight < Formula
-  desc "On-premise security scanner and document classifier powered by local LLMs"
+  desc "Open-source security scanner and document classifier powered by local LLMs"
   homepage "https://github.com/IvanDobrovolsky/torchsight"
   license "Apache-2.0"
 
@@ -13,11 +13,12 @@ class Torchsight < Formula
   depends_on "poppler" # for pdftotext
 
   def install
-    system "cargo", "build", "--release", "--manifest-path", "core/Cargo.toml"
+    system "cargo", "build", "--release"
     bin.install "target/release/torchsight"
   end
 
   def post_install
+    ohai "Pulling TorchSight Beam model (this may take a while)..."
     system "ollama", "pull", "torchsight/beam"
   end
 

@@ -349,12 +349,12 @@ fn resolve_category(category: &str, subcategory: &str) -> String {
         "pii", "credentials", "financial", "medical", "confidential", "malicious", "safe",
     ];
 
-    if category == "confidential" {
-        if let Some(prefix) = subcategory.split('.').next() {
-            if KNOWN_CATEGORIES.contains(&prefix) && prefix != "confidential" {
-                return prefix.to_string();
-            }
-        }
+    if category == "confidential"
+        && let Some(prefix) = subcategory.split('.').next()
+        && KNOWN_CATEGORIES.contains(&prefix)
+        && prefix != "confidential"
+    {
+        return prefix.to_string();
     }
 
     category.to_string()
@@ -876,22 +876,22 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
     }
 
     // Special handling: yaml.load without SafeLoader
-    if !model_categories.contains("malicious") && !seen_subcategories.contains("malicious.exploit") {
-        if let Some(m) = RE_YAML_UNSAFE.find(content) {
-            let match_start = m.start();
-            let search_end = (match_start + m.len() + 100).min(content.len());
-            let vicinity = &content[match_start..search_end];
-            if !RE_YAML_SAFE.is_match(vicinity) {
-                let evidence: String = m.as_str().chars().take(200).collect();
-                results.push(FileFinding {
-                    category: "malicious".to_string(),
-                    description: "Unsafe deserialization: yaml.load() without SafeLoader can execute arbitrary code".to_string(),
-                    evidence,
-                    severity: Severity::Critical,
-                    source: "regex".to_string(),
-                    extracted_data: HashMap::new(),
-                });
-            }
+    if !model_categories.contains("malicious") && !seen_subcategories.contains("malicious.exploit")
+        && let Some(m) = RE_YAML_UNSAFE.find(content)
+    {
+        let match_start = m.start();
+        let search_end = (match_start + m.len() + 100).min(content.len());
+        let vicinity = &content[match_start..search_end];
+        if !RE_YAML_SAFE.is_match(vicinity) {
+            let evidence: String = m.as_str().chars().take(200).collect();
+            results.push(FileFinding {
+                category: "malicious".to_string(),
+                description: "Unsafe deserialization: yaml.load() without SafeLoader can execute arbitrary code".to_string(),
+                evidence,
+                severity: Severity::Critical,
+                source: "regex".to_string(),
+                extracted_data: HashMap::new(),
+            });
         }
     }
 
@@ -1078,12 +1078,12 @@ fn extract_pdf_via_ocr(path: &Path) -> Result<String> {
             .args([page_path.to_str().unwrap_or(""), "stdout", "-l", "eng"])
             .output();
 
-        if let Ok(out) = output {
-            if out.status.success() {
-                let page_text = String::from_utf8_lossy(&out.stdout);
-                all_text.push_str(&page_text);
-                all_text.push('\n');
-            }
+        if let Ok(out) = output
+            && out.status.success()
+        {
+            let page_text = String::from_utf8_lossy(&out.stdout);
+            all_text.push_str(&page_text);
+            all_text.push('\n');
         }
     }
 
@@ -1262,22 +1262,21 @@ fn extract_doc_text(path: &Path) -> Result<String> {
     if let Ok(output) = Command::new("textutil")
         .args(["-convert", "txt", "-stdout", path_str])
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            if !text.trim().is_empty() {
-                return Ok(text);
-            }
+        let text = String::from_utf8_lossy(&output.stdout).to_string();
+        if !text.trim().is_empty() {
+            return Ok(text);
         }
     }
 
     // Try antiword
-    if let Ok(output) = Command::new("antiword").arg(path_str).output() {
-        if output.status.success() {
-            let text = String::from_utf8_lossy(&output.stdout).to_string();
-            if !text.trim().is_empty() {
-                return Ok(text);
-            }
+    if let Ok(output) = Command::new("antiword").arg(path_str).output()
+        && output.status.success()
+    {
+        let text = String::from_utf8_lossy(&output.stdout).to_string();
+        if !text.trim().is_empty() {
+            return Ok(text);
         }
     }
 

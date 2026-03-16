@@ -119,7 +119,7 @@ pub async fn scan_staged(ollama_url: &str, text_model: &str, vision_model: &str)
     let ollama = OllamaClient::new(ollama_url, text_model, vision_model);
 
     // Check Ollama is reachable
-    if ollama.health_check().await.unwrap_or(false) == false {
+    if !ollama.health_check().await.unwrap_or(false) {
         eprintln!(
             "  {} Ollama not reachable — skipping pre-commit scan.",
             style("[WARN]").yellow().bold()

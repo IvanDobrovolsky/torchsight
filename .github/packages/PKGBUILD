@@ -1,0 +1,15 @@
+# Maintainer: TorchSight <packages@torchsight.io>
+pkgname=torchsight
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Open-source security scanner and document classifier powered by local LLMs"
+arch=('x86_64')
+url="https://github.com/IvanDobrovolsky/torchsight"
+license=('Apache-2.0')
+depends=('ollama' 'tesseract' 'poppler')
+source=("${pkgname}-${pkgver}::https://github.com/IvanDobrovolsky/torchsight/releases/download/v${pkgver}/torchsight-linux-x86_64")
+sha256sums=('SKIP')
+
+package() {
+    install -Dm755 "${srcdir}/${pkgname}-${pkgver}" "${pkgdir}/usr/bin/${pkgname}"
+}

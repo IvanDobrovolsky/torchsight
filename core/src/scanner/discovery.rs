@@ -30,13 +30,13 @@ fn load_ignore_patterns(root: &std::path::Path) -> Vec<String> {
     // Also check cwd
     if let Ok(cwd) = std::env::current_dir() {
         let cwd_ignore = cwd.join(".torchsightignore");
-        if cwd_ignore.exists() && cwd_ignore != ignore_file {
-            if let Ok(content) = std::fs::read_to_string(&cwd_ignore) {
-                for line in content.lines() {
-                    let line = line.trim();
-                    if !line.is_empty() && !line.starts_with('#') {
-                        patterns.push(line.to_string());
-                    }
+        if cwd_ignore.exists() && cwd_ignore != ignore_file
+            && let Ok(content) = std::fs::read_to_string(&cwd_ignore)
+        {
+            for line in content.lines() {
+                let line = line.trim();
+                if !line.is_empty() && !line.starts_with('#') {
+                    patterns.push(line.to_string());
                 }
             }
         }
@@ -59,18 +59,18 @@ fn is_ignored(path: &std::path::Path, root: &std::path::Path, patterns: &[String
                 }
             }
             // Also check filename
-            if let Some(name) = path.file_name() {
-                if name.to_string_lossy() == pattern.as_str() {
-                    return true;
-                }
+            if let Some(name) = path.file_name()
+                && name.to_string_lossy() == pattern.as_str()
+            {
+                return true;
             }
         }
         // Extension glob: "*.pyc"
         else if let Some(ext_pattern) = pattern.strip_prefix("*.") {
-            if let Some(ext) = path.extension() {
-                if ext.to_string_lossy() == ext_pattern {
-                    return true;
-                }
+            if let Some(ext) = path.extension()
+                && ext.to_string_lossy() == ext_pattern
+            {
+                return true;
             }
         }
         // Path glob with ** : "src/**/*.test.js"
@@ -257,14 +257,12 @@ fn classify_file(path: &PathBuf) -> FileKind {
     }
 
     // Try magic bytes for images
-    if let Ok(kind) = infer::get_from_path(path) {
-        if let Some(k) = kind {
-            if k.mime_type().starts_with("image/") {
-                return FileKind::Image;
-            }
-            if k.mime_type().starts_with("text/") {
-                return FileKind::Text;
-            }
+    if let Ok(Some(k)) = infer::get_from_path(path) {
+        if k.mime_type().starts_with("image/") {
+            return FileKind::Image;
+        }
+        if k.mime_type().starts_with("text/") {
+            return FileKind::Text;
         }
     }
 
