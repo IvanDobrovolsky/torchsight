@@ -165,14 +165,35 @@ INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 cp target/release/torchsight "$INSTALL_DIR/torchsight"
 
-if echo "$PATH" | grep -q "$INSTALL_DIR"; then
-    ok "Installed to $INSTALL_DIR/torchsight"
-else
-    ok "Installed to $INSTALL_DIR/torchsight"
-    warn "$INSTALL_DIR is not in your PATH. Add it:"
-    echo ""
-    echo -e "    ${DIM}echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc${RESET}"
-    echo ""
+ok "Installed to $INSTALL_DIR/torchsight"
+
+# Add to PATH if not already there
+if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
+    SHELL_NAME="$(basename "$SHELL")"
+    case "$SHELL_NAME" in
+        zsh)  RC_FILE="$HOME/.zshrc" ;;
+        bash) RC_FILE="$HOME/.bashrc" ;;
+        fish) RC_FILE="$HOME/.config/fish/config.fish" ;;
+        *)    RC_FILE="$HOME/.profile" ;;
+    esac
+
+    PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+    if [ "$SHELL_NAME" = "fish" ]; then
+        PATH_LINE='set -gx PATH $HOME/.local/bin $PATH'
+    fi
+
+    if ! grep -q '.local/bin' "$RC_FILE" 2>/dev/null; then
+        echo "" >> "$RC_FILE"
+        echo "# TorchSight" >> "$RC_FILE"
+        echo "$PATH_LINE" >> "$RC_FILE"
+        ok "Added $INSTALL_DIR to PATH in $RC_FILE"
+        info "Run: source $RC_FILE  (or open a new terminal)"
+    else
+        ok "$INSTALL_DIR already in $RC_FILE"
+    fi
+
+    # Also export for current session
+    export PATH="$INSTALL_DIR:$PATH"
 fi
 
 # ── Done ───────────────────────────────────────────────────────────────────
