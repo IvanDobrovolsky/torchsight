@@ -827,17 +827,36 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
             continue;
         }
 
-        if let Some(m) = pat.regex.find(content) {
-            let matched_text = m.as_str();
-            let evidence: String = matched_text.chars().take(200).collect();
+        // Collect all unique matches for this pattern
+        let matches: Vec<String> = pat.regex.find_iter(content)
+            .map(|m| m.as_str().to_string())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if !matches.is_empty() {
+            // Redact long values, keep first 20 chars
+            let display_values: Vec<String> = matches.iter()
+                .take(5) // show max 5 unique values
+                .map(|v| if v.len() > 40 { format!("{}...", &v[..37]) } else { v.clone() })
+                .collect();
+
+            let count_note = if matches.len() > 5 {
+                format!(" (+{} more)", matches.len() - 5)
+            } else { String::new() };
+
+            let mut extracted = HashMap::new();
+            for (i, val) in display_values.iter().enumerate() {
+                extracted.insert(format!("match_{}", i + 1), val.clone());
+            }
 
             results.push(FileFinding {
                 category: category.to_string(),
-                description: format!("{}: {}", pat.description, evidence),
+                description: format!("{}: {}{}", pat.description, display_values.join(", "), count_note),
                 evidence: pat.subcategory.to_string(),
                 severity: pat.severity.clone(),
                 source: "regex".to_string(),
-                extracted_data: HashMap::new(),
+                extracted_data: extracted,
             });
 
             seen_subcategories.insert(pat.subcategory);
