@@ -1,10 +1,5 @@
-# Training data — too large for git
-raw/
-processed/
-synthetic/
-*.csv
-*.jsonl
-*.tar.gz
-
-# Keep directory structure
+# Training data — too large for git, download via beam/train.sh
+*
 !.gitignore
+!*/.gitkeep
+!README.md

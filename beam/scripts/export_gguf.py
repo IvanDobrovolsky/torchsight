@@ -12,7 +12,7 @@ Requirements:
 
 Usage:
     python export_gguf.py --adapter ./output/torchsight-qwen-lora
-    # Exports both q4_K_M (~17GB) and q8_0 (~28GB) for Qwen 3.5 27B
+    # Exports q4_K_M (~17GB), q8_0 (~28GB), and f16 (~54GB) for Qwen 3.5 27B
 """
 
 import json
@@ -126,8 +126,8 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
-    # Step 2: Convert to GGUF — export q4_K_M (32GB Mac) and q8_0 (48GB+ GPU / 64GB Mac)
-    quant_levels = ["q4_K_M", "q8_0"]
+    # Step 2: Convert to GGUF — export q4_K_M, q8_0, and f16
+    quant_levels = ["q4_K_M", "q8_0", "f16"]
     convert_script = find_llama_cpp() if not config.get("llama_cpp") else Path(config["llama_cpp"])
 
     if not (convert_script and convert_script.exists()):
@@ -187,8 +187,9 @@ PARAMETER num_predict 2048
     print(f"\n  Modelfile: {modelfile_path}")
     print(f"\nTo use with Ollama (q4_K_M default, fits 32GB Mac):")
     print(f"  ollama create torchsight/beam -f {modelfile_path}")
-    print(f"\nFor q8 quality (edit Modelfile FROM line to beam-1.0-q8_0.gguf):")
+    print(f"\nFor higher quality (edit Modelfile FROM line):")
     print(f"  q8_0 (~28GB) — requires 48GB+ GPU or 64GB Mac")
+    print(f"  f16  (~54GB) — full precision, requires 80GB GPU (A100/H100)")
 
 
 if __name__ == "__main__":
