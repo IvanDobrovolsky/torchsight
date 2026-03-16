@@ -338,8 +338,13 @@ fn resolve_category(category: &str, subcategory: &str) -> String {
 /// Try to repair truncated JSON arrays by finding the last complete object.
 /// The beam model often generates repetitive filler that hits the token limit,
 /// truncating the JSON mid-object. This recovers what we can.
+///
+/// Strategy:
+/// 1. First, try to find the last complete `}` at depth 0 (clean recovery)
+/// 2. If that fails (truncation inside a string), force-close the string,
+///    object, and array to salvage whatever fields were already emitted
 fn try_repair_json_array(partial: &str) -> Option<String> {
-    // Find the last complete '}' that could end a JSON object
+    // Strategy 1: find last complete object boundary
     let mut depth = 0i32;
     let mut last_complete_obj_end = None;
     let mut in_string = false;
@@ -367,6 +372,94 @@ fn try_repair_json_array(partial: &str) -> Option<String> {
     if let Some(end) = last_complete_obj_end {
         let repaired = format!("{}]", &partial[..=end]);
         return Some(repaired);
+    }
+
+    // Strategy 2: truncated inside a string value (common with repetitive filler)
+    // Find the last key-value pair boundary we can salvage.
+    // Look for the last `"key": "value"` or `"key": "partial...` pattern
+    // that has at least category + severity.
+    try_force_close_json(partial)
+}
+
+/// Force-close a truncated JSON array where truncation happened inside a string.
+/// Looks for the last comma-separated field boundary and closes everything.
+fn try_force_close_json(partial: &str) -> Option<String> {
+    // We need at minimum: [{"category":"...", which means a '{' was opened
+    let first_brace = partial.find('{')?;
+
+    // Find the last `","` or `"}` boundary before truncation
+    // This indicates the end of a complete key-value pair
+    let search = &partial[first_brace..];
+
+    // Look for the last complete key-value separator pattern: `", "` or `","`
+    // which indicates the previous field was fully written
+    let mut last_field_end = None;
+    let mut i = 0;
+    let bytes = search.as_bytes();
+
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            // Check if this is a `","` or `", "` pattern (end of value, start of next key)
+            // or `"}` (end of last field in object)
+            if i + 1 < bytes.len() && bytes[i + 1] == b',' {
+                last_field_end = Some(first_brace + i);
+            }
+            if i + 1 < bytes.len() && bytes[i + 1] == b'}' {
+                last_field_end = Some(first_brace + i + 1); // include the }
+            }
+        }
+        i += 1;
+    }
+
+    if let Some(end) = last_field_end {
+        let truncated = &partial[..=end];
+        // Check if we ended after a complete value (ends with `"`)
+        let trimmed = truncated.trim_end();
+        if trimmed.ends_with('"') {
+            // Close: "} ]
+            let repaired = format!("{}}}]", trimmed);
+            // Validate it parses
+            if serde_json::from_str::<Vec<serde_json::Value>>(&repaired).is_ok() {
+                return Some(repaired);
+            }
+        } else if trimmed.ends_with('}') {
+            let repaired = format!("{}]", trimmed);
+            if serde_json::from_str::<Vec<serde_json::Value>>(&repaired).is_ok() {
+                return Some(repaired);
+            }
+        }
+    }
+
+    // Strategy 3: brute force — truncate the explanation field at the repetition
+    // Find `"explanation":` or `"explanation" :` then find where repetition starts
+    if let Some(expl_idx) = partial.find("\"explanation\"") {
+        let after_expl = &partial[expl_idx..];
+        // Find the opening quote of the value
+        if let Some(colon) = after_expl.find(':') {
+            let after_colon = &after_expl[colon + 1..];
+            if let Some(quote_start) = after_colon.find('"') {
+                let value_start = expl_idx + colon + 1 + quote_start;
+                // Take first 300 chars of the explanation value, then close everything
+                let max_len = (value_start + 1 + 300).min(partial.len());
+                // Find a safe truncation point (not mid-escape)
+                let mut trunc_at = max_len;
+                while trunc_at > value_start + 1 && partial.as_bytes().get(trunc_at - 1) == Some(&b'\\') {
+                    trunc_at -= 1;
+                }
+                let truncated_expl = &partial[..trunc_at];
+                // Escape any unescaped quotes in the truncated explanation
+                let repaired = format!("{}...\"}}}}", truncated_expl);
+                // Wrap in array brackets if needed
+                let repaired = if repaired.starts_with('[') {
+                    format!("{}]", repaired)
+                } else {
+                    format!("[{}]", repaired)
+                };
+                if serde_json::from_str::<Vec<serde_json::Value>>(&repaired).is_ok() {
+                    return Some(repaired);
+                }
+            }
+        }
     }
 
     None
