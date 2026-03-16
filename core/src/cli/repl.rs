@@ -1,7 +1,6 @@
 use anyhow::Result;
 use console::style;
-use dialoguer::{Confirm, Input, theme::ColorfulTheme};
-use indicatif::{ProgressBar, ProgressStyle};
+use dialoguer::{Input, theme::ColorfulTheme};
 
 use crate::cli::ScanConfig;
 use crate::llm::OllamaClient;
@@ -13,7 +12,6 @@ pub async fn run(
     config: ScanConfig,
     ollama: OllamaClient,
     initial_path: Option<String>,
-    interactive: bool,
 ) -> Result<Option<ScanReport>> {
     let mut session = SessionMemory::new();
     let mut last_report: Option<ScanReport> = None;
@@ -29,36 +27,13 @@ pub async fn run(
             Err(e) => println!("  {} {}", style("[ERROR]").red().bold(), e),
         }
 
-        // In non-interactive mode, ask if user wants to explore
-        // Skip prompt entirely when there's no TTY (e.g. launched from desktop app)
-        if !interactive && last_report.is_some() {
-            if !atty::is(atty::Stream::Stdin) {
-                return Ok(last_report);
-            }
-
-            println!(
-                "\n  {} Interactive mode loads {} (~4.9GB) for Q&A about results.",
-                style("TIP:").cyan().bold(),
-                style(&config.vision_model).cyan()
-            );
-            println!(
-                "  {} You can also start with {} to skip this prompt.\n",
-                style("").dim(),
-                style("torchsight -i <path>").cyan()
-            );
-            let enter_interactive = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Explore results interactively?")
-                .default(false)
-                .interact()?;
-
-            if !enter_interactive {
-                println!("\n{}\n", style("Done.").dim());
-                return Ok(last_report);
-            }
+        // If not a TTY (e.g. launched from desktop app or CI), return immediately
+        if !atty::is(atty::Stream::Stdin) {
+            return Ok(last_report);
         }
     } else {
         // No path — show available commands
-        print_welcome(interactive);
+        print_welcome();
     }
 
     // REPL loop
@@ -80,7 +55,7 @@ pub async fn run(
                 break;
             }
             "help" => {
-                print_help(interactive);
+                print_help();
             }
             "scan" => {
                 let request = crate::cli::prompts::gather_scan_request()?;
@@ -126,162 +101,15 @@ pub async fn run(
                 crate::cli::snake::play()?;
             }
             _ => {
-                // In interactive mode, treat unknown input as a question for the LLM
-                if interactive {
-                    if let Some(ref r) = last_report {
-                        ask_llm(&ollama, r, input).await;
-                    } else {
-                        // No report yet — maybe they're asking to scan something
-                        try_natural_language(&config, &ollama, input, &mut session, &mut last_report).await;
-                    }
-                } else {
-                    println!(
-                        "  Unknown command. Type '{}' for available commands.",
-                        style("help").cyan()
-                    );
-                }
+                println!(
+                    "  Unknown command. Type '{}' for available commands.",
+                    style("help").cyan()
+                );
             }
         }
     }
 
     Ok(last_report)
-}
-
-/// In interactive mode, try to understand natural language commands
-async fn try_natural_language(
-    config: &ScanConfig,
-    ollama: &OllamaClient,
-    input: &str,
-    session: &mut SessionMemory,
-    last_report: &mut Option<ScanReport>,
-) {
-    let lower = input.to_lowercase();
-
-    // Try to detect scan intent
-    if lower.contains("scan") || lower.contains("check") || lower.contains("analyze") {
-        // Extract path — look for quoted strings or words that look like paths
-        let path = extract_path_from_input(input);
-        if let Some(path) = path {
-            let file_types = vec!["text".into(), "image".into()];
-            match run_scan(config, ollama, &path, &file_types).await {
-                Ok(r) => {
-                    session.add_report_summary(&r);
-                    *last_report = Some(r);
-                }
-                Err(e) => println!("  {} {}", style("[ERROR]").red().bold(), e),
-            }
-            return;
-        }
-    }
-
-    // Try to detect report/save intent
-    if lower.contains("save") || lower.contains("export") || lower.contains("report") {
-        if let Some(r) = last_report.as_ref() {
-            match report::save_report(r, &config.format) {
-                Ok(path) => println!("  Report saved to: {}", style(path).green()),
-                Err(e) => println!("  {} {}", style("[ERROR]").red().bold(), e),
-            }
-            return;
-        }
-    }
-
-    // Fall back to LLM for understanding
-    let prompt = format!(
-        "You are TorchSight, a cybersecurity scanner assistant. The user said: \"{}\"\n\n\
-         Available commands: scan <path>, report, save, history, help, exit.\n\n\
-         If you can understand what they want, explain which command to use. Be brief.",
-        input
-    );
-
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("  {spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    spinner.set_message("Thinking...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(80));
-
-    match ollama.generate_with_vision_model(&prompt).await {
-        Ok(response) => {
-            spinner.finish_and_clear();
-            println!("\n  {}\n", response);
-        }
-        Err(e) => {
-            spinner.finish_and_clear();
-            println!("  {} LLM error: {}", style("[ERROR]").red().bold(), e);
-        }
-    }
-}
-
-/// Extract a file path from natural language input
-fn extract_path_from_input(input: &str) -> Option<String> {
-    // Check for quoted paths
-    if let Some(start) = input.find('"') {
-        if let Some(end) = input[start + 1..].find('"') {
-            return Some(input[start + 1..start + 1 + end].to_string());
-        }
-    }
-    if let Some(start) = input.find('\'') {
-        if let Some(end) = input[start + 1..].find('\'') {
-            return Some(input[start + 1..start + 1 + end].to_string());
-        }
-    }
-
-    // Look for path-like tokens (starts with / or ./ or ~/ or contains / or \)
-    for token in input.split_whitespace() {
-        let t = token.trim_matches(|c: char| c == ',' || c == '.' || c == '?' || c == '!');
-        if t.starts_with('/')
-            || t.starts_with("./")
-            || t.starts_with("~/")
-            || t.starts_with("..")
-            || (t.contains('/') && !t.starts_with("http"))
-            || t.contains('\\')
-        {
-            return Some(t.to_string());
-        }
-    }
-
-    None
-}
-
-/// Ask the LLM a question about scan results
-async fn ask_llm(ollama: &OllamaClient, report: &ScanReport, question: &str) {
-    let context = match serde_json::to_string_pretty(report) {
-        Ok(c) => c,
-        Err(e) => {
-            println!("  {} {}", style("[ERROR]").red().bold(), e);
-            return;
-        }
-    };
-
-    let prompt = format!(
-        "You are a cybersecurity analyst. You have full access to the scan report data below, \
-         including all extracted_data fields with exact values (names, SSNs, emails, addresses, etc). \
-         Answer the user's question with specific details from the report. Be precise and quote exact values.\n\n\
-         Scan Report:\n{}\n\nUser question: {}",
-        context, question
-    );
-
-    let spinner = ProgressBar::new_spinner();
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .template("  {spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    spinner.set_message("Thinking...");
-    spinner.enable_steady_tick(std::time::Duration::from_millis(80));
-
-    match ollama.generate_with_vision_model(&prompt).await {
-        Ok(response) => {
-            spinner.finish_and_clear();
-            println!("\n  {}\n", response);
-        }
-        Err(e) => {
-            spinner.finish_and_clear();
-            println!("  {} LLM error: {}", style("[ERROR]").red().bold(), e);
-        }
-    }
 }
 
 async fn run_scan(
@@ -360,13 +188,7 @@ async fn run_scan(
     Ok(report)
 }
 
-fn print_welcome(interactive: bool) {
-    if interactive {
-        println!(
-            "  {} Interactive mode — ask questions in natural language.\n",
-            style(">>").cyan().bold(),
-        );
-    }
+fn print_welcome() {
     println!(
         "  Type {} to scan files, or {} for all commands.\n",
         style("scan <path>").cyan(),
@@ -374,7 +196,7 @@ fn print_welcome(interactive: bool) {
     );
 }
 
-fn print_help(interactive: bool) {
+fn print_help() {
     println!(
         r#"
   {}
@@ -394,20 +216,4 @@ fn print_help(interactive: bool) {
         style("history").cyan(),
         style("exit").cyan(),
     );
-
-    if interactive {
-        println!(
-            "  {} In interactive mode you can also ask questions in plain English:\n\
-             \n    {}   {}\
-             \n    {}   {}\
-             \n    {}   {}\n",
-            style("Interactive:").bold().underlined(),
-            style(">>").dim(),
-            style("What sensitive data was found?").dim(),
-            style(">>").dim(),
-            style("Are there any credentials exposed?").dim(),
-            style(">>").dim(),
-            style("Scan my downloads folder for PII").dim(),
-        );
-    }
 }

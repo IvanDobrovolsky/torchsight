@@ -270,3 +270,244 @@ fn classify_file(path: &PathBuf) -> FileKind {
 
     FileKind::Unknown
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    // =========================================================================
+    // classify_file
+    // =========================================================================
+
+    #[test]
+    fn classify_text_extensions() {
+        for ext in &["txt", "json", "py", "rs", "go", "java", "js", "html", "csv", "xml", "yaml", "sql", "sh", "pdf"] {
+            let path = PathBuf::from(format!("test.{}", ext));
+            assert_eq!(classify_file(&path), FileKind::Text, "Expected .{} to be Text", ext);
+        }
+    }
+
+    #[test]
+    fn classify_image_extensions() {
+        for ext in &["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp"] {
+            let path = PathBuf::from(format!("test.{}", ext));
+            assert_eq!(classify_file(&path), FileKind::Image, "Expected .{} to be Image", ext);
+        }
+    }
+
+    #[test]
+    fn classify_unknown_extension() {
+        let path = PathBuf::from("test.xyz123");
+        assert_eq!(classify_file(&path), FileKind::Unknown);
+    }
+
+    #[test]
+    fn classify_no_extension() {
+        let path = PathBuf::from("Makefile");
+        assert_eq!(classify_file(&path), FileKind::Unknown);
+    }
+
+    #[test]
+    fn classify_case_insensitive() {
+        let path = PathBuf::from("test.JSON");
+        assert_eq!(classify_file(&path), FileKind::Text);
+
+        let path = PathBuf::from("test.PNG");
+        assert_eq!(classify_file(&path), FileKind::Image);
+    }
+
+    // =========================================================================
+    // is_ignored
+    // =========================================================================
+
+    #[test]
+    fn ignore_simple_directory_name() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/node_modules/package/index.js");
+        let patterns = vec!["node_modules".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_simple_directory_name_no_match() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/src/main.rs");
+        let patterns = vec!["node_modules".to_string()];
+        assert!(!is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_extension_glob() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/build/output.pyc");
+        let patterns = vec!["*.pyc".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_extension_glob_no_match() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/src/main.py");
+        let patterns = vec!["*.pyc".to_string()];
+        assert!(!is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_double_star_glob() {
+        // The ** glob implementation checks prefix and suffix literally (no * expansion in suffix)
+        let root = Path::new("/project");
+        let path = Path::new("/project/src/tests/test_main.js");
+        let patterns = vec!["src/**/test_main.js".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_double_star_glob_with_empty_prefix() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/deep/nested/file.txt");
+        let patterns = vec!["**/file.txt".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_directory_trailing_slash() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/build/output.o");
+        let patterns = vec!["build/".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_filename_match() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/.env");
+        let patterns = vec![".env".to_string()];
+        assert!(is_ignored(path, root, &patterns));
+    }
+
+    #[test]
+    fn ignore_empty_patterns_matches_nothing() {
+        let root = Path::new("/project");
+        let path = Path::new("/project/src/main.rs");
+        let patterns: Vec<String> = vec![];
+        assert!(!is_ignored(path, root, &patterns));
+    }
+
+    // =========================================================================
+    // discover_files with tempdir
+    // =========================================================================
+
+    #[test]
+    fn discover_finds_text_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("hello.txt"), "Hello world").unwrap();
+        std::fs::write(dir.path().join("data.json"), r#"{"key":"val"}"#).unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().all(|f| f.kind == FileKind::Text));
+    }
+
+    #[test]
+    fn discover_finds_image_files() {
+        let dir = tempfile::tempdir().unwrap();
+        // Create minimal PNG (8 bytes header + IHDR)
+        let png_header = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        std::fs::write(dir.path().join("photo.png"), &png_header).unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].kind, FileKind::Image);
+    }
+
+    #[test]
+    fn discover_respects_max_file_size() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("small.txt"), "small").unwrap();
+        std::fs::write(dir.path().join("big.txt"), "x".repeat(2000)).unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            1000, // 1000 bytes max
+            &["all".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].path.to_string_lossy().contains("small.txt"));
+    }
+
+    #[test]
+    fn discover_empty_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        ).unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn discover_skips_empty_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("empty.txt"), "").unwrap();
+        std::fs::write(dir.path().join("notempty.txt"), "content").unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 1);
+    }
+
+    #[test]
+    fn discover_nonexistent_path_errors() {
+        let result = discover_files(
+            "/nonexistent/path/that/does/not/exist",
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn discover_respects_torchsightignore() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("keep.txt"), "keep me").unwrap();
+        std::fs::write(dir.path().join("skip.log"), "skip me").unwrap();
+        std::fs::write(dir.path().join(".torchsightignore"), "*.log\n").unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["all".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 1);
+        assert!(files[0].path.to_string_lossy().contains("keep.txt"));
+    }
+
+    #[test]
+    fn discover_filter_text_only() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("code.py"), "print('hi')").unwrap();
+        let png_header = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        std::fs::write(dir.path().join("photo.png"), &png_header).unwrap();
+
+        let files = discover_files(
+            dir.path().to_str().unwrap(),
+            10 * 1024 * 1024,
+            &["text".to_string()],
+        ).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].kind, FileKind::Text);
+    }
+}
