@@ -227,69 +227,54 @@ graph LR
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#7C3AED','primaryTextColor': '#EEEDF5','primaryBorderColor': '#6366F1','lineColor': '#38BDF8','secondaryColor': '#1A1926','tertiaryColor': '#222136','background': '#0F0E17','mainBkg': '#1A1926','nodeBorder': '#6366F1','clusterBkg': '#222136','titleColor': '#A855F7','edgeLabelBackground': '#1A1926'}}}%%
-mindmap
-  root((TorchSight<br>7 categories<br>51 subcategories))
-    PII
-      identity
-      contact
-      government_id
-      biometric
-      metadata
-      behavioral
-    Credentials
-      password
-      api_key
-      token
-      private_key
-      connection_string
-      cloud_config
-      cicd
-      container
-    Financial
-      credit_card
-      bank_account
-      tax
-      transaction
-    Medical
-      diagnosis
-      prescription
-      lab_result
-      insurance
-    Confidential
-      classified
-      internal
-      legal
-      military
-      military_comms
-      weapons_systems
-      intelligence
-      geospatial
-      nuclear
-      education
-    Malicious
-      injection
-      exploit
-      shell
-      obfuscated
-      phishing
-      malware
-      prompt_injection
-      supply_chain
-      deserialization
-      ssrf
-      redos
-      steganography
-      prototype_pollution
-      xxe
-      ssti
-    Safe
-      documentation
-      code
-      config
-      media
+
+graph LR
+    TS((TorchSight<br/>7 categories<br/>51 subcategories))
+
+    MAL["Malicious (14)"]
+    CONF["Confidential (10)"]
+    CRED["Credentials (8)"]
+    PII["PII (6)"]
+    SAFE["Safe (4)"]
+    FIN["Financial (4)"]
+    MED["Medical (4)"]
+
+    TS --- MAL
+    TS --- CONF
+    TS --- CRED
+    TS --- PII
+    TS --- SAFE
+    TS --- FIN
+    TS --- MED
+
+    MAL --- M1["injection · exploit · shell<br/>phishing · malware<br/>prompt_injection · supply_chain"]
+    MAL --- M2["deserialization · ssrf · redos<br/>steganography · prototype_pollution<br/>xxe · ssti · obfuscated"]
+    CONF --- C1["classified · internal · legal<br/>military · military_comms<br/>intelligence · weapons_systems<br/>nuclear · geospatial · education"]
+    CRED --- CR1["password · api_key · token<br/>private_key · connection_string<br/>cloud_config · cicd · container"]
+    PII --- P1["identity · contact<br/>government_id · biometric<br/>metadata · behavioral"]
+    SAFE --- S1["documentation · code<br/>config · media"]
+    FIN --- F1["credit_card · bank_account<br/>tax · transaction"]
+    MED --- MD1["diagnosis · prescription<br/>lab_result · insurance"]
+
+    style TS fill:#7C3AED,stroke:#6366F1,color:#EEEDF5
+    style MAL fill:#DC2626,stroke:#DC2626,color:#EEEDF5
+    style CONF fill:#6366F1,stroke:#6366F1,color:#EEEDF5
+    style CRED fill:#EA580C,stroke:#EA580C,color:#EEEDF5
+    style PII fill:#A855F7,stroke:#A855F7,color:#EEEDF5
+    style SAFE fill:#059669,stroke:#059669,color:#EEEDF5
+    style FIN fill:#D97706,stroke:#D97706,color:#EEEDF5
+    style MED fill:#38BDF8,stroke:#06B6D4,color:#0F0E17
+    style M1 fill:#222136,stroke:#DC2626,color:#EEEDF5
+    style M2 fill:#222136,stroke:#DC2626,color:#EEEDF5
+    style C1 fill:#222136,stroke:#6366F1,color:#EEEDF5
+    style CR1 fill:#222136,stroke:#EA580C,color:#EEEDF5
+    style P1 fill:#222136,stroke:#A855F7,color:#EEEDF5
+    style S1 fill:#222136,stroke:#059669,color:#EEEDF5
+    style F1 fill:#222136,stroke:#D97706,color:#EEEDF5
+    style MD1 fill:#222136,stroke:#38BDF8,color:#EEEDF5
 ```
 
-Full taxonomy with field definitions: [beam/LABELS.md](../beam/LABELS.md)
+Full taxonomy: [beam/README.md](../beam/README.md)
 
 ---
 
