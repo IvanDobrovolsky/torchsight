@@ -1,0 +1,57 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Desktop App — TorchSight">
+  <main class="max-w-2xl mx-auto px-6 py-14">
+    <h1 class="text-xl font-mono text-text-primary mb-1">Desktop App</h1>
+    <p class="text-text-muted text-sm mb-10">Native desktop app built with Tauri v2. Same scanning engine as the CLI.</p>
+
+    <!-- Download -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">DOWNLOAD</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-14">
+      <a href="#" class="block bg-deep border border-border-visible rounded-lg p-4 text-center hover:border-violet-500/40 transition-colors">
+        <p class="text-text-secondary text-sm font-mono mb-1">macOS</p>
+        <p class="text-text-dim text-xs font-mono">.dmg (Apple Silicon + Intel)</p>
+      </a>
+      <a href="#" class="block bg-deep border border-border-visible rounded-lg p-4 text-center hover:border-violet-500/40 transition-colors">
+        <p class="text-text-secondary text-sm font-mono mb-1">Linux</p>
+        <p class="text-text-dim text-xs font-mono">.AppImage / .deb</p>
+      </a>
+      <div class="bg-deep border border-border-subtle rounded-lg p-4 text-center opacity-50">
+        <p class="text-text-secondary text-sm font-mono mb-1">Windows</p>
+        <p class="text-text-dim text-xs font-mono">Coming soon</p>
+      </div>
+    </div>
+
+    <!-- Screenshot placeholder -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">PREVIEW</h2>
+    <div class="aspect-video bg-surface border border-border-subtle rounded-lg flex items-center justify-center mb-14">
+      <p class="text-text-dim text-sm font-mono">Screenshot coming soon</p>
+    </div>
+
+    <!-- Build from source -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">BUILD FROM SOURCE</h2>
+    <div class="bg-deep border border-border-subtle rounded-lg overflow-hidden mb-14">
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+        <div class="w-2.5 h-2.5 rounded-full bg-error/60" />
+        <div class="w-2.5 h-2.5 rounded-full bg-warning/60" />
+        <div class="w-2.5 h-2.5 rounded-full bg-success/60" />
+        <span class="ml-2 text-xs text-text-dim font-mono">terminal</span>
+      </div>
+      <pre class="p-5 text-sm font-mono text-text-secondary leading-relaxed overflow-x-auto"><code><span class="text-text-muted"># prerequisites: Rust, Node.js, system deps</span>
+<span class="text-text-muted"># see https://v2.tauri.app/start/prerequisites/</span>
+
+<span class="text-cyan-400">$</span> git clone https://github.com/IvanDobrovolsky/torchsight
+<span class="text-cyan-400">$</span> cd torchsight/desktop
+<span class="text-cyan-400">$</span> npm install
+<span class="text-cyan-400">$</span> npm run tauri build</code></pre>
+    </div>
+
+    <footer class="pb-10 text-center border-t border-border-subtle pt-8">
+      <p class="text-text-dim text-xs font-mono">
+        Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
+      </p>
+    </footer>
+  </main>
+</Layout>

@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="CLI — TorchSight">
+  <main class="max-w-2xl mx-auto px-6 py-14">
+    <h1 class="text-xl font-mono text-text-primary mb-1">CLI</h1>
+    <p class="text-text-muted text-sm mb-10">Install and use TorchSight from the terminal.</p>
+
+    <!-- Install -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">INSTALL</h2>
+    <div class="space-y-4 mb-14">
+      <div>
+        <p class="text-text-dim text-xs font-mono mb-1">Quick install</p>
+        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto">curl -sSL https://torchsight.io/install.sh | sh</pre>
+      </div>
+      <div>
+        <p class="text-text-dim text-xs font-mono mb-1">Homebrew</p>
+        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto">brew install torchsight/tap/torchsight</pre>
+      </div>
+      <div>
+        <p class="text-text-dim text-xs font-mono mb-1">From source</p>
+        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto"><code>git clone https://github.com/IvanDobrovolsky/torchsight
+cd torchsight && make install</code></pre>
+      </div>
+      <div>
+        <p class="text-text-dim text-xs font-mono mb-1">Windows (WSL2)</p>
+        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto"><code>wsl --install -d Ubuntu
+# then follow the Linux install steps above</code></pre>
+      </div>
+    </div>
+
+    <!-- Usage -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">USAGE</h2>
+    <div class="bg-deep border border-border-subtle rounded-lg overflow-hidden mb-14">
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+        <div class="w-2.5 h-2.5 rounded-full bg-error/60" />
+        <div class="w-2.5 h-2.5 rounded-full bg-warning/60" />
+        <div class="w-2.5 h-2.5 rounded-full bg-success/60" />
+        <span class="ml-2 text-xs text-text-dim font-mono">terminal</span>
+      </div>
+      <pre class="p-5 text-sm font-mono text-text-secondary leading-relaxed overflow-x-auto"><code><span class="text-text-muted"># scan a directory</span>
+<span class="text-cyan-400">$</span> torchsight /path/to/files
+
+<span class="text-text-muted"># interactive REPL</span>
+<span class="text-cyan-400">$</span> torchsight
+
+<span class="text-text-muted"># output formats: json, sarif, markdown, html</span>
+<span class="text-cyan-400">$</span> torchsight /path --format sarif
+
+<span class="text-text-muted"># CI mode — exit 1 if findings at or above severity</span>
+<span class="text-cyan-400">$</span> torchsight /path --fail-on high
+
+<span class="text-text-muted"># scan changed files since a git ref</span>
+<span class="text-cyan-400">$</span> torchsight --diff HEAD~3
+
+<span class="text-text-muted"># pre-commit hook</span>
+<span class="text-cyan-400">$</span> torchsight git-hook install
+
+<span class="text-text-muted"># watch mode</span>
+<span class="text-cyan-400">$</span> torchsight watch /path --interval 5s
+
+<span class="text-text-muted"># pipe mode</span>
+<span class="text-cyan-400">$</span> cat file.txt | torchsight --stdin</code></pre>
+    </div>
+
+    <!-- Supported files -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">SUPPORTED FILE TYPES</h2>
+    <div class="flex flex-wrap gap-2 mb-14">
+      {['PDF', 'DOCX', 'XLSX', 'PPTX', 'DOC', 'CSV', 'PNG', 'JPG', 'TIFF', 'TXT', 'JSON', 'YAML', 'XML'].map(ext => (
+        <span class="px-2.5 py-1 text-xs font-mono text-text-muted bg-surface border border-border-subtle rounded">{ext}</span>
+      ))}
+    </div>
+
+    <footer class="pb-10 text-center border-t border-border-subtle pt-8">
+      <p class="text-text-dim text-xs font-mono">
+        Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
+      </p>
+    </footer>
+  </main>
+</Layout>
