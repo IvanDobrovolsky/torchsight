@@ -38,36 +38,6 @@ struct GenerateResponse {
     response: String,
 }
 
-#[derive(Serialize)]
-struct ChatMessage {
-    role: String,
-    content: String,
-}
-
-#[derive(Serialize)]
-struct ChatOptions {
-    num_predict: u32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stop: Option<Vec<String>>,
-}
-
-#[derive(Serialize)]
-struct ChatRequest {
-    model: String,
-    messages: Vec<ChatMessage>,
-    stream: bool,
-    options: ChatOptions,
-}
-
-#[derive(Deserialize)]
-struct ChatResponse {
-    message: ChatResponseMessage,
-}
-
-#[derive(Deserialize)]
-struct ChatResponseMessage {
-    content: String,
-}
 
 impl OllamaClient {
     pub fn new(base_url: &str, text_model: &str, vision_model: &str) -> Self {
