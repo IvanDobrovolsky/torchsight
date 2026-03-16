@@ -927,7 +927,7 @@ fn deduplicate_findings(findings: Vec<FileFinding>) -> Vec<FileFinding> {
         }
     }
 
-    let mut result: Vec<FileFinding> = seen.into_values().collect();
+    let result: Vec<FileFinding> = seen.into_values().collect();
 
     // If no non-safe findings, return the safe ones
     if result.is_empty() {
@@ -1817,5 +1817,167 @@ Second array:
         assert!(text.contains("Slide two content"));
         assert!(text.contains("[Slide 1]"));
         assert!(text.contains("[Slide 2]"));
+    }
+
+    // =========================================================================
+    // chunk_content
+    // =========================================================================
+
+    #[test]
+    fn chunk_small_content_returns_single_chunk() {
+        let content = "Hello, world!";
+        let chunks = chunk_content(content, 5000, 500, 10);
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], content);
+    }
+
+    #[test]
+    fn chunk_exact_boundary_returns_single_chunk() {
+        let content: String = "a".repeat(5000);
+        let chunks = chunk_content(&content, 5000, 500, 10);
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], content);
+    }
+
+    #[test]
+    fn chunk_large_content_splits_correctly() {
+        // 12000 chars with chunk_size=5000, overlap=500 => advance=4500
+        // chunk 0: [0..5000], chunk 1: [4500..9500], chunk 2: [9000..12000]
+        let content: String = (0..12000).map(|i| char::from(b'a' + (i % 26) as u8)).collect();
+        let chunks = chunk_content(&content, 5000, 500, 10);
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[0].len(), 5000);
+        assert_eq!(chunks[1].len(), 5000);
+        assert_eq!(chunks[2].len(), 3000);
+    }
+
+    #[test]
+    fn chunk_overlap_preserves_boundary_content() {
+        // Verify the overlap region is shared between consecutive chunks
+        let content: String = (0..10000).map(|i| char::from(b'A' + (i % 26) as u8)).collect();
+        let chunks = chunk_content(&content, 5000, 500, 10);
+        // Last 500 chars of chunk 0 should equal first 500 chars of chunk 1
+        let tail_of_first: String = chunks[0].chars().skip(4500).collect();
+        let head_of_second: String = chunks[1].chars().take(500).collect();
+        assert_eq!(tail_of_first, head_of_second);
+    }
+
+    #[test]
+    fn chunk_max_chunks_caps_output() {
+        // 100K chars with chunk_size=5000, overlap=500, max=10 => only 10 chunks
+        let content: String = "x".repeat(100_000);
+        let chunks = chunk_content(&content, 5000, 500, 10);
+        assert_eq!(chunks.len(), 10);
+    }
+
+    #[test]
+    fn chunk_empty_content_returns_single_chunk() {
+        let chunks = chunk_content("", 5000, 500, 10);
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], "");
+    }
+
+    // =========================================================================
+    // deduplicate_findings
+    // =========================================================================
+
+    #[test]
+    fn dedup_removes_duplicate_category_subcategory() {
+        let findings = vec![
+            FileFinding {
+                category: "pii".to_string(),
+                description: "SSN found in chunk 1".to_string(),
+                evidence: "pii.identity".to_string(),
+                severity: Severity::High,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+            FileFinding {
+                category: "pii".to_string(),
+                description: "SSN found in chunk 2".to_string(),
+                evidence: "pii.identity".to_string(),
+                severity: Severity::Medium,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+        ];
+        let result = deduplicate_findings(findings);
+        assert_eq!(result.len(), 1);
+        // Should keep the higher severity
+        assert_eq!(result[0].severity, Severity::High);
+    }
+
+    #[test]
+    fn dedup_keeps_different_categories() {
+        let findings = vec![
+            FileFinding {
+                category: "pii".to_string(),
+                description: "SSN".to_string(),
+                evidence: "pii.identity".to_string(),
+                severity: Severity::High,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+            FileFinding {
+                category: "credentials".to_string(),
+                description: "API key".to_string(),
+                evidence: "credentials.api_key".to_string(),
+                severity: Severity::Critical,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+        ];
+        let result = deduplicate_findings(findings);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn dedup_safe_only_returns_safe() {
+        let findings = vec![
+            FileFinding {
+                category: "safe".to_string(),
+                description: "No issues".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+            FileFinding {
+                category: "safe".to_string(),
+                description: "Clean chunk".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+        ];
+        let result = deduplicate_findings(findings);
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().all(|f| f.category == "safe"));
+    }
+
+    #[test]
+    fn dedup_mixed_safe_and_nonsafe_drops_safe() {
+        let findings = vec![
+            FileFinding {
+                category: "safe".to_string(),
+                description: "No issues".to_string(),
+                evidence: String::new(),
+                severity: Severity::Info,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+            FileFinding {
+                category: "pii".to_string(),
+                description: "SSN found".to_string(),
+                evidence: "pii.identity".to_string(),
+                severity: Severity::High,
+                source: "beam".to_string(),
+                extracted_data: HashMap::new(),
+            },
+        ];
+        let result = deduplicate_findings(findings);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].category, "pii");
     }
 }
