@@ -735,6 +735,12 @@ lazy_re!(RE_PRIVATE_KEY, r"-----BEGIN\s+(RSA|EC|DSA|OPENSSH|PGP)\s+PRIVATE\s+KEY
 lazy_re!(RE_GENERIC_SECRET, r#"(?i)(password|passwd|pwd|secret|token)\s*[:=]\s*["']?[^\s"']{8,}"#);
 lazy_re!(RE_CONNECTION_STRING, r"(?i)(mongodb|postgres|mysql|redis|amqp)://[^\s]+@[^\s]+");
 
+// --- K. Financial identifiers ---
+lazy_re!(RE_EIN, r"\b\d{2}-\d{7}\b");
+lazy_re!(RE_ROUTING_NUMBER, r"(?i)(routing|aba|transit)\s*#?\s*:?\s*\d{9}\b");
+lazy_re!(RE_LOAN_NUMBER, r"(?i)(loan|account|acct|policy)\s*(number|num|no|#)\s*:?\s*\d{6,15}");
+lazy_re!(RE_CHECK_NUMBER, r"(?i)check\s*(number|num|no|#)\s*:?\s*\d{4,10}");
+
 fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<FileFinding> {
     // Track which categories the model already found
     let model_categories: std::collections::HashSet<&str> = existing_findings
@@ -809,6 +815,12 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
         SafetyPattern { regex: &RE_PRIVATE_KEY, subcategory: "credentials.private_key", description: "Private key detected", severity: Severity::Critical },
         SafetyPattern { regex: &RE_GENERIC_SECRET, subcategory: "credentials.password", description: "Hardcoded password or secret detected", severity: Severity::High },
         SafetyPattern { regex: &RE_CONNECTION_STRING, subcategory: "credentials.connection_string", description: "Database connection string with credentials detected", severity: Severity::Critical },
+
+        // K. Financial identifiers
+        SafetyPattern { regex: &RE_EIN, subcategory: "pii.identity", description: "Employer Identification Number (EIN) detected", severity: Severity::High },
+        SafetyPattern { regex: &RE_ROUTING_NUMBER, subcategory: "financial.bank_account", description: "Bank routing/ABA number detected", severity: Severity::High },
+        SafetyPattern { regex: &RE_LOAN_NUMBER, subcategory: "financial.bank_account", description: "Loan or account number detected", severity: Severity::High },
+        SafetyPattern { regex: &RE_CHECK_NUMBER, subcategory: "financial.transaction", description: "Check number detected", severity: Severity::Medium },
     ];
 
     let mut results = Vec::new();
