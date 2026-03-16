@@ -1,6 +1,5 @@
 pub mod git_hook;
 pub mod policy;
-pub mod prompts;
 pub mod repl;
 pub mod snake;
 pub mod stdin;
