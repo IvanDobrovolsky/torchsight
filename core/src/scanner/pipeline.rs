@@ -25,6 +25,7 @@ pub async fn run_scan(
                 .template("  {spinner:.cyan} [{bar:30.cyan/dim}] {msg}")?
                 .progress_chars("##-"),
         );
+        pb.enable_steady_tick(std::time::Duration::from_millis(120));
         Some(pb)
     } else {
         None
