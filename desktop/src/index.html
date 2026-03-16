@@ -12,14 +12,72 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-brand">
+        <div class="sidebar-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="36" height="36">
+            <defs>
+              <linearGradient id="bm" x1="0%" y1="100%" x2="20%" y2="0%">
+                <stop offset="0%" stop-color="#A855F7" stop-opacity="0.75"/>
+                <stop offset="30%" stop-color="#6366F1" stop-opacity="0.5"/>
+                <stop offset="60%" stop-color="#38BDF8" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#E0F2FE" stop-opacity="0.08"/>
+              </linearGradient>
+              <linearGradient id="bt" x1="100%" y1="100%" x2="80%" y2="0%">
+                <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.5"/>
+                <stop offset="45%" stop-color="#38BDF8" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#A5B4FC" stop-opacity="0.05"/>
+              </linearGradient>
+              <linearGradient id="cs" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+                <stop offset="20%" stop-color="#E9D5FF" stop-opacity="0.6"/>
+                <stop offset="50%" stop-color="#A5B4FC" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="cw" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#C084FC" stop-opacity="0.4"/>
+                <stop offset="30%" stop-color="#818CF8" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="fl" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#A855F7" stop-opacity="0"/>
+                <stop offset="30%" stop-color="#C084FC" stop-opacity="0.35"/>
+                <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.8"/>
+                <stop offset="70%" stop-color="#38BDF8" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
+              </linearGradient>
+              <radialGradient id="sg" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9"/>
+                <stop offset="30%" stop-color="#E9D5FF" stop-opacity="0.5"/>
+                <stop offset="60%" stop-color="#A855F7" stop-opacity="0.2"/>
+                <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <polygon points="215,370 140,40 372,40 297,370" fill="url(#bm)" opacity="0.6"/>
+            <polygon points="222,370 150,48 364,48 290,370" fill="url(#bt)" opacity="0.4"/>
+            <rect x="240" y="38" width="32" height="332" fill="url(#cw)" opacity="0.5" rx="16"/>
+            <rect x="250" y="35" width="12" height="335" fill="url(#cs)" opacity="0.8" rx="6"/>
+            <rect x="254" y="40" width="4" height="328" fill="#FFFFFF" opacity="0.15" rx="2"/>
+            <ellipse cx="256" cy="370" rx="16" ry="6" fill="url(#sg)" opacity="0.7"/>
+            <ellipse cx="256" cy="370" rx="7" ry="3.5" fill="#FFFFFF" opacity="0.9"/>
+            <ellipse cx="256" cy="370" rx="3" ry="1.8" fill="#FFFFFF"/>
+            <rect x="170" y="369" width="172" height="2.5" fill="url(#fl)" opacity="0.55" rx="1.25"/>
+            <circle cx="246" cy="85" r="2.5" fill="#FFFFFF" opacity="0.8"/>
+            <circle cx="268" cy="145" r="2" fill="#C084FC" opacity="0.7"/>
+            <circle cx="241" cy="205" r="2.2" fill="#67E8F9" opacity="0.6"/>
+            <circle cx="252" cy="120" r="1.7" fill="#22D3EE" opacity="0.65"/>
+            <rect x="249" y="376" width="14" height="48" rx="2.5" fill="#1A1328"/>
+            <rect x="244" y="422" width="24" height="5" rx="2" fill="#1A1328"/>
+          </svg>
+        </div>
         <h1>TorchSight</h1>
         <div class="version">v0.1.0 &middot; desktop</div>
+        <div class="tagline">Open-source security scanner and document classifier powered by local LLMs.</div>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-item active" data-view="scan">
           <span class="nav-icon">&#9906;</span>
           Scan
+          <span class="scan-indicator" id="scan-indicator" style="display:none"></span>
         </div>
         <div class="nav-item" data-view="results">
           <span class="nav-icon">&#9670;</span>
@@ -35,6 +93,10 @@
       <div class="sidebar-status">
         <span class="status-dot offline" id="ollama-dot"></span>
         <span id="ollama-status">Checking Ollama...</span>
+        <div id="ollama-setup" class="ollama-setup" style="display:none">
+          <div class="ollama-setup-text">Ollama is required to run scans.</div>
+          <button class="ollama-setup-btn" id="install-ollama-btn">Install Ollama</button>
+        </div>
       </div>
     </aside>
 
@@ -59,10 +121,77 @@
             <button class="scan-btn" id="scan-btn" disabled>Start Scan</button>
           </div>
 
-          <div class="scan-progress" id="scan-progress">
-            <div class="progress-status" id="progress-status">Preparing scan...</div>
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill indeterminate" id="progress-fill"></div>
+          <!-- File list after folder selection -->
+          <div id="file-list-container" style="display:none"></div>
+
+          <!-- Scanning state with gauges -->
+          <div id="scan-state" style="display:none">
+            <div class="scan-state-header">
+              <div class="scan-pulse"></div>
+              <span id="scan-status-text">Analyzing files with Beam model...</span>
+            </div>
+
+            <div class="progress-bar-bg" style="margin:16px 0">
+              <div class="progress-bar-fill indeterminate" id="scan-progress-fill"></div>
+            </div>
+            <div class="gauges-row">
+              <div class="gauge-card">
+                <div class="gauge-container" id="cpu-gauge">
+                  <svg viewBox="0 0 80 80" class="gauge-svg">
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-bg"/>
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-fill" style="stroke:var(--safe)"/>
+                  </svg>
+                  <div class="gauge-text">
+                    <span class="gauge-value">0%</span>
+                  </div>
+                </div>
+                <div class="gauge-label">CPU</div>
+                <div class="gauge-detail" style="font-size:10px;color:var(--text-muted)">—</div>
+              </div>
+
+              <div class="gauge-card">
+                <div class="gauge-container" id="ram-gauge">
+                  <svg viewBox="0 0 80 80" class="gauge-svg">
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-bg"/>
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-fill" style="stroke:var(--safe)"/>
+                  </svg>
+                  <div class="gauge-text">
+                    <span class="gauge-value">0%</span>
+                  </div>
+                </div>
+                <div class="gauge-label">RAM</div>
+                <div class="gauge-detail" style="font-size:10px;color:var(--text-muted)">—</div>
+              </div>
+
+              <div class="gauge-card">
+                <div class="gauge-container" id="gpu-gauge">
+                  <svg viewBox="0 0 80 80" class="gauge-svg">
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-bg"/>
+                    <circle cx="40" cy="40" r="36" class="gauge-ring-fill" style="stroke:var(--safe)"/>
+                  </svg>
+                  <div class="gauge-text">
+                    <span class="gauge-value">0%</span>
+                  </div>
+                </div>
+                <div class="gauge-label">GPU</div>
+                <div class="gauge-detail" style="font-size:10px;color:var(--text-muted)">—</div>
+              </div>
+
+              <div class="gauge-card">
+                <div class="gauge-container">
+                  <div class="elapsed-display">
+                    <span id="scan-elapsed" class="elapsed-value">0s</span>
+                  </div>
+                </div>
+                <div class="gauge-label">Elapsed</div>
+              </div>
+            </div>
+
+            <!-- Per-file progress log -->
+            <div class="scan-file-log" id="scan-file-log"></div>
+
+            <div style="text-align:center;margin-top:12px;">
+              <button class="stop-scan-btn" id="stop-scan-btn">Stop Scan</button>
             </div>
           </div>
         </div>
@@ -79,6 +208,9 @@
             <div class="stats-grid" id="stats-grid"></div>
             <div id="flagged-files"></div>
             <div id="clean-files"></div>
+            <div style="text-align:center;margin-top:24px;">
+              <button class="scan-btn" id="new-scan-btn">New Scan</button>
+            </div>
           </div>
         </div>
 
@@ -93,26 +225,28 @@
               </div>
               <input class="setting-input" id="ollama-url" value="http://localhost:11434">
             </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Text Model</div>
-                <div class="setting-desc">Beam model for document classification</div>
-              </div>
-              <input class="setting-input" id="text-model" value="torchsight/beam">
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Vision Model</div>
-                <div class="setting-desc">For image analysis and description</div>
-              </div>
-              <input class="setting-input" id="vision-model" value="llama3.2-vision">
-            </div>
           </div>
 
           <div class="settings-group">
-            <h3>Available Models</h3>
-            <div class="model-list" id="model-list">
-              <span class="model-tag" style="color: var(--text-muted)">Connect to Ollama to see models</span>
+            <h3>Models</h3>
+            <div class="setting-desc" style="margin-bottom:14px;">Select which models to use for scanning.</div>
+
+            <div class="model-section-label">Text &amp; Document Classification</div>
+            <div class="model-select-list" id="beam-model-list">
+              <div class="model-select-loading">Connecting to Ollama...</div>
+            </div>
+
+            <div class="model-section-label" style="margin-top:16px;">Vision &amp; Image Analysis</div>
+            <div class="model-select-list" id="vision-model-list">
+              <div class="model-select-loading">Connecting to Ollama...</div>
+            </div>
+
+            <div class="models-coming-soon">More models coming soon.</div>
+
+            <div class="quant-notes">
+              <div class="quant-note"><span class="quant-tag">q4_K_M</span> Default. ~17 GB. Fits 32 GB RAM (M1/M2 Mac, most GPUs).</div>
+              <div class="quant-note"><span class="quant-tag">q8_0</span> Higher quality. ~28 GB. Requires 48+ GB GPU or 64 GB Mac.</div>
+              <div class="quant-note"><span class="quant-tag">f16</span> Full precision. ~54 GB. Requires 80 GB GPU (A100/H100).</div>
             </div>
           </div>
 
@@ -121,7 +255,7 @@
             <div class="setting-row">
               <div class="setting-info">
                 <div class="setting-label">TorchSight Desktop</div>
-                <div class="setting-desc">On-premise cybersecurity scanner powered by local LLMs. Apache 2.0 license.</div>
+                <div class="setting-desc">Open-source security scanner and document classifier powered by local LLMs. Apache 2.0 license.</div>
               </div>
             </div>
             <div class="setting-row">

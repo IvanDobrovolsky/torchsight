@@ -4556,6 +4556,7 @@ checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
 name = "torchsight-desktop"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -4565,6 +4566,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-shell",
  "tokio",
+ "walkdir",
 ]
 
 [[package]]

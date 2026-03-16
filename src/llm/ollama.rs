@@ -170,6 +170,7 @@ impl OllamaClient {
             "prompt": prompt,
             "stream": false,
             "options": {
+                "temperature": 0,
                 "num_predict": 2048,
                 "stop": ["\n\n\n"]
             }
