@@ -267,30 +267,9 @@ Multi-label compliance tags assigned alongside findings.
 
 ---
 
-## Limitations (v1.0)
+## Limitations & Roadmap
 
-Beam v1.0 was trained for **document classification** — determining *what kind* of sensitive content a file contains. It is not a field-level extraction model. This creates specific gaps:
-
-### Classification vs. extraction
-The model reliably identifies that a document contains PII, credentials, or financial data, but does not consistently extract every individual value. For example, a 54-page pay stub PDF will be flagged as containing PII and financial data, but the model may not enumerate every SSN, salary amount, or account number within it. The regex safety net (52 patterns) fills some of these gaps for structured values like SSNs, emails, credit cards, and API keys.
-
-### Tabular financial data in large documents
-Multi-page payroll records, bank statements, and tax returns with repeating tabular structures are sometimes classified as `confidential.internal` (generic internal business document) rather than the more specific `financial` or `pii` category. This happens because chunked content from large tables looks like generic business data to the model. Single-page documents with the same content classify correctly.
-
-### Employer and business entity names
-Employer names, business addresses, and EIN numbers within pay stubs and tax forms are not flagged as PII. The model treats publicly available business information differently from personal identifiers, even when it appears alongside sensitive employee data.
-
-### Granular financial field extraction
-Specific dollar amounts (salary, tax withholdings, 401K contributions, deductions) within payroll and tax documents are not individually extracted. The document is flagged as financial/sensitive, but the model does not itemize each financial field.
-
-### Real-world accuracy
-On the eval-1000 synthetic test dataset, Beam q4_K_M achieves 95.1% category accuracy. On real-world leaked documents (divorce case files with pay stubs, tax returns, bank statements), classification accuracy is approximately 85% — the gap is primarily in the areas described above. The regex safety net recovers an additional 10-15% of missed findings for structured patterns.
-
-### Planned for v1.1
-- Training data augmented with real-world financial documents (pay stubs, bank statements, tax returns)
-- Field-level extraction for structured PII (SSN, account numbers, salary amounts)
-- Better tabular data handling in chunked scanning
-- Expanded regex patterns for financial identifiers (EIN, routing numbers, loan numbers)
+See [ROADMAP.md](ROADMAP.md) for v1.0 known limitations and the v1.1 training plan.
 
 ---
 
