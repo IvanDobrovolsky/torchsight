@@ -280,25 +280,22 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
             .spawn()
             .map_err(|e| format!("Failed to run torchsight: {}", e))?;
 
-        // Read stderr live for progress
+        // Read stderr live for progress — use BufReader for proper line buffering
         let stderr = child.stderr.take();
         let app_clone = app.clone();
         let stderr_handle = std::thread::spawn(move || {
             let mut buf_all = String::new();
-            if let Some(mut stderr) = stderr {
-                use std::io::Read;
-                let mut buf = [0u8; 512];
-                loop {
-                    match stderr.read(&mut buf) {
-                        Ok(0) => break,
-                        Ok(n) => {
-                            let chunk = String::from_utf8_lossy(&buf[..n]);
-                            buf_all.push_str(&chunk);
-                            for line in chunk.lines() {
-                                let clean = strip_ansi(line).trim().to_string();
-                                if !clean.is_empty() && (clean.contains("Scanning") || clean.contains("Scan complete") || clean.contains("[")) {
-                                    let _ = app_clone.emit("scan-progress", &clean);
-                                }
+            if let Some(stderr) = stderr {
+                use std::io::BufRead;
+                let reader = std::io::BufReader::new(stderr);
+                for line in reader.lines() {
+                    match line {
+                        Ok(line) => {
+                            buf_all.push_str(&line);
+                            buf_all.push('\n');
+                            let clean = strip_ansi(&line).trim().to_string();
+                            if !clean.is_empty() && (clean.contains("Scanning") || clean.contains("Scan complete") || clean.contains("[")) {
+                                let _ = app_clone.emit("scan-progress", &clean);
                             }
                         }
                         Err(_) => break,
@@ -389,6 +386,25 @@ fn strip_ansi(s: &str) -> String {
         else { result.push(c); }
     }
     result
+}
+
+/// Find a binary by name, searching common paths that .app bundles miss
+fn find_binary(name: &str) -> Option<PathBuf> {
+    let home = dirs::home_dir().unwrap_or_default();
+    let candidates = [
+        home.join(format!(".cargo/bin/{}", name)),
+        home.join(format!(".local/bin/{}", name)),
+        PathBuf::from(format!("/opt/homebrew/bin/{}", name)),
+        PathBuf::from(format!("/usr/local/bin/{}", name)),
+        PathBuf::from(format!("/usr/bin/{}", name)),
+    ];
+    for c in &candidates {
+        if c.exists() {
+            return Some(c.clone());
+        }
+    }
+    // Last resort: try PATH (works in terminal, not always in .app)
+    Some(PathBuf::from(name))
 }
 
 fn find_torchsight_binary() -> Result<PathBuf, String> {
@@ -536,7 +552,10 @@ async fn export_pdf(save_path: String) -> Result<String, String> {
         let script = script_path.ok_or("Could not find report/generate.py. Make sure the TorchSight repo is available.")?;
         let project_dir = script.parent().unwrap();
 
-        let result = Command::new("uv")
+        let uv_bin = find_binary("uv")
+            .ok_or("uv not found. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh")?;
+
+        let result = Command::new(&uv_bin)
             .args([
                 "run",
                 "--project", project_dir.to_str().unwrap(),
@@ -546,7 +565,7 @@ async fn export_pdf(save_path: String) -> Result<String, String> {
                 "-o", &save,
             ])
             .output()
-            .map_err(|e| format!("Failed to run uv: {}. Install with: curl -LsSf https://astral.sh/uv/install.sh | sh", e))?;
+            .map_err(|e| format!("Failed to run uv: {}", e))?;
 
         if !result.status.success() {
             let stderr = String::from_utf8_lossy(&result.stderr);
