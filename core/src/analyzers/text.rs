@@ -18,6 +18,14 @@ pub async fn analyze_text_file(
 ) -> Result<Vec<FileFinding>> {
     let content = if is_pdf(path) {
         extract_pdf_text(path)?
+    } else if is_docx(path) {
+        extract_docx_text(path)?
+    } else if is_xlsx(path) {
+        extract_xlsx_text(path)?
+    } else if is_pptx(path) {
+        extract_pptx_text(path)?
+    } else if is_doc(path) {
+        extract_doc_text(path)?
     } else {
         read_text_safe(path)?
     };
@@ -859,6 +867,215 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Office document format detection and extraction
+// ---------------------------------------------------------------------------
+
+fn is_docx(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("docx"))
+}
+
+fn is_xlsx(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("xlsx") || e.eq_ignore_ascii_case("xls"))
+}
+
+fn is_pptx(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("pptx"))
+}
+
+fn is_doc(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("doc"))
+}
+
+/// Strip XML tags from content, returning only the text nodes.
+fn strip_xml_tags(xml: &str) -> String {
+    let mut result = String::with_capacity(xml.len() / 2);
+    let mut in_tag = false;
+    for ch in xml.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => {
+                in_tag = false;
+                // Add space to separate text from different elements
+                if !result.ends_with(' ') && !result.ends_with('\n') {
+                    result.push(' ');
+                }
+            }
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    // Collapse multiple whitespace runs
+    let collapsed: String = result
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    collapsed
+}
+
+/// Extract text from a DOCX file (ZIP of XML).
+/// Reads word/document.xml and strips XML tags.
+fn extract_docx_text(path: &Path) -> Result<String> {
+    use std::io::Read as _;
+
+    let file = fs::File::open(path)?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| anyhow::anyhow!("Failed to open DOCX as ZIP: {}", e))?;
+
+    let mut text = String::new();
+    // Primary content is in word/document.xml
+    if let Ok(mut entry) = archive.by_name("word/document.xml") {
+        let mut xml = String::new();
+        entry.read_to_string(&mut xml)?;
+        text = strip_xml_tags(&xml);
+    }
+
+    if text.trim().is_empty() {
+        anyhow::bail!("DOCX contains no extractable text")
+    }
+    Ok(text)
+}
+
+/// Extract text from XLSX/XLS spreadsheets using calamine.
+fn extract_xlsx_text(path: &Path) -> Result<String> {
+    use calamine::{open_workbook_auto, Data, Reader};
+
+    let mut workbook = open_workbook_auto(path)
+        .map_err(|e| anyhow::anyhow!("Failed to open spreadsheet: {}", e))?;
+
+    let mut text = String::new();
+    let sheet_names: Vec<String> = workbook.sheet_names().to_vec();
+
+    for name in sheet_names {
+        if let Ok(range) = workbook.worksheet_range(&name) {
+            text.push_str(&format!("[Sheet: {}]\n", name));
+            for row in range.rows() {
+                let cells: Vec<String> = row
+                    .iter()
+                    .map(|cell| match cell {
+                        Data::Empty => String::new(),
+                        other => other.to_string(),
+                    })
+                    .collect();
+                let line = cells.join("\t");
+                if !line.trim().is_empty() {
+                    text.push_str(&line);
+                    text.push('\n');
+                }
+            }
+            text.push('\n');
+        }
+    }
+
+    if text.trim().is_empty() {
+        anyhow::bail!("Spreadsheet contains no extractable text")
+    }
+    Ok(text)
+}
+
+/// Extract text from a PPTX file (ZIP of XML).
+/// Reads ppt/slides/slide*.xml and strips XML tags.
+fn extract_pptx_text(path: &Path) -> Result<String> {
+    use std::io::Read as _;
+
+    let file = fs::File::open(path)?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| anyhow::anyhow!("Failed to open PPTX as ZIP: {}", e))?;
+
+    let mut text = String::new();
+    // Collect slide file names and sort them
+    let mut slide_names: Vec<String> = (0..archive.len())
+        .filter_map(|i| {
+            let entry = archive.by_index(i).ok()?;
+            let name = entry.name().to_string();
+            if name.starts_with("ppt/slides/slide") && name.ends_with(".xml") {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect();
+    slide_names.sort();
+
+    for (idx, slide_name) in slide_names.iter().enumerate() {
+        if let Ok(mut entry) = archive.by_name(slide_name) {
+            let mut xml = String::new();
+            entry.read_to_string(&mut xml)?;
+            let slide_text = strip_xml_tags(&xml);
+            if !slide_text.trim().is_empty() {
+                text.push_str(&format!("[Slide {}]\n{}\n\n", idx + 1, slide_text.trim()));
+            }
+        }
+    }
+
+    if text.trim().is_empty() {
+        anyhow::bail!("PPTX contains no extractable text")
+    }
+    Ok(text)
+}
+
+/// Extract text from a legacy DOC file.
+/// Tries textutil (macOS built-in) first, then antiword, then falls back
+/// to extracting readable ASCII strings from the binary.
+fn extract_doc_text(path: &Path) -> Result<String> {
+    let path_str = path.to_str().unwrap_or("");
+
+    // Try textutil (macOS built-in)
+    if let Ok(output) = Command::new("textutil")
+        .args(["-convert", "txt", "-stdout", path_str])
+        .output()
+    {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout).to_string();
+            if !text.trim().is_empty() {
+                return Ok(text);
+            }
+        }
+    }
+
+    // Try antiword
+    if let Ok(output) = Command::new("antiword").arg(path_str).output() {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout).to_string();
+            if !text.trim().is_empty() {
+                return Ok(text);
+            }
+        }
+    }
+
+    // Fallback: extract printable ASCII strings (like `strings` command)
+    let bytes = fs::read(path)?;
+    let mut text = String::new();
+    let mut current = String::new();
+    for &b in &bytes {
+        if b.is_ascii_graphic() || b == b' ' || b == b'\n' || b == b'\t' {
+            current.push(b as char);
+        } else {
+            if current.len() >= 4 {
+                text.push_str(&current);
+                text.push(' ');
+            }
+            current.clear();
+        }
+    }
+    if current.len() >= 4 {
+        text.push_str(&current);
+    }
+
+    if text.trim().is_empty() {
+        anyhow::bail!("DOC file contains no extractable text (install textutil or antiword for better extraction)")
+    }
+    Ok(text)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1265,5 +1482,141 @@ Second array:
         assert_eq!(findings.len(), 1);
         // Empty/whitespace extracted_data values should be filtered out
         assert!(findings[0].extracted_data.is_empty());
+    }
+
+    // =========================================================================
+    // Office format detection
+    // =========================================================================
+
+    #[test]
+    fn detect_docx() {
+        assert!(is_docx(Path::new("report.docx")));
+        assert!(is_docx(Path::new("report.DOCX")));
+        assert!(!is_docx(Path::new("report.doc")));
+        assert!(!is_docx(Path::new("report.pdf")));
+    }
+
+    #[test]
+    fn detect_xlsx() {
+        assert!(is_xlsx(Path::new("data.xlsx")));
+        assert!(is_xlsx(Path::new("data.XLSX")));
+        assert!(is_xlsx(Path::new("data.xls")));
+        assert!(is_xlsx(Path::new("data.XLS")));
+        assert!(!is_xlsx(Path::new("data.csv")));
+    }
+
+    #[test]
+    fn detect_pptx() {
+        assert!(is_pptx(Path::new("slides.pptx")));
+        assert!(is_pptx(Path::new("slides.PPTX")));
+        assert!(!is_pptx(Path::new("slides.pdf")));
+    }
+
+    #[test]
+    fn detect_doc() {
+        assert!(is_doc(Path::new("legacy.doc")));
+        assert!(is_doc(Path::new("legacy.DOC")));
+        assert!(!is_doc(Path::new("legacy.docx")));
+    }
+
+    // =========================================================================
+    // XML stripping
+    // =========================================================================
+
+    #[test]
+    fn strip_xml_tags_basic() {
+        let xml = "<w:p><w:r><w:t>Hello</w:t></w:r> <w:r><w:t>World</w:t></w:r></w:p>";
+        let text = strip_xml_tags(xml);
+        assert!(text.contains("Hello"));
+        assert!(text.contains("World"));
+        assert!(!text.contains("<w:"));
+    }
+
+    #[test]
+    fn strip_xml_tags_empty() {
+        assert_eq!(strip_xml_tags(""), "");
+        assert_eq!(strip_xml_tags("<root></root>").trim(), "");
+    }
+
+    // =========================================================================
+    // CSV/TSV read as plain text
+    // =========================================================================
+
+    #[test]
+    fn csv_read_as_plain_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let csv_path = dir.path().join("data.csv");
+        std::fs::write(&csv_path, "name,email\nJohn,john@example.com\n").unwrap();
+        let content = read_text_safe(&csv_path).unwrap();
+        assert!(content.contains("name,email"));
+        assert!(content.contains("john@example.com"));
+    }
+
+    #[test]
+    fn tsv_read_as_plain_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let tsv_path = dir.path().join("data.tsv");
+        std::fs::write(&tsv_path, "name\temail\nJohn\tjohn@example.com\n").unwrap();
+        let content = read_text_safe(&tsv_path).unwrap();
+        assert!(content.contains("name\temail"));
+    }
+
+    // =========================================================================
+    // DOCX extraction
+    // =========================================================================
+
+    #[test]
+    fn docx_extraction_from_minimal_zip() {
+        use std::io::Write;
+        // Create a minimal DOCX (ZIP with word/document.xml)
+        let dir = tempfile::tempdir().unwrap();
+        let docx_path = dir.path().join("test.docx");
+
+        let file = std::fs::File::create(&docx_path).unwrap();
+        let mut zip_writer = zip::ZipWriter::new(file);
+        let options = zip::write::FileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        zip_writer.start_file("word/document.xml", options).unwrap();
+        zip_writer.write_all(
+            b"<?xml version=\"1.0\"?><w:document><w:body><w:p><w:r><w:t>Secret password is hunter2</w:t></w:r></w:p></w:body></w:document>"
+        ).unwrap();
+        zip_writer.finish().unwrap();
+
+        let text = extract_docx_text(&docx_path).unwrap();
+        assert!(text.contains("Secret password is hunter2"));
+    }
+
+    // =========================================================================
+    // PPTX extraction
+    // =========================================================================
+
+    #[test]
+    fn pptx_extraction_from_minimal_zip() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let pptx_path = dir.path().join("test.pptx");
+
+        let file = std::fs::File::create(&pptx_path).unwrap();
+        let mut zip_writer = zip::ZipWriter::new(file);
+        let options = zip::write::FileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+
+        zip_writer.start_file("ppt/slides/slide1.xml", options).unwrap();
+        zip_writer.write_all(
+            b"<?xml version=\"1.0\"?><p:sld><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Slide one content</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+        ).unwrap();
+
+        zip_writer.start_file("ppt/slides/slide2.xml", options).unwrap();
+        zip_writer.write_all(
+            b"<?xml version=\"1.0\"?><p:sld><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Slide two content</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+        ).unwrap();
+
+        zip_writer.finish().unwrap();
+
+        let text = extract_pptx_text(&pptx_path).unwrap();
+        assert!(text.contains("Slide one content"));
+        assert!(text.contains("Slide two content"));
+        assert!(text.contains("[Slide 1]"));
+        assert!(text.contains("[Slide 2]"));
     }
 }

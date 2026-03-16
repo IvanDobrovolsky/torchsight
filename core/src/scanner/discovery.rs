@@ -111,7 +111,7 @@ const TEXT_EXTENSIONS: &[&str] = &[
     "txt", "csv", "json", "xml", "yaml", "yml", "toml", "ini", "cfg", "conf", "log", "md",
     "rst", "html", "htm", "css", "js", "ts", "py", "rs", "go", "java", "c", "cpp", "h", "hpp",
     "rb", "php", "sh", "bash", "zsh", "sql", "env", "pem", "key", "crt", "pub", "tex", "rtf",
-    "pdf",
+    "pdf", "docx", "doc", "xlsx", "xls", "pptx", "tsv",
 ];
 
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp"];
@@ -282,7 +282,8 @@ mod tests {
 
     #[test]
     fn classify_text_extensions() {
-        for ext in &["txt", "json", "py", "rs", "go", "java", "js", "html", "csv", "xml", "yaml", "sql", "sh", "pdf"] {
+        for ext in &["txt", "json", "py", "rs", "go", "java", "js", "html", "csv", "xml", "yaml", "sql", "sh", "pdf",
+                      "docx", "doc", "xlsx", "xls", "pptx", "tsv", "rtf"] {
             let path = PathBuf::from(format!("test.{}", ext));
             assert_eq!(classify_file(&path), FileKind::Text, "Expected .{} to be Text", ext);
         }
