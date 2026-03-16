@@ -901,7 +901,8 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
         Ok(out) if out.status.success() => {
             let text = String::from_utf8_lossy(&out.stdout).to_string();
             if text.trim().is_empty() {
-                anyhow::bail!("PDF contains no extractable text (may be scanned/image-only)")
+                // pdftotext returned nothing — try OCR fallback for scanned PDFs
+                return extract_pdf_via_ocr(path);
             }
             Ok(text)
         }
@@ -910,9 +911,72 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
             anyhow::bail!("pdftotext failed: {}", err)
         }
         Err(_) => {
-            anyhow::bail!("pdftotext not found. Install: pacman -S poppler (Arch) or apt install poppler-utils (Debian)")
+            anyhow::bail!("pdftotext not found. Install with: brew install poppler (macOS) or apt install poppler-utils (Linux)")
         }
     }
+}
+
+/// OCR fallback for scanned/image-only PDFs.
+/// Converts PDF pages to images with pdftoppm, then runs Tesseract on each.
+fn extract_pdf_via_ocr(path: &Path) -> Result<String> {
+    // Check that both pdftoppm and tesseract are available
+    if Command::new("pdftoppm").arg("--help").output().is_err() {
+        anyhow::bail!("PDF is scanned/image-only and pdftoppm is not installed. Install with: brew install poppler (macOS) or apt install poppler-utils (Linux)");
+    }
+    if !crate::analyzers::ocr::is_available() {
+        anyhow::bail!("PDF is scanned/image-only and Tesseract is not installed for OCR. Install with: brew install tesseract (macOS) or apt install tesseract-ocr (Linux)");
+    }
+
+    let tmp_dir = std::env::temp_dir().join(format!("torchsight-pdf-ocr-{}", std::process::id()));
+    fs::create_dir_all(&tmp_dir)?;
+
+    // Convert PDF pages to PNG images (limit to first 10 pages)
+    let status = Command::new("pdftoppm")
+        .args([
+            "-png",
+            "-r", "200",        // 200 DPI — good balance of quality vs speed
+            "-l", "10",         // limit to first 10 pages
+            path.to_str().unwrap_or(""),
+            tmp_dir.join("page").to_str().unwrap_or(""),
+        ])
+        .status();
+
+    if status.is_err() || !status.unwrap().success() {
+        let _ = fs::remove_dir_all(&tmp_dir);
+        anyhow::bail!("PDF is scanned/image-only and pdftoppm failed to convert pages");
+    }
+
+    // OCR each page image
+    let mut page_files: Vec<_> = fs::read_dir(&tmp_dir)?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "png"))
+        .map(|e| e.path())
+        .collect();
+    page_files.sort();
+
+    let mut all_text = String::new();
+    for page_path in &page_files {
+        let output = Command::new("tesseract")
+            .args([page_path.to_str().unwrap_or(""), "stdout", "-l", "eng"])
+            .output();
+
+        if let Ok(out) = output {
+            if out.status.success() {
+                let page_text = String::from_utf8_lossy(&out.stdout);
+                all_text.push_str(&page_text);
+                all_text.push('\n');
+            }
+        }
+    }
+
+    // Cleanup
+    let _ = fs::remove_dir_all(&tmp_dir);
+
+    if all_text.trim().is_empty() {
+        anyhow::bail!("PDF is scanned/image-only and OCR could not extract any text");
+    }
+
+    Ok(all_text)
 }
 
 // ---------------------------------------------------------------------------
