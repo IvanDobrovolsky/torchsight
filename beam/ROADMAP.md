@@ -2,18 +2,7 @@
 
 ## v1.0 Known Limitations
 
-Beam v1.0 is a **document classifier** — it identifies *what kind* of sensitive content a file contains. It is not a field-level extraction model. The regex safety net (52 patterns) compensates for structured values the model misses, but v1.1 should handle these natively.
-
-### What the model should catch but currently relies on regex for
-
-| Pattern | v1.0 | v1.1 Target |
-|---------|------|-------------|
-| Full SSNs (123-45-6789) | Regex catches, Beam inconsistent | Beam + regex |
-| Partial/redacted SSNs (***-**-5043) | Regex catches, Beam misses | Beam + regex |
-| Email addresses | Beam catches on short docs, misses on long | Beam consistent |
-| Masked bank accounts (****1515) | Regex catches | Beam + regex |
-| Credit card numbers | Regex catches | Beam + regex |
-| API keys (AKIA..., sk_live_...) | Regex catches | Beam + regex |
+Beam v1.0 is a **document classifier** — it identifies *what kind* of sensitive content a file contains. It is not a field-level extraction model. TorchSight's regex safety net (separate from Beam) compensates for structured patterns the model misses.
 
 ### Classification gaps
 
@@ -55,11 +44,3 @@ Beam v1.0 is a **document classifier** — it identifies *what kind* of sensitiv
 - Increase `num_predict` ceiling for extraction-heavy responses
 - Add employer/business-in-context examples so model recognizes employer names as PII-adjacent
 
-### Regex improvements (independent of retrain)
-
-Additional patterns for v1.1:
-- EIN (Employer Identification Number): `\d{2}-\d{7}`
-- Routing numbers: `\b\d{9}\b` (with ABA validation)
-- Loan/account numbers with common prefixes
-- Date patterns in financial context (pay period, statement date)
-- Dollar amounts in sensitive context (`\$[\d,]+\.\d{2}` near PII)
