@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -7,7 +9,7 @@ use super::discovery::ScannableFile;
 use crate::analyzers;
 use crate::cli::ScanConfig;
 use crate::llm::OllamaClient;
-use crate::report::ScanReport;
+use crate::report::{FileFinding, ScanReport, Severity};
 
 pub async fn run_scan(
     files: Vec<ScannableFile>,
@@ -15,6 +17,7 @@ pub async fn run_scan(
     ollama: &OllamaClient,
 ) -> Result<ScanReport> {
     let total = files.len() as u64;
+    let start = std::time::Instant::now();
 
     // Use progress bar for interactive terminals, plain text for redirected output
     let is_terminal = atty::is(atty::Stream::Stderr);
@@ -60,11 +63,18 @@ pub async fn run_scan(
             .file_name()
             .unwrap_or_default()
             .to_string_lossy();
+        let elapsed = start.elapsed().as_secs();
+        let elapsed_str = if elapsed >= 60 {
+            format!("{}m{}s", elapsed / 60, elapsed % 60)
+        } else {
+            format!("{}s", elapsed)
+        };
+        let stats = crate::platform::system_stats_oneliner();
         if let Some(ref pb) = pb {
             pb.set_position(i as u64);
-            pb.set_message(format!("{}/{} | {}", i + 1, total, filename));
+            pb.set_message(format!("{}/{} | {} | {} | {}", i + 1, total, filename, stats, elapsed_str));
         } else {
-            eprintln!("  [{}/{}] Scanning: {}", i + 1, total, filename);
+            eprintln!("  [{}/{}] Scanning: {} | {} | {}", i + 1, total, filename, stats, elapsed_str);
         }
 
         let findings = match file.kind {
@@ -109,6 +119,14 @@ pub async fn run_scan(
             FileKind::Unknown => vec![],
         };
 
+        // Print completed file summary above the progress bar
+        let summary = format_file_summary(&filename, &findings);
+        if let Some(ref pb) = pb {
+            pb.println(&summary);
+        } else {
+            eprintln!("{}", summary);
+        }
+
         report.add_file_findings(
             file.path.to_string_lossy().to_string(),
             file.kind.clone(),
@@ -125,4 +143,47 @@ pub async fn run_scan(
     }
 
     Ok(report)
+}
+
+/// Format a one-line summary for a completed file scan.
+fn format_file_summary(filename: &str, findings: &[FileFinding]) -> String {
+    let non_safe: Vec<&FileFinding> = findings
+        .iter()
+        .filter(|f| f.category != "safe")
+        .collect();
+
+    if non_safe.is_empty() {
+        return format!("  {} {} — clean", style("\u{2713}").green(), filename);
+    }
+
+    // Count findings by severity
+    let mut counts: HashMap<&Severity, usize> = HashMap::new();
+    for f in &non_safe {
+        *counts.entry(&f.severity).or_insert(0) += 1;
+    }
+
+    // Build severity breakdown in descending order
+    let mut parts = Vec::new();
+    for sev in &[
+        Severity::Critical,
+        Severity::High,
+        Severity::Medium,
+        Severity::Low,
+        Severity::Info,
+    ] {
+        if let Some(&count) = counts.get(sev) {
+            parts.push(format!("{} {}", count, sev.to_string().to_lowercase()));
+        }
+    }
+
+    let total = non_safe.len();
+    let detail = parts.join(", ");
+    format!(
+        "  {} {} — {} {} ({})",
+        style("\u{2717}").red(),
+        filename,
+        total,
+        if total == 1 { "finding" } else { "findings" },
+        detail,
+    )
 }
