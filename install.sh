@@ -141,14 +141,14 @@ else
     ok "Model '$TEXT_MODEL' ready"
 fi
 
-# Vision model is optional (for interactive mode)
-info "Setting up vision model: ${BOLD}$VISION_MODEL${RESET} (optional, for interactive mode)"
+# Vision model (for image scanning)
+info "Setting up vision model: ${BOLD}$VISION_MODEL${RESET} (for image analysis)"
 
 if ollama list 2>/dev/null | grep -q "$VISION_MODEL"; then
     ok "Model '$VISION_MODEL' already available"
 else
     info "Pulling model '$VISION_MODEL'..."
-    ollama pull "$VISION_MODEL" || warn "Vision model pull failed. Interactive mode will be unavailable."
+    ollama pull "$VISION_MODEL" || warn "Vision model pull failed. Image analysis will be unavailable."
 fi
 
 # ── 7. Build TorchSight ───────────────────────────────────────────────────
@@ -182,7 +182,6 @@ echo -e "  ${GREEN}${BOLD}Installation complete!${RESET}"
 echo ""
 echo -e "  ${DIM}Usage:${RESET}"
 echo -e "    ${CYAN}torchsight /path/to/scan${RESET}         Scan files"
-echo -e "    ${CYAN}torchsight -i /path/to/scan${RESET}      Scan + interactive Q&A"
 echo -e "    ${CYAN}torchsight${RESET}                       Start REPL"
 echo -e "    ${CYAN}torchsight --help${RESET}                All options"
 echo ""

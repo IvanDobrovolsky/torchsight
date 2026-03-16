@@ -60,9 +60,6 @@ Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) and follow the
 # Scan a directory
 torchsight /path/to/scan
 
-# Scan with interactive Q&A after results
-torchsight -i /path/to/scan
-
 # Start the REPL
 torchsight
 
