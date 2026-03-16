@@ -1,3 +1,1 @@
-mod session;
-
-pub use session::SessionMemory;
+// Memory module — retained as placeholder. Session history has been removed.
