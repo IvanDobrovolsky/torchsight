@@ -113,7 +113,7 @@ A native desktop application built with [Tauri v2](https://v2.tauri.app). Rust b
 
 Five severity levels: **critical**, **high**, **medium**, **low**, **info**.
 
-See [beam/LABELS.md](beam/LABELS.md) for the full taxonomy.
+See [beam/](beam/) for the full taxonomy.
 
 ---
 
@@ -142,16 +142,14 @@ All model inference runs locally via [Ollama](https://ollama.com) using `/api/ge
 
 ## Beam model
 
-[torchsight/beam](beam/) is a custom fine-tune of **Qwen 3.5 27B** (dense) with LoRA (r=128, alpha=256), trained for 5 epochs on ~175K balanced samples from 18+ verified sources (public domain, Apache 2.0, MIT, CC-BY 4.0). Outputs structured JSON arrays of findings with category, subcategory, severity, and explanation.
-
-Two GGUF quantizations are available:
+[torchsight/beam](beam/) is a fine-tune of **Qwen 3.5 27B** (dense) with LoRA (r=128, alpha=256), trained for 5 epochs on **78,358 balanced samples** from 18 verified public sources. Outputs structured JSON arrays with category, subcategory, severity, and explanation.
 
 | Variant | Size | Minimum RAM | Use case |
 |---------|------|-------------|----------|
 | q4_K_M (default) | ~17 GB | 32 GB | Apple Silicon Macs, consumer GPUs |
 | q8_0 | ~28 GB | 48 GB+ | Higher quality, data center GPUs |
 
-See [beam/README.md](beam/README.md) and [beam/MODEL_CARD.md](beam/MODEL_CARD.md) for training details, dataset sources, and evaluation.
+Available on [Ollama](https://ollama.com/torchsight/beam). See [beam/](beam/) for training details and dataset documentation.
 
 ---
 
@@ -177,4 +175,4 @@ torchsight/
 
 ## Contributing
 
-See [docs/](docs/) for architecture details. Issues and pull requests welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
