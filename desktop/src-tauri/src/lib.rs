@@ -31,7 +31,7 @@ struct RawFinding {
 
 // ── Structs sent to the frontend ──
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ScanResult {
     pub files: Vec<FileResult>,
     pub total_files: usize,
@@ -44,14 +44,14 @@ pub struct ScanResult {
     pub info: usize,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct FileResult {
     pub path: String,
     pub kind: String,
     pub findings: Vec<Finding>,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Finding {
     pub category: String,
     pub subcategory: String,
@@ -368,6 +368,104 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
         &stdout[..stdout.len().min(300)], &stderr[..stderr.len().min(300)]))
 }
 
+#[tauri::command]
+async fn export_report(result: ScanResult) -> Result<String, String> {
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let date_file = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+
+    let mut rows = String::new();
+    for file in &result.files {
+        for finding in &file.findings {
+            if finding.category == "safe" { continue; }
+            let sev_color = match finding.severity.as_str() {
+                "critical" => "#DC2626",
+                "high" => "#EA580C",
+                "medium" => "#D97706",
+                "low" => "#CA8A04",
+                _ => "#8B83A3",
+            };
+            rows.push_str(&format!(
+                r#"<tr>
+                    <td style="font-family:monospace;font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{}</td>
+                    <td><span style="background:{};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{}</span></td>
+                    <td>{}</td>
+                    <td style="font-size:12px;color:#555">{}</td>
+                </tr>"#,
+                html_esc(&file.path), sev_color, html_esc(&finding.severity),
+                html_esc(&finding.category), html_esc(&finding.explanation),
+            ));
+        }
+    }
+
+    let html = format!(r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TorchSight Security Report</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; color: #1a1a1a; }}
+  h1 {{ font-size: 24px; border-bottom: 3px solid #6366F1; padding-bottom: 8px; }}
+  .meta {{ color: #666; font-size: 13px; margin-bottom: 24px; }}
+  .stats {{ display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }}
+  .stat {{ background: #f5f5f5; border-radius: 8px; padding: 12px 20px; text-align: center; min-width: 80px; }}
+  .stat-num {{ font-size: 22px; font-weight: 700; }}
+  .stat-label {{ font-size: 11px; color: #666; text-transform: uppercase; }}
+  .stat-critical .stat-num {{ color: #DC2626; }}
+  .stat-high .stat-num {{ color: #EA580C; }}
+  .stat-medium .stat-num {{ color: #D97706; }}
+  .stat-low .stat-num {{ color: #CA8A04; }}
+  table {{ width: 100%; border-collapse: collapse; }}
+  th {{ text-align: left; padding: 8px 12px; background: #f0f0f0; font-size: 12px; text-transform: uppercase; color: #555; }}
+  td {{ padding: 8px 12px; border-bottom: 1px solid #eee; }}
+  tr:hover {{ background: #fafafa; }}
+  .footer {{ margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; }}
+  @media print {{ body {{ margin: 20px; }} }}
+</style>
+</head>
+<body>
+<h1>TorchSight Security Report</h1>
+<div class="meta">Generated {timestamp}</div>
+<div class="stats">
+  <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Files</div></div>
+  <div class="stat stat-critical"><div class="stat-num">{critical}</div><div class="stat-label">Critical</div></div>
+  <div class="stat stat-high"><div class="stat-num">{high}</div><div class="stat-label">High</div></div>
+  <div class="stat stat-medium"><div class="stat-num">{medium}</div><div class="stat-label">Medium</div></div>
+  <div class="stat stat-low"><div class="stat-num">{low}</div><div class="stat-label">Low</div></div>
+  <div class="stat"><div class="stat-num">{clean}</div><div class="stat-label">Clean</div></div>
+</div>
+{findings_table}
+<div class="footer">TorchSight &mdash; Open-source security scanner powered by local LLMs</div>
+</body>
+</html>"#,
+        timestamp = timestamp,
+        total = result.total_files,
+        critical = result.critical,
+        high = result.high,
+        medium = result.medium,
+        low = result.low,
+        clean = result.clean_files,
+        findings_table = if rows.is_empty() {
+            "<p style=\"color:#059669;font-weight:600\">No findings — all files are clean.</p>".to_string()
+        } else {
+            format!(r#"<table><thead><tr><th>File</th><th>Severity</th><th>Category</th><th>Explanation</th></tr></thead><tbody>{rows}</tbody></table>"#)
+        },
+    );
+
+    let report_dir = std::env::temp_dir().join("torchsight-desktop");
+    std::fs::create_dir_all(&report_dir).map_err(|e| e.to_string())?;
+    let path = report_dir.join(format!("torchsight_report_{}.html", date_file));
+    std::fs::write(&path, &html).map_err(|e| e.to_string())?;
+
+    // Open in system browser
+    open::that(&path).map_err(|e| e.to_string())?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+fn html_esc(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+}
+
 // ── Helpers ──
 
 fn format_size(bytes: u64) -> String {
@@ -489,7 +587,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            check_ollama, list_models, list_files, get_system_stats, scan_path,
+            check_ollama, list_models, list_files, get_system_stats, scan_path, export_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TorchSight desktop");
