@@ -734,6 +734,51 @@ body {
   background: rgba(124, 58, 237, 0.2);
 }
 
+/* Ollama required banner (shown in scan view) */
+.ollama-required-banner {
+  background: var(--medium-bg);
+  border: 1px solid var(--medium);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.ollama-required-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.ollama-required-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--medium);
+  margin-bottom: 6px;
+}
+
+.ollama-required-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.ollama-required-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.ollama-required-actions .ollama-setup-btn {
+  width: auto;
+  padding: 8px 20px;
+}
+
+.ollama-retry-btn {
+  padding: 8px 20px !important;
+  font-size: 11px !important;
+}
+
 /* Quantization notes */
 .quant-notes {
   margin-top: 16px;
