@@ -134,15 +134,7 @@ jobs:
           path: desktop/src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: ignore
 
-      # Windows → .msi + .nsis
-      - name: Upload MSI
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}.msi
-          path: desktop/src-tauri/target/release/bundle/msi/*.msi
-          if-no-files-found: ignore
-
+      # Windows → .nsis installer
       - name: Upload NSIS installer
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
