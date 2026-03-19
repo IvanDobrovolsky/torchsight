@@ -504,10 +504,24 @@ fn find_torchsight_binary() -> Result<PathBuf, String> {
         }
     }
     let home = dirs::home_dir().unwrap_or_default();
-    for c in &[home.join(".cargo/bin/torchsight"), PathBuf::from("/usr/local/bin/torchsight")] {
+    let candidates = [
+        home.join(".local/bin/torchsight"),
+        home.join(".cargo/bin/torchsight"),
+        PathBuf::from("/usr/local/bin/torchsight"),
+        PathBuf::from("/opt/homebrew/bin/torchsight"),
+    ];
+    for c in &candidates {
         if c.exists() { return Ok(c.clone()); }
     }
-    Ok(PathBuf::from("torchsight"))
+    // Try PATH via `which`
+    if let Ok(output) = Command::new("which").arg("torchsight").output() {
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !path.is_empty() {
+            let p = PathBuf::from(&path);
+            if p.exists() { return Ok(p); }
+        }
+    }
+    Err("Could not find torchsight CLI binary. Install it with: cargo install --path core".to_string())
 }
 
 #[cfg(target_os = "macos")]
