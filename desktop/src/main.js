@@ -210,12 +210,12 @@ function setupScanControls() {
 }
 
 async function exportPdf() {
-  // Stamp the current date/time so the print CSS header can show it
-  const el = document.getElementById("results-content");
-  if (el) {
-    el.setAttribute("data-timestamp", new Date().toLocaleString());
+  if (!scanResult) return;
+  try {
+    await invoke("export_report", { result: scanResult });
+  } catch (err) {
+    console.error("Export failed:", err);
   }
-  window.print();
 }
 
 function resetScan() {

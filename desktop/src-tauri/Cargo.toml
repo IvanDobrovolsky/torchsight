@@ -23,3 +23,5 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", features = ["json"] }
 dirs = "6"
 walkdir = "2"
+chrono = "0.4"
+open = "5"
