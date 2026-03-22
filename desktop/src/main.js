@@ -205,11 +205,11 @@ function setupScanControls() {
   });
   document.getElementById("new-scan-btn").addEventListener("click", resetScan);
   document
-    .getElementById("export-pdf-btn")
-    .addEventListener("click", exportPdf);
+    .getElementById("export-report-btn")
+    .addEventListener("click", exportReport);
 }
 
-async function exportPdf() {
+async function exportReport() {
   if (!scanResult) return;
   try {
     await invoke("export_report", { result: scanResult });

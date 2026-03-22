@@ -250,9 +250,35 @@ async fn get_system_stats() -> Result<SystemStats, String> {
 
         #[cfg(target_os = "windows")]
         {
+            // RAM via wmic
+            let total_kb = run_cmd_win("wmic", &["ComputerSystem", "get", "TotalPhysicalMemory", "/value"])
+                .and_then(|s| s.lines().find(|l| l.starts_with("TotalPhysicalMemory="))
+                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
+                .unwrap_or(0.0);
+            let avail = run_cmd_win("wmic", &["OS", "get", "FreePhysicalMemory", "/value"])
+                .and_then(|s| s.lines().find(|l| l.starts_with("FreePhysicalMemory="))
+                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
+                .unwrap_or(0.0) * 1024.0; // KB to bytes
+            let gb = 1024.0 * 1024.0 * 1024.0;
+            let used = total_kb - avail;
+
+            // CPU via wmic
+            let cpu = run_cmd_win("wmic", &["cpu", "get", "LoadPercentage", "/value"])
+                .and_then(|s| s.lines().find(|l| l.starts_with("LoadPercentage="))
+                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
+                .unwrap_or(0.0);
+
+            // GPU via nvidia-smi
+            let (gpu_pct, gpu_used, gpu_total) = get_gpu_stats_windows();
+
             Ok(SystemStats {
-                cpu_percent: 0.0, memory_used_gb: 0.0, memory_total_gb: 0.0,
-                memory_percent: 0.0, gpu_percent: 0.0, gpu_mem_used_gb: 0.0, gpu_mem_total_gb: 0.0,
+                cpu_percent: cpu,
+                memory_used_gb: used / gb,
+                memory_total_gb: total_kb / gb,
+                memory_percent: if total_kb > 0.0 { (used / total_kb) * 100.0 } else { 0.0 },
+                gpu_percent: gpu_pct,
+                gpu_mem_used_gb: gpu_used,
+                gpu_mem_total_gb: gpu_total,
             })
         }
     })
@@ -487,40 +513,70 @@ fn strip_ansi(s: &str) -> String {
 }
 
 fn find_torchsight_binary() -> Result<PathBuf, String> {
+    let bin_name = if cfg!(target_os = "windows") { "torchsight.exe" } else { "torchsight" };
+
     if let Ok(exe) = std::env::current_exe() {
-        let sibling = exe.parent().unwrap_or(exe.as_path()).join("torchsight");
+        let sibling = exe.parent().unwrap_or(exe.as_path()).join(bin_name);
         if sibling.exists() { return Ok(sibling); }
+
+        #[cfg(target_os = "macos")]
         if let Some(macos_dir) = exe.parent() {
             if macos_dir.ends_with("MacOS") {
                 if let Some(bundle_parent) = macos_dir.ancestors().nth(3) {
-                    let beside_app = bundle_parent.join("torchsight");
+                    let beside_app = bundle_parent.join(bin_name);
                     if beside_app.exists() { return Ok(beside_app); }
                 }
             }
         }
+
         for ancestor in exe.ancestors().skip(1) {
-            let candidate = ancestor.join("target/release/torchsight");
+            let candidate = ancestor.join(format!("target/release/{}", bin_name));
             if candidate.exists() { return Ok(candidate); }
         }
     }
+
     let home = dirs::home_dir().unwrap_or_default();
-    let candidates = [
-        home.join(".local/bin/torchsight"),
-        home.join(".cargo/bin/torchsight"),
-        PathBuf::from("/usr/local/bin/torchsight"),
-        PathBuf::from("/opt/homebrew/bin/torchsight"),
-    ];
-    for c in &candidates {
-        if c.exists() { return Ok(c.clone()); }
-    }
-    // Try PATH via `which`
-    if let Ok(output) = Command::new("which").arg("torchsight").output() {
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !path.is_empty() {
-            let p = PathBuf::from(&path);
-            if p.exists() { return Ok(p); }
+
+    #[cfg(target_os = "windows")]
+    {
+        let candidates = [
+            home.join(format!(".cargo/bin/{}", bin_name)),
+            home.join(format!("AppData/Local/Programs/torchsight/{}", bin_name)),
+        ];
+        for c in &candidates {
+            if c.exists() { return Ok(c.clone()); }
+        }
+        // Try PATH via `where`
+        if let Ok(output) = Command::new("where").arg("torchsight").output() {
+            let path = String::from_utf8_lossy(&output.stdout).lines().next().unwrap_or("").trim().to_string();
+            if !path.is_empty() {
+                let p = PathBuf::from(&path);
+                if p.exists() { return Ok(p); }
+            }
         }
     }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let candidates = [
+            home.join(".local/bin/torchsight"),
+            home.join(".cargo/bin/torchsight"),
+            PathBuf::from("/usr/local/bin/torchsight"),
+            PathBuf::from("/opt/homebrew/bin/torchsight"),
+        ];
+        for c in &candidates {
+            if c.exists() { return Ok(c.clone()); }
+        }
+        // Try PATH via `which`
+        if let Ok(output) = Command::new("which").arg("torchsight").output() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !path.is_empty() {
+                let p = PathBuf::from(&path);
+                if p.exists() { return Ok(p); }
+            }
+        }
+    }
+
     Err("Could not find torchsight CLI binary. Install it with: cargo install --path core".to_string())
 }
 
@@ -578,6 +634,30 @@ fn parse_meminfo(info: &str, key: &str) -> f64 {
 #[cfg(target_os = "linux")]
 fn get_gpu_stats_linux() -> (f64, f64, f64) {
     // Try nvidia-smi
+    if let Some(output) = Command::new("nvidia-smi")
+        .args(["--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"])
+        .output().ok()
+    {
+        let s = String::from_utf8_lossy(&output.stdout);
+        let parts: Vec<&str> = s.trim().split(',').map(|p| p.trim()).collect();
+        if parts.len() == 3 {
+            let util = parts[0].parse().unwrap_or(0.0);
+            let used = parts[1].parse::<f64>().unwrap_or(0.0) / 1024.0;
+            let total = parts[2].parse::<f64>().unwrap_or(0.0) / 1024.0;
+            return (util, used, total);
+        }
+    }
+    (0.0, 0.0, 0.0)
+}
+
+#[cfg(target_os = "windows")]
+fn run_cmd_win(cmd: &str, args: &[&str]) -> Option<String> {
+    Command::new(cmd).args(args).output().ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+}
+
+#[cfg(target_os = "windows")]
+fn get_gpu_stats_windows() -> (f64, f64, f64) {
     if let Some(output) = Command::new("nvidia-smi")
         .args(["--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"])
         .output().ok()
