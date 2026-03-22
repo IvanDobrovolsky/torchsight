@@ -230,6 +230,10 @@ function resetScan() {
   document.getElementById("results-empty").style.display = "";
   document.getElementById("results-content").style.display = "none";
   document.getElementById("findings-badge").style.display = "none";
+  // Clear stale results DOM
+  document.getElementById("stats-grid").innerHTML = "";
+  document.getElementById("flagged-files").innerHTML = "";
+  document.getElementById("clean-files").innerHTML = "";
   switchView("scan");
 }
 
@@ -258,12 +262,13 @@ async function pickFile() {
     const selected = await window.__TAURI__.dialog.open({
       directory: false,
       multiple: false,
-      title: "Select file to scan",
+      title: "Select file to scan (PST, PDF, text, images, etc.)",
       filters: [
+        { name: "Email Archives", extensions: ["pst", "ost", "eml", "msg", "mbox"] },
         {
-          name: "Scannable Files",
+          name: "All Scannable Files",
           extensions: [
-            "pst", "ost",
+            "pst", "ost", "eml", "msg", "mbox",
             "txt", "csv", "json", "xml", "yaml", "yml", "toml", "log", "md",
             "html", "js", "ts", "py", "rs", "go", "java", "c", "cpp",
             "sql", "env", "pem", "key",
@@ -271,7 +276,6 @@ async function pickFile() {
             "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp",
           ],
         },
-        { name: "Email Archives", extensions: ["pst", "ost"] },
         { name: "All Files", extensions: ["*"] },
       ],
     });
@@ -502,6 +506,12 @@ async function startScan(path) {
     if (cancelled) return;
     cleanupScan(localStatsInterval, localElapsedInterval, unlisten);
     stopBtn.removeEventListener("click", stopHandler);
+
+    // Clear stale results on error
+    scanResult = null;
+    document.getElementById("results-empty").style.display = "";
+    document.getElementById("results-content").style.display = "none";
+    document.getElementById("findings-badge").style.display = "none";
 
     statusText.textContent = `Error: ${err}`;
     progressFill.style.background = "var(--critical)";
