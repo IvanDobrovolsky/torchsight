@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum FileKind {
     Text,
     Image,
+    Email,
     Unknown,
 }
 
@@ -12,6 +13,7 @@ impl std::fmt::Display for FileKind {
         match self {
             FileKind::Text => write!(f, "text"),
             FileKind::Image => write!(f, "image"),
+            FileKind::Email => write!(f, "email"),
             FileKind::Unknown => write!(f, "unknown"),
         }
     }

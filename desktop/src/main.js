@@ -197,6 +197,9 @@ function setupScanControls() {
   document
     .getElementById("scan-folder-btn")
     .addEventListener("click", pickFolder);
+  document
+    .getElementById("scan-file-btn")
+    .addEventListener("click", pickFile);
   document.getElementById("drop-zone").addEventListener("click", (e) => {
     if (e.target.id !== "scan-btn") pickFolder();
   });
@@ -247,6 +250,53 @@ async function pickFolder() {
     }
   } catch (err) {
     console.error("Folder picker error:", err);
+  }
+}
+
+async function pickFile() {
+  try {
+    const selected = await window.__TAURI__.dialog.open({
+      directory: false,
+      multiple: false,
+      title: "Select file to scan",
+      filters: [
+        {
+          name: "Scannable Files",
+          extensions: [
+            "pst", "ost",
+            "txt", "csv", "json", "xml", "yaml", "yml", "toml", "log", "md",
+            "html", "js", "ts", "py", "rs", "go", "java", "c", "cpp",
+            "sql", "env", "pem", "key",
+            "pdf", "docx", "doc", "xlsx", "xls", "pptx",
+            "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp",
+          ],
+        },
+        { name: "Email Archives", extensions: ["pst", "ost"] },
+        { name: "All Files", extensions: ["*"] },
+      ],
+    });
+    if (selected) {
+      selectedPath = selected;
+      document.getElementById("selected-path").textContent = selected;
+      document.getElementById("scan-btn").disabled = false;
+
+      // Show single file info
+      const container = document.getElementById("file-list-container");
+      const name = selected.split(/[/\\]/).pop();
+      container.style.display = "block";
+      container.innerHTML = `
+        <div class="file-list-header">
+          <span class="file-list-count">1 file selected</span>
+        </div>
+        <div class="file-list-body">
+          <div class="file-list-row">
+            <span class="file-list-name">${esc(name)}</span>
+          </div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error("File picker error:", err);
   }
 }
 

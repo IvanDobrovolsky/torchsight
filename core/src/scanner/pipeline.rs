@@ -116,6 +116,25 @@ pub async fn run_scan(
                     }
                 }
             }
+            FileKind::Email => {
+                match analyzers::email::analyze_email_archive(&file.path, ollama).await {
+                    Ok(findings) => findings,
+                    Err(e) => {
+                        let msg = format!(
+                            "  {} Failed to analyze {}: {}",
+                            style("[WARN]").yellow(),
+                            filename,
+                            e
+                        );
+                        if let Some(ref pb) = pb {
+                            pb.println(&msg);
+                        } else {
+                            eprintln!("{}", msg);
+                        }
+                        vec![]
+                    }
+                }
+            }
             FileKind::Unknown => vec![],
         };
 

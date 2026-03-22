@@ -68,7 +68,7 @@ pub async fn watch_directory(
                 }
 
                 // Scan each changed file
-                let file_types = vec!["text".into(), "image".into()];
+                let file_types = vec!["text".into(), "image".into(), "email".into()];
                 let mut all_files = Vec::new();
 
                 for path in &changed_paths {
