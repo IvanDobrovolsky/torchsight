@@ -112,6 +112,7 @@ const TEXT_EXTENSIONS: &[&str] = &[
     "rst", "html", "htm", "css", "js", "ts", "py", "rs", "go", "java", "c", "cpp", "h", "hpp",
     "rb", "php", "sh", "bash", "zsh", "sql", "env", "pem", "key", "crt", "pub", "tex", "rtf",
     "pdf", "docx", "doc", "xlsx", "xls", "pptx", "tsv",
+    "eml", "msg", "mbox",
 ];
 
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp"];
