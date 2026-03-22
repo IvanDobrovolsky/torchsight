@@ -116,6 +116,8 @@ const TEXT_EXTENSIONS: &[&str] = &[
 
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp"];
 
+const EMAIL_EXTENSIONS: &[&str] = &["pst", "ost"];
+
 pub fn discover_files(
     path: &str,
     max_size_bytes: u64,
@@ -151,6 +153,7 @@ pub fn discover_files(
     let ignore_patterns = load_ignore_patterns(&root);
     let scan_text = file_types.iter().any(|t| t == "text" || t == "all");
     let scan_images = file_types.iter().any(|t| t == "image" || t == "all");
+    let scan_email = file_types.iter().any(|t| t == "email" || t == "all");
 
     let mut files = Vec::new();
     let mut skipped_size = 0u64;
@@ -199,6 +202,10 @@ pub fn discover_files(
                 continue;
             }
             FileKind::Image if !scan_images => {
+                skipped_type += 1;
+                continue;
+            }
+            FileKind::Email if !scan_email => {
                 skipped_type += 1;
                 continue;
             }
@@ -254,6 +261,10 @@ fn classify_file(path: &PathBuf) -> FileKind {
 
     if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
         return FileKind::Image;
+    }
+
+    if EMAIL_EXTENSIONS.contains(&ext.as_str()) {
+        return FileKind::Email;
     }
 
     // Try magic bytes for images

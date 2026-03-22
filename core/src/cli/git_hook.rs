@@ -138,7 +138,7 @@ pub async fn scan_staged(ollama_url: &str, text_model: &str, vision_model: &str)
 
     // Discover and scan each staged file
     let mut all_files = Vec::new();
-    let file_types = vec!["text".into(), "image".into()];
+    let file_types = vec!["text".into(), "image".into(), "email".into()];
 
     for path in &staged {
         let p = std::path::Path::new(path);

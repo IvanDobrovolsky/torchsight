@@ -16,7 +16,7 @@ pub async fn run(
 
     // If a path was provided, scan it immediately
     if let Some(path) = initial_path {
-        let file_types = vec!["text".into(), "image".into()];
+        let file_types = vec!["text".into(), "image".into(), "email".into()];
         match run_scan(&config, &ollama, &path, &file_types).await {
             Ok(r) => {
                 last_report = Some(r);
@@ -56,7 +56,7 @@ pub async fn run(
             }
             "scan" => {
                 let path = prompt_scan_path()?;
-                let file_types = vec!["text".into(), "image".into()];
+                let file_types = vec!["text".into(), "image".into(), "email".into()];
                 match run_scan(&config, &ollama, &path, &file_types).await {
                     Ok(r) => {
                         last_report = Some(r);
@@ -66,7 +66,7 @@ pub async fn run(
             }
             cmd if cmd.starts_with("scan ") => {
                 let path = cmd.strip_prefix("scan ").unwrap().trim();
-                let file_types = vec!["text".into(), "image".into()];
+                let file_types = vec!["text".into(), "image".into(), "email".into()];
                 match run_scan(&config, &ollama, path, &file_types).await {
                     Ok(r) => {
                         last_report = Some(r);

@@ -78,7 +78,7 @@ pub async fn scan_diff(
         );
     }
 
-    let file_types = vec!["text".into(), "image".into()];
+    let file_types = vec!["text".into(), "image".into(), "email".into()];
     let mut all_files = Vec::new();
 
     for path in &changed_files {
