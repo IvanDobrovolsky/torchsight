@@ -399,29 +399,80 @@ async fn export_report(result: ScanResult) -> Result<String, String> {
     let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     let date_file = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
 
-    let mut rows = String::new();
+    // Separate flagged and clean files
+    let mut flagged_rows = String::new();
+    let mut clean_rows = String::new();
+
     for file in &result.files {
-        for finding in &file.findings {
-            if finding.category == "safe" { continue; }
-            let sev_color = match finding.severity.as_str() {
-                "critical" => "#DC2626",
-                "high" => "#EA580C",
-                "medium" => "#D97706",
-                "low" => "#CA8A04",
-                _ => "#8B83A3",
-            };
-            rows.push_str(&format!(
+        let has_findings = file.findings.iter().any(|f| f.category != "safe" && f.severity != "info");
+
+        if has_findings {
+            for finding in &file.findings {
+                if finding.category == "safe" { continue; }
+                let sev_color = match finding.severity.as_str() {
+                    "critical" => "#DC2626",
+                    "high" => "#EA580C",
+                    "medium" => "#D97706",
+                    "low" => "#CA8A04",
+                    _ => "#8B83A3",
+                };
+                let short_path = file.path.rsplit('/').next().unwrap_or(&file.path);
+                let subcat = if finding.subcategory.is_empty() {
+                    finding.category.clone()
+                } else {
+                    finding.subcategory.clone()
+                };
+                flagged_rows.push_str(&format!(
+                    r#"<tr>
+                        <td title="{full}" style="font-family:monospace;font-size:12px">{short}</td>
+                        <td><span style="background:{sev_color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{severity}</span></td>
+                        <td><span style="background:#f0f0f0;padding:2px 8px;border-radius:4px;font-size:11px">{subcat}</span></td>
+                        <td style="font-size:12px;color:#333">{explanation}</td>
+                    </tr>"#,
+                    full = html_esc(&file.path),
+                    short = html_esc(short_path),
+                    sev_color = sev_color,
+                    severity = html_esc(&finding.severity),
+                    subcat = html_esc(&subcat),
+                    explanation = html_esc(&finding.explanation),
+                ));
+            }
+        } else {
+            let short_path = file.path.rsplit('/').next().unwrap_or(&file.path);
+            let desc = file.findings.iter()
+                .find(|f| f.category == "safe" && !f.explanation.is_empty())
+                .map(|f| f.explanation.as_str())
+                .unwrap_or("No sensitive content detected.");
+            clean_rows.push_str(&format!(
                 r#"<tr>
-                    <td style="font-family:monospace;font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{}</td>
-                    <td><span style="background:{};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">{}</span></td>
-                    <td>{}</td>
-                    <td style="font-size:12px;color:#555">{}</td>
+                    <td title="{full}" style="font-family:monospace;font-size:12px">{short}</td>
+                    <td><span style="color:#059669;font-weight:600">&#10003; Clean</span></td>
+                    <td style="font-size:12px;color:#777">{desc}</td>
                 </tr>"#,
-                html_esc(&file.path), sev_color, html_esc(&finding.severity),
-                html_esc(&finding.category), html_esc(&finding.explanation),
+                full = html_esc(&file.path),
+                short = html_esc(short_path),
+                desc = html_esc(desc),
             ));
         }
     }
+
+    let flagged_section = if flagged_rows.is_empty() {
+        "<p style=\"color:#059669;font-weight:600;margin:16px 0\">No findings — all files are clean.</p>".to_string()
+    } else {
+        format!(
+            r#"<h2 style="font-size:18px;margin:24px 0 12px;color:#DC2626">Flagged Files</h2>
+<table><thead><tr><th>File</th><th>Severity</th><th>Classification</th><th>Explanation</th></tr></thead><tbody>{flagged_rows}</tbody></table>"#
+        )
+    };
+
+    let clean_section = if clean_rows.is_empty() {
+        String::new()
+    } else {
+        format!(
+            r#"<h2 style="font-size:18px;margin:24px 0 12px;color:#059669">Clean Files</h2>
+<table><thead><tr><th>File</th><th>Status</th><th>Description</th></tr></thead><tbody>{clean_rows}</tbody></table>"#
+        )
+    };
 
     let html = format!(r#"<!DOCTYPE html>
 <html lang="en">
@@ -440,17 +491,19 @@ async fn export_report(result: ScanResult) -> Result<String, String> {
   .stat-high .stat-num {{ color: #EA580C; }}
   .stat-medium .stat-num {{ color: #D97706; }}
   .stat-low .stat-num {{ color: #CA8A04; }}
-  table {{ width: 100%; border-collapse: collapse; }}
+  table {{ width: 100%; border-collapse: collapse; margin-bottom: 16px; }}
   th {{ text-align: left; padding: 8px 12px; background: #f0f0f0; font-size: 12px; text-transform: uppercase; color: #555; }}
-  td {{ padding: 8px 12px; border-bottom: 1px solid #eee; }}
+  td {{ padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
   tr:hover {{ background: #fafafa; }}
   .footer {{ margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; }}
-  @media print {{ body {{ margin: 20px; }} }}
+  .hint {{ color: #999; font-size: 12px; margin-top: 4px; }}
+  @media print {{ body {{ margin: 20px; }} .hint {{ display: none; }} }}
 </style>
 </head>
 <body>
 <h1>TorchSight Security Report</h1>
 <div class="meta">Generated {timestamp}</div>
+<div class="hint">To save as PDF: File &rarr; Print &rarr; Save as PDF</div>
 <div class="stats">
   <div class="stat"><div class="stat-num">{total}</div><div class="stat-label">Files</div></div>
   <div class="stat stat-critical"><div class="stat-num">{critical}</div><div class="stat-label">Critical</div></div>
@@ -459,7 +512,8 @@ async fn export_report(result: ScanResult) -> Result<String, String> {
   <div class="stat stat-low"><div class="stat-num">{low}</div><div class="stat-label">Low</div></div>
   <div class="stat"><div class="stat-num">{clean}</div><div class="stat-label">Clean</div></div>
 </div>
-{findings_table}
+{flagged_section}
+{clean_section}
 <div class="footer">TorchSight &mdash; Open-source security scanner powered by local LLMs</div>
 </body>
 </html>"#,
@@ -470,11 +524,8 @@ async fn export_report(result: ScanResult) -> Result<String, String> {
         medium = result.medium,
         low = result.low,
         clean = result.clean_files,
-        findings_table = if rows.is_empty() {
-            "<p style=\"color:#059669;font-weight:600\">No findings — all files are clean.</p>".to_string()
-        } else {
-            format!(r#"<table><thead><tr><th>File</th><th>Severity</th><th>Category</th><th>Explanation</th></tr></thead><tbody>{rows}</tbody></table>"#)
-        },
+        flagged_section = flagged_section,
+        clean_section = clean_section,
     );
 
     let report_dir = std::env::temp_dir().join("torchsight-desktop");
