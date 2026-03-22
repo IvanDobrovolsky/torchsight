@@ -350,7 +350,24 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
     let (stdout, stderr) = output;
     let combined = format!("{}\n{}", stdout, stderr);
 
-    // Find report file path
+    // Clean old reports from temp dir BEFORE looking for the new one
+    if let Ok(entries) = std::fs::read_dir(&report_dir) {
+        let scan_start = std::time::SystemTime::now() - std::time::Duration::from_secs(5);
+        for entry in entries.flatten() {
+            let n = entry.file_name().to_string_lossy().to_string();
+            if n.starts_with("torchsight_report") && n.ends_with(".json") {
+                if let Ok(meta) = entry.metadata() {
+                    if let Ok(modified) = meta.modified() {
+                        if modified < scan_start {
+                            let _ = std::fs::remove_file(entry.path());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Find report file path from CLI output
     let json_path = combined.lines()
         .find(|l| l.contains("Report saved:") && l.contains(".json"))
         .and_then(|l| {
@@ -365,7 +382,7 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
             }
         });
 
-    // Try the extracted path first
+    // Try the extracted path
     if let Some(ref path) = json_path {
         if let Ok(content) = std::fs::read_to_string(path) {
             let raw: RawReport = serde_json::from_str(&content)
@@ -374,24 +391,9 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
         }
     }
 
-    // Fallback: newest report in report_dir
-    if let Ok(entries) = std::fs::read_dir(&report_dir) {
-        let mut reports: Vec<_> = entries.filter_map(|e| e.ok())
-            .filter(|e| {
-                let n = e.file_name().to_string_lossy().to_string();
-                n.starts_with("torchsight_report") && n.ends_with(".json")
-            }).collect();
-        reports.sort_by_key(|e| std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified().ok())));
-        if let Some(latest) = reports.first() {
-            let content = std::fs::read_to_string(latest.path()).map_err(|e| e.to_string())?;
-            let raw: RawReport = serde_json::from_str(&content)
-                .map_err(|e| format!("Failed to parse report: {}", e))?;
-            return Ok(raw.into());
-        }
-    }
-
-    Err(format!("No report found after scan. Check that torchsight CLI works.\nstdout: {}\nstderr: {}",
-        &stdout[..stdout.len().min(300)], &stderr[..stderr.len().min(300)]))
+    // No report found — return error, never return stale data
+    Err(format!("Scan failed. No report generated.\n{}",
+        stderr.trim().chars().take(500).collect::<String>()))
 }
 
 #[tauri::command]
