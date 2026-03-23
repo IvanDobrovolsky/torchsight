@@ -52,17 +52,17 @@ const nav = [
 </head>
 <body class="min-h-screen">
   <nav class="fixed top-0 left-0 right-0 z-50 bg-void/80 backdrop-blur-md border-b border-border-subtle">
-    <div class="max-w-3xl mx-auto px-6 h-12 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors">
-        <img src="/logo.svg" alt="" class="w-5 h-5" />
-        <img src="/ascii-logo.svg" alt="torchsight" class="h-5 select-none" />
+    <div class="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors">
+        <img src="/logo.svg" alt="" class="w-7 h-7" />
+        <img src="/ascii-logo.svg" alt="torchsight" class="h-7 select-none" />
       </a>
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-7">
         {nav.map(({ label, href }) => (
           <a
             href={href}
             class:list={[
-              'text-xs font-mono transition-colors',
+              'text-sm font-mono transition-colors',
               currentPath === href || (href !== '/' && currentPath.startsWith(href))
                 ? 'text-violet-400'
                 : 'text-text-muted hover:text-text-secondary',
@@ -74,7 +74,7 @@ const nav = [
       </div>
     </div>
   </nav>
-  <div class="pt-12">
+  <div class="pt-14">
     <slot />
   </div>
 </body>

@@ -1,7 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { VERSION } from '../version';
 
-const version = 'v1.0.0-rc5';
+const version = VERSION;
 const repo = 'https://github.com/IvanDobrovolsky/torchsight/releases/download';
 const dl = {
   macosArm: `${repo}/${version}/torchsight-macos-arm64`,
@@ -12,7 +13,7 @@ const dl = {
 ---
 
 <Layout title="CLI — TorchSight">
-  <main class="max-w-2xl mx-auto px-6 py-14">
+  <main class="max-w-4xl mx-auto px-6 py-14">
     <div class="flex justify-center mb-6 select-none">
       <img src="/ascii-logo.svg" alt="torchsight" class="w-full max-w-lg" />
     </div>
