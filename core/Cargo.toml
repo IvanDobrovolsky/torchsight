@@ -33,3 +33,4 @@ calamine.workspace = true
 notify.workspace = true
 notify-debouncer-mini.workspace = true
 tempfile.workspace = true
+mail-parser.workspace = true
