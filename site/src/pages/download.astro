@@ -24,13 +24,17 @@ const links = {
 <Layout title="Download — TorchSight">
   <main class="max-w-2xl mx-auto px-6 py-14">
 
-    <!-- ASCII logo -->
-    <div class="flex justify-center mb-2 select-none overflow-x-auto">
-      <pre style="font-family: 'Fira Code', monospace; line-height: 1.2;" class="text-violet-400 text-xs md:text-sm">   _                _         _       _     _
-  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_
-  |  _/ _ \| '_/ __| ' \(_-&lt; | |/ _` | ' \ |  _|
-   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|
-                                |___/</pre>
+    <!-- ASCII logo as SVG for pixel-perfect rendering -->
+    <div class="flex justify-center mb-4 select-none">
+      <svg viewBox="0 0 500 90" class="w-full max-w-md" xmlns="http://www.w3.org/2000/svg">
+        <text font-family="'Fira Code', 'Courier New', monospace" font-size="14" fill="#a78bfa" xml:space="preserve">
+          <tspan x="20" y="18">   _                _         _       _     _</tspan>
+          <tspan x="20" y="34">  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_</tspan>
+          <tspan x="20" y="50">  |  _/ _ \| '_/ __| ' \(_-&lt; | |/ _` | ' \ |  _|</tspan>
+          <tspan x="20" y="66">   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|</tspan>
+          <tspan x="20" y="82">                                |___/</tspan>
+        </text>
+      </svg>
     </div>
 
     <h1 class="text-3xl md:text-4xl font-mono text-text-primary text-center mb-2">Download TorchSight</h1>
