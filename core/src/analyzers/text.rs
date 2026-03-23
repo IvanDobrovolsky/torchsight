@@ -723,8 +723,7 @@ lazy_re!(RE_PROMPT_OVERRIDE, r"(?i)system:\s*override");
 // --- H. PII patterns ---
 lazy_re!(RE_SSN_FULL, r"\b\d{3}-\d{2}-\d{4}\b");
 lazy_re!(RE_SSN_PARTIAL, r"(?i)(\*{3}-\*{2}-\d{4}|XXX-XX-\d{4}|xxx-xx-\d{4}|\*{5,}\d{4})");
-lazy_re!(RE_EMAIL, r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b");
-lazy_re!(RE_PHONE_US, r"\b(\(\d{3}\)\s*\d{3}-\d{4}|\d{3}-\d{3}-\d{4})\b");
+// RE_EMAIL and RE_PHONE_US removed — too noisy for a safety net (every email/doc has these)
 lazy_re!(RE_DOB_PATTERN, r"(?i)\b(DOB|date\s+of\s+birth|birth\s*date)\s*[:=]\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}");
 
 // --- I. Financial patterns ---

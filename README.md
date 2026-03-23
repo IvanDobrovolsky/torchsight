@@ -2,13 +2,13 @@
   <img src="logo.svg" width="180" alt="TorchSight">
 </p>
 
-```
+<pre align="center">
    _                _         _       _     _
   | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_
   |  _/ _ \| '_/ __| ' \(_-< | |/ _` | ' \ |  _|
    \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|
                                 |___/
-```
+</pre>
 
 <p align="center">
   On-premise security scanner powered by local LLMs. Zero data egress.

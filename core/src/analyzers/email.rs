@@ -80,10 +80,10 @@ fn collect_email_files(dir: &Path, emails: &mut Vec<ExtractedEmail>) -> Result<(
                 .to_string();
 
             // Read the email content (readpst outputs plain text or MIME)
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if !content.trim().is_empty() {
-                    emails.push(ExtractedEmail { filename, content });
-                }
+            if let Ok(content) = std::fs::read_to_string(&path)
+                && !content.trim().is_empty()
+            {
+                emails.push(ExtractedEmail { filename, content });
             }
         }
     }
@@ -93,10 +93,10 @@ fn collect_email_files(dir: &Path, emails: &mut Vec<ExtractedEmail>) -> Result<(
 /// Parse email headers from content (best-effort).
 fn parse_email_header<'a>(content: &'a str, header: &str) -> &'a str {
     for line in content.lines() {
-        if let Some(value) = line.strip_prefix(header) {
-            if let Some(value) = value.strip_prefix(": ") {
-                return value.trim();
-            }
+        if let Some(value) = line.strip_prefix(header)
+            && let Some(value) = value.strip_prefix(": ")
+        {
+            return value.trim();
         }
         // Headers end at first blank line
         if line.is_empty() {
