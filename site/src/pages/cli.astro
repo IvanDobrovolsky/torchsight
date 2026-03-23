@@ -37,9 +37,11 @@ const dl = {
     <!-- Windows -->
     <div id="install-windows" class="mb-6 hidden">
       <div>
-        <p class="text-text-dim text-xs font-mono mb-1">Windows</p>
-        <a href={dl.windows} class="inline-block text-cyan-400 hover:text-cyan-300 text-xs font-mono border border-border-visible rounded-lg px-4 py-2 hover:border-violet-500/40 transition-colors mb-3">Download .exe</a>
-        <p class="text-text-dim text-xs mt-2">Or use WSL2: <code class="font-mono">wsl --install -d Ubuntu</code> then follow Linux steps</p>
+        <p class="text-text-dim text-xs font-mono mb-1">PowerShell (installs Ollama + Tesseract + models + TorchSight)</p>
+        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto">irm https://torchsight.io/install.ps1 | iex</pre>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <a href={dl.windows} class="text-cyan-400 hover:text-cyan-300 text-xs font-mono border border-border-visible rounded-lg px-4 py-2 hover:border-violet-500/40 transition-colors">CLI only (.exe)</a>
       </div>
     </div>
 
