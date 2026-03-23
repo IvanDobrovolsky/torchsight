@@ -2,10 +2,16 @@
   <img src="logo.svg" width="180" alt="TorchSight">
 </p>
 
-<h1 align="center">TorchSight</h1>
+```
+   _                _         _       _     _
+  | |_ ___  _ _ ___| |_  ___ (_) __ _| |_  | |_
+  |  _/ _ \| '_/ __| ' \(_-< | |/ _` | ' \ |  _|
+   \__\___/|_| \___|_||_/__/ |_|\__, |_||_|  \__|
+                                |___/
+```
 
 <p align="center">
-  Open-source security scanner and document classifier powered by local LLMs.
+  On-premise security scanner powered by local LLMs. Zero data egress.
 </p>
 
 <p align="center">
