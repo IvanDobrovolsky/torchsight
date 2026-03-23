@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Docs — TorchSight">
+  <main class="max-w-2xl mx-auto px-6 py-14">
+    <div class="flex justify-center mb-6 select-none">
+      <img src="/ascii-logo.svg" alt="torchsight" class="w-full max-w-lg" />
+    </div>
+    <p class="text-text-muted text-sm mb-10 text-center">On-premise security scanner powered by local LLMs.</p>
+
+    <!-- Overview -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">OVERVIEW</h2>
+    <div class="space-y-3 text-sm text-text-secondary mb-14">
+      <p>TorchSight scans files for sensitive data, credentials, malicious payloads, and compliance violations using a locally-running LLM. No data leaves your machine.</p>
+      <p>It classifies documents across <span class="text-text-primary font-mono">7 categories</span> and <span class="text-text-primary font-mono">51 subcategories</span> — PII, credentials, financial, medical, confidential, malicious, and safe.</p>
+    </div>
+
+    <!-- Categories -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">CATEGORIES</h2>
+    <div class="space-y-2 mb-14">
+      {[
+        { name: 'Malicious', count: 14, color: 'text-red-400', desc: 'injection, exploit, shell, phishing, prompt injection, supply chain, SSRF, SSTI, XXE' },
+        { name: 'Confidential', count: 9, color: 'text-violet-400', desc: 'classified, military, intelligence, weapons systems, nuclear, internal, M&A' },
+        { name: 'Credentials', count: 8, color: 'text-orange-400', desc: 'passwords, API keys, tokens, private keys, connection strings, cloud config' },
+        { name: 'PII', count: 6, color: 'text-purple-400', desc: 'identity, contact, government ID, biometric, behavioral, metadata' },
+        { name: 'Safe', count: 6, color: 'text-green-400', desc: 'documentation, code, config, media, email, business' },
+        { name: 'Financial', count: 4, color: 'text-amber-400', desc: 'credit cards, bank accounts, transactions, tax records' },
+        { name: 'Medical', count: 4, color: 'text-cyan-400', desc: 'diagnosis, prescription, lab results, insurance' },
+      ].map(cat => (
+        <div class="bg-deep border border-border-subtle rounded-lg px-4 py-3 flex items-start gap-3">
+          <span class={`font-mono text-sm font-semibold ${cat.color} min-w-[120px]`}>{cat.name} <span class="text-text-dim">({cat.count})</span></span>
+          <span class="text-text-muted text-xs">{cat.desc}</span>
+        </div>
+      ))}
+    </div>
+
+    <!-- Beam Model -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">BEAM MODEL</h2>
+    <div class="bg-deep border border-border-subtle rounded-lg p-5 mb-14 text-sm text-text-secondary space-y-2">
+      <div class="flex justify-between"><span class="text-text-muted">Base model</span><span class="font-mono">Qwen 3.5 27B</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">Method</span><span class="font-mono">LoRA (r=128, &alpha;=256)</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">Training data</span><span class="font-mono">78,358 samples</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">Sources</span><span class="font-mono">18 (all permissive)</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">Category accuracy</span><span class="font-mono text-green-400">95.1%</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">vs Claude Opus 4</span><span class="font-mono">79.9%</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">vs Gemini 2.5 Pro</span><span class="font-mono">75.4%</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">Default quantization</span><span class="font-mono">q4_K_M (~17 GB)</span></div>
+      <div class="flex justify-between"><span class="text-text-muted">License</span><span class="font-mono">Apache 2.0</span></div>
+    </div>
+
+    <!-- Supported Files -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">SUPPORTED FILES</h2>
+    <div class="grid grid-cols-2 gap-2 mb-14 text-xs font-mono text-text-muted">
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Text &mdash; txt, csv, json, xml, yaml, toml, log, md, sql, env</div>
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Code &mdash; py, rs, go, java, js, ts, c, cpp, rb, php, sh</div>
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Documents &mdash; pdf, docx, doc, xlsx, xls, pptx</div>
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Images &mdash; png, jpg, gif, bmp, tiff, webp</div>
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Email &mdash; eml, msg, mbox, pst, ost</div>
+      <div class="bg-deep border border-border-subtle rounded-lg px-4 py-2">Secrets &mdash; pem, key, crt, pub, env</div>
+    </div>
+
+    <!-- CI/CD -->
+    <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">CI/CD</h2>
+    <div class="bg-deep border border-border-subtle rounded-lg overflow-hidden mb-14">
+      <pre class="p-5 text-sm font-mono text-text-secondary leading-relaxed overflow-x-auto"><code><span class="text-text-muted"># GitHub Actions</span>
+- run: torchsight /path --format sarif --fail-on high
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: torchsight_report.sarif
+
+<span class="text-text-muted"># Pre-commit hook</span>
+<span class="text-cyan-400">$</span> torchsight git-hook install
+
+<span class="text-text-muted"># Scan git diff</span>
+<span class="text-cyan-400">$</span> torchsight --diff HEAD~1 --fail-on medium</code></pre>
+    </div>
+
+    <footer class="pb-10 text-center border-t border-border-subtle pt-8">
+      <p class="text-text-dim text-xs font-mono">
+        Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
+      </p>
+    </footer>
+  </main>
+</Layout>

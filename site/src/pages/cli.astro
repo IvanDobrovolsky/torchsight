@@ -1,32 +1,52 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const version = 'v1.0.0-rc5';
+const repo = 'https://github.com/IvanDobrovolsky/torchsight/releases/download';
+const dl = {
+  macosArm: `${repo}/${version}/torchsight-macos-arm64`,
+  macosIntel: `${repo}/${version}/torchsight-macos-x86_64`,
+  linux: `${repo}/${version}/torchsight-linux-x86_64`,
+  windows: `${repo}/${version}/torchsight-windows-x86_64.exe`,
+};
 ---
 
 <Layout title="CLI — TorchSight">
   <main class="max-w-2xl mx-auto px-6 py-14">
-    <h1 class="text-xl font-mono text-text-primary mb-1">CLI</h1>
-    <p class="text-text-muted text-sm mb-10">Install and use TorchSight from the terminal.</p>
+    <div class="flex justify-center mb-6 select-none">
+      <img src="/ascii-logo.svg" alt="torchsight" class="w-full max-w-lg" />
+    </div>
+    <p class="text-text-muted text-sm mb-10 text-center">Install and use TorchSight from the terminal.</p>
 
     <!-- Install -->
     <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">INSTALL</h2>
-    <div class="space-y-4 mb-14">
+
+    <!-- macOS / Linux -->
+    <div id="install-unix" class="space-y-4 mb-6">
       <div>
-        <p class="text-text-dim text-xs font-mono mb-1">Quick install</p>
+        <p class="text-text-dim text-xs font-mono mb-1">Quick install (macOS / Linux)</p>
         <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto">curl -sSL https://torchsight.io/install.sh | sh</pre>
       </div>
-      <div>
-        <p class="text-text-dim text-xs font-mono mb-1">Homebrew</p>
-        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto">brew install torchsight/tap/torchsight</pre>
+      <div class="flex gap-3">
+        <a id="dl-primary" href={dl.macosArm} class="text-cyan-400 hover:text-cyan-300 text-xs font-mono border border-border-visible rounded-lg px-4 py-2 hover:border-violet-500/40 transition-colors">Download binary</a>
+        <a id="dl-alt" href={dl.macosIntel} class="text-cyan-400 hover:text-cyan-300 text-xs font-mono border border-border-subtle rounded-lg px-4 py-2 hover:border-violet-500/40 transition-colors">Intel</a>
       </div>
+    </div>
+
+    <!-- Windows -->
+    <div id="install-windows" class="mb-6 hidden">
+      <div>
+        <p class="text-text-dim text-xs font-mono mb-1">Windows</p>
+        <a href={dl.windows} class="inline-block text-cyan-400 hover:text-cyan-300 text-xs font-mono border border-border-visible rounded-lg px-4 py-2 hover:border-violet-500/40 transition-colors mb-3">Download .exe</a>
+        <p class="text-text-dim text-xs mt-2">Or use WSL2: <code class="font-mono">wsl --install -d Ubuntu</code> then follow Linux steps</p>
+      </div>
+    </div>
+
+    <div class="space-y-4 mb-14">
       <div>
         <p class="text-text-dim text-xs font-mono mb-1">From source</p>
         <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto"><code>git clone https://github.com/IvanDobrovolsky/torchsight
 cd torchsight && make install</code></pre>
-      </div>
-      <div>
-        <p class="text-text-dim text-xs font-mono mb-1">Windows (WSL2)</p>
-        <pre class="bg-deep border border-border-subtle rounded-lg p-4 text-sm font-mono text-text-secondary overflow-x-auto"><code>wsl --install -d Ubuntu
-# then follow the Linux install steps above</code></pre>
       </div>
     </div>
 
@@ -34,9 +54,9 @@ cd torchsight && make install</code></pre>
     <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">USAGE</h2>
     <div class="bg-deep border border-border-subtle rounded-lg overflow-hidden mb-14">
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
-        <div class="w-2.5 h-2.5 rounded-full bg-error/60" />
-        <div class="w-2.5 h-2.5 rounded-full bg-warning/60" />
-        <div class="w-2.5 h-2.5 rounded-full bg-success/60" />
+        <div class="w-2.5 h-2.5 rounded-full bg-error/60"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-warning/60"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-success/60"></div>
         <span class="ml-2 text-xs text-text-dim font-mono">terminal</span>
       </div>
       <pre class="p-5 text-sm font-mono text-text-secondary leading-relaxed overflow-x-auto"><code><span class="text-text-muted"># scan a directory</span>
@@ -67,15 +87,31 @@ cd torchsight && make install</code></pre>
     <!-- Supported files -->
     <h2 class="text-xs font-mono text-violet-400 tracking-widest mb-4">SUPPORTED FILE TYPES</h2>
     <div class="flex flex-wrap gap-2 mb-14">
-      {['PDF', 'DOCX', 'XLSX', 'PPTX', 'DOC', 'CSV', 'PNG', 'JPG', 'TIFF', 'TXT', 'JSON', 'YAML', 'XML'].map(ext => (
+      {['PDF', 'DOCX', 'XLSX', 'PPTX', 'DOC', 'CSV', 'EML', 'PST', 'PNG', 'JPG', 'TIFF', 'TXT', 'JSON', 'YAML', 'XML'].map(ext => (
         <span class="px-2.5 py-1 text-xs font-mono text-text-muted bg-surface border border-border-subtle rounded">{ext}</span>
       ))}
     </div>
 
     <footer class="pb-10 text-center border-t border-border-subtle pt-8">
       <p class="text-text-dim text-xs font-mono">
-        Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
+        {version} &middot; Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
       </p>
     </footer>
   </main>
 </Layout>
+
+<script>
+  const ua = navigator.userAgent.toLowerCase();
+  const isWin = ua.includes('win');
+  const isLinux = ua.includes('linux');
+
+  if (isWin) {
+    document.getElementById('install-unix')?.classList.add('hidden');
+    document.getElementById('install-windows')?.classList.remove('hidden');
+  } else if (isLinux) {
+    const primary = document.getElementById('dl-primary');
+    const alt = document.getElementById('dl-alt');
+    if (primary) { primary.textContent = 'Download binary (x86_64)'; primary.href = primary.href.replace('macos-arm64', 'linux-x86_64'); }
+    if (alt) alt.style.display = 'none';
+  }
+</script>
