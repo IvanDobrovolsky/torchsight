@@ -75,20 +75,32 @@ function showOllamaRequired() {
     <div class="ollama-required-title">Ollama is not running</div>
     <div class="ollama-required-text">TorchSight requires Ollama to analyze files. Please install and start Ollama before scanning.</div>
     <div class="ollama-required-actions">
-      <button class="ollama-setup-btn" onclick="window.open('https://ollama.com/download','_blank')">Install Ollama</button>
-      <button class="scan-btn secondary ollama-retry-btn" id="ollama-retry-btn">Retry Connection</button>
+      <button class="ollama-setup-btn" id="ollama-install-banner-btn">Install Ollama</button>
+      <button class="ollama-setup-btn" id="ollama-retry-banner-btn">Retry Connection</button>
     </div>
   `;
   dropZone.parentNode.insertBefore(banner, dropZone.nextSibling);
 
-  document
-    .getElementById("ollama-retry-btn")
-    .addEventListener("click", async () => {
-      await checkOllama();
-      if (ollamaConnected) {
-        banner.remove();
-      }
-    });
+  document.getElementById("ollama-install-banner-btn").addEventListener("click", async () => {
+    try {
+      await window.__TAURI__.opener.openUrl("https://ollama.com/download");
+    } catch {
+      window.open("https://ollama.com/download", "_blank");
+    }
+  });
+
+  document.getElementById("ollama-retry-banner-btn").addEventListener("click", async () => {
+    const btn = document.getElementById("ollama-retry-banner-btn");
+    btn.textContent = "Checking...";
+    btn.disabled = true;
+    await checkOllama();
+    if (ollamaConnected) {
+      banner.remove();
+    } else {
+      btn.textContent = "Retry Connection";
+      btn.disabled = false;
+    }
+  });
 }
 
 let selectedBeamModel = "torchsight/beam";

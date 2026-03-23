@@ -37,3 +37,4 @@ calamine = "0.24"
 notify = { version = "7", features = ["macos_fsevent"] }
 notify-debouncer-mini = "0.5"
 tempfile = "3"
+mail-parser = "0.11"

@@ -6,6 +6,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use mail_parser::MimeHeaders;
+
 use crate::llm::OllamaClient;
 use crate::report::{FileFinding, Severity};
 
@@ -19,6 +21,11 @@ pub async fn analyze_text_file(
     path: &Path,
     ollama: &OllamaClient,
 ) -> Result<Vec<FileFinding>> {
+    // EML files: parse MIME, scan body + attachments separately
+    if is_eml(path) {
+        return analyze_eml_file(path, ollama).await;
+    }
+
     let content = if is_pdf(path) {
         extract_pdf_text(path)?
     } else if is_docx(path) {
@@ -794,11 +801,9 @@ fn regex_safety_net(content: &str, existing_findings: &[FileFinding]) -> Vec<Fil
         SafetyPattern { regex: &RE_PROMPT_DAN, subcategory: "malicious.prompt_injection", description: "Prompt injection: jailbreak attempt (DAN / unrestricted mode)", severity: Severity::High },
         SafetyPattern { regex: &RE_PROMPT_OVERRIDE, subcategory: "malicious.prompt_injection", description: "Prompt injection: system override attempt", severity: Severity::High },
 
-        // H. PII
+        // H. PII (high-confidence patterns only — email addresses and phone numbers alone are too noisy)
         SafetyPattern { regex: &RE_SSN_FULL, subcategory: "pii.identity", description: "Social Security Number detected", severity: Severity::Critical },
         SafetyPattern { regex: &RE_SSN_PARTIAL, subcategory: "pii.identity", description: "Partially redacted SSN detected (last 4 digits exposed)", severity: Severity::High },
-        SafetyPattern { regex: &RE_EMAIL, subcategory: "pii.contact", description: "Email address detected", severity: Severity::Medium },
-        SafetyPattern { regex: &RE_PHONE_US, subcategory: "pii.contact", description: "Phone number detected", severity: Severity::Medium },
         SafetyPattern { regex: &RE_DOB_PATTERN, subcategory: "pii.identity", description: "Date of birth detected", severity: Severity::High },
 
         // I. Financial
@@ -1303,6 +1308,243 @@ fn extract_doc_text(path: &Path) -> Result<String> {
         anyhow::bail!("DOC file contains no extractable text (install textutil or antiword for better extraction)")
     }
     Ok(text)
+}
+
+// ---------------------------------------------------------------------------
+// EML / MIME email parsing with attachment extraction
+// ---------------------------------------------------------------------------
+
+fn is_eml(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| {
+            e.eq_ignore_ascii_case("eml") || e.eq_ignore_ascii_case("msg") || e.eq_ignore_ascii_case("mbox")
+        })
+}
+
+/// Image extensions for attachment routing.
+const IMAGE_EXTS: &[&str] = &["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp"];
+
+/// Analyze an EML file: parse MIME structure, scan body text, then scan each attachment.
+async fn analyze_eml_file(
+    path: &Path,
+    ollama: &OllamaClient,
+) -> Result<Vec<FileFinding>> {
+    let raw = fs::read(path)?;
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+
+    let message = mail_parser::MessageParser::default()
+        .parse(&raw)
+        .ok_or_else(|| anyhow::anyhow!("Failed to parse email: {}", file_name))?;
+
+    // Extract email metadata
+    let subject = message.subject().unwrap_or("(no subject)").to_string();
+    let from = message.from().and_then(|a| {
+        a.first().map(|addr| {
+            match (addr.name(), addr.address()) {
+                (Some(n), Some(a)) => format!("{} <{}>", n, a),
+                (None, Some(a)) => a.to_string(),
+                (Some(n), None) => n.to_string(),
+                _ => String::new(),
+            }
+        })
+    }).unwrap_or_default();
+    let to = message.to().and_then(|a| {
+        a.first().map(|addr| {
+            addr.address().unwrap_or("").to_string()
+        })
+    }).unwrap_or_default();
+
+    // Build email body text (headers + body)
+    let body_text = message.body_text(0)
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+    let body_html = message.body_html(0)
+        .map(|s| strip_html_tags(&s))
+        .unwrap_or_default();
+
+    let body = if !body_text.is_empty() { body_text } else { body_html };
+
+    let email_content = format!(
+        "From: {}\nTo: {}\nSubject: {}\n---\n{}",
+        from, to, subject, body
+    );
+
+    // Scan email body
+    let mut all_findings = Vec::new();
+
+    if !email_content.trim().is_empty() {
+        let is_beam = ollama.text_model().contains("beam");
+        let body_findings = if is_beam {
+            let chunks = chunk_content(&email_content, CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHUNKS);
+            let mut cf = Vec::new();
+            for chunk in &chunks {
+                let msg = format!(
+                    "Analyze the following email for security threats, sensitive data, and policy violations.\n\n{}",
+                    chunk
+                );
+                let resp = ollama.chat(&msg).await?;
+                cf.extend(parse_beam_findings(&resp).unwrap_or_default());
+            }
+            if chunks.len() > 1 { deduplicate_findings(cf) } else { cf }
+        } else {
+            let truncated: String = email_content.chars().take(LLM_CONTEXT_LIMIT).collect();
+            let prompt = build_detailed_prompt(&file_name, email_content.len(), email_content.len() > LLM_CONTEXT_LIMIT, &truncated);
+            let resp = ollama.generate(&prompt).await?;
+            parse_llm_findings(&resp)?
+        };
+
+        for mut f in body_findings {
+            f.extracted_data.insert("source_file".to_string(), file_name.clone());
+            f.extracted_data.insert("email_subject".to_string(), subject.clone());
+            f.extracted_data.insert("email_from".to_string(), from.clone());
+            all_findings.push(f);
+        }
+    }
+
+    // Scan attachments
+    let attachment_count = message.attachment_count();
+    if attachment_count > 0 {
+        eprintln!(
+            "    {} {} attachment{} in {}",
+            console::style("[MIME]").cyan(),
+            attachment_count,
+            if attachment_count == 1 { "" } else { "s" },
+            file_name,
+        );
+    }
+
+    for i in 0..attachment_count {
+        let attachment = match message.attachment(i as u32) {
+            Some(a) => a,
+            None => continue,
+        };
+
+        let att_name = attachment.attachment_name()
+            .unwrap_or("unnamed")
+            .to_string();
+        let att_bytes = attachment.contents();
+
+        if att_bytes.is_empty() {
+            continue;
+        }
+
+        // Determine attachment type and route to appropriate analyzer
+        let att_ext = att_name.rsplit('.').next().unwrap_or("").to_lowercase();
+
+        let att_findings = if IMAGE_EXTS.contains(&att_ext.as_str()) {
+            // Image attachment → save to temp, run image analyzer
+            let tmp_dir = tempfile::tempdir()?;
+            let tmp_path = tmp_dir.path().join(&att_name);
+            fs::write(&tmp_path, att_bytes)?;
+            match super::image::analyze_image(&tmp_path, ollama).await {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("    {} Attachment {} failed: {}", console::style("[WARN]").yellow(), att_name, e);
+                    vec![]
+                }
+            }
+        } else {
+            // Text-like attachment → extract text and scan
+            let att_text = if att_ext == "pdf" {
+                // Save to temp and use pdftotext
+                let tmp_dir = tempfile::tempdir()?;
+                let tmp_path = tmp_dir.path().join(&att_name);
+                fs::write(&tmp_path, att_bytes)?;
+                extract_pdf_text(&tmp_path).unwrap_or_default()
+            } else if att_ext == "docx" {
+                let tmp_dir = tempfile::tempdir()?;
+                let tmp_path = tmp_dir.path().join(&att_name);
+                fs::write(&tmp_path, att_bytes)?;
+                extract_docx_text(&tmp_path).unwrap_or_default()
+            } else if att_ext == "xlsx" || att_ext == "xls" {
+                let tmp_dir = tempfile::tempdir()?;
+                let tmp_path = tmp_dir.path().join(&att_name);
+                fs::write(&tmp_path, att_bytes)?;
+                extract_xlsx_text(&tmp_path).unwrap_or_default()
+            } else {
+                // Try reading as text
+                String::from_utf8_lossy(att_bytes).to_string()
+            };
+
+            if att_text.trim().is_empty() {
+                continue;
+            }
+
+            let is_beam = ollama.text_model().contains("beam");
+            if is_beam {
+                let truncated: String = att_text.chars().take(CHUNK_SIZE).collect();
+                let msg = format!(
+                    "Analyze the following email attachment ({}) for security threats, sensitive data, and policy violations.\n\n{}",
+                    att_name, truncated
+                );
+                match ollama.chat(&msg).await {
+                    Ok(resp) => parse_beam_findings(&resp).unwrap_or_default(),
+                    Err(_) => vec![],
+                }
+            } else {
+                vec![]
+            }
+        };
+
+        // Enrich attachment findings with context
+        for mut f in att_findings {
+            if f.category == "safe" { continue; }
+            f.extracted_data.insert("source_file".to_string(), file_name.clone());
+            f.extracted_data.insert("email_subject".to_string(), subject.clone());
+            f.extracted_data.insert("attachment".to_string(), att_name.clone());
+            if f.evidence.is_empty() {
+                f.evidence = format!("Attachment: {} in email \"{}\"", att_name, subject);
+            }
+            all_findings.push(f);
+        }
+    }
+
+    // Regex safety net on the email content only (not raw MIME — headers are too noisy)
+    let regex_extra = regex_safety_net(&email_content, &all_findings);
+    all_findings.extend(regex_extra);
+
+    // If nothing found, mark as clean
+    if all_findings.is_empty() {
+        all_findings.push(FileFinding {
+            category: "safe".to_string(),
+            description: format!(
+                "Email \"{}\" analyzed{}. No sensitive content detected.",
+                subject,
+                if attachment_count > 0 {
+                    format!(" ({} attachment{})", attachment_count, if attachment_count == 1 { "" } else { "s" })
+                } else {
+                    String::new()
+                }
+            ),
+            evidence: String::new(),
+            severity: Severity::Info,
+            source: "beam".to_string(),
+            extracted_data: {
+                let mut m = HashMap::new();
+                m.insert("source_file".to_string(), file_name);
+                m.insert("email_subject".to_string(), subject);
+                m
+            },
+        });
+    }
+
+    Ok(all_findings)
+}
+
+/// Strip HTML tags, returning text content only.
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::with_capacity(html.len() / 2);
+    let mut in_tag = false;
+    for ch in html.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => { in_tag = false; result.push(' '); }
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
 }
 
 #[cfg(test)]
