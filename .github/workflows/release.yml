@@ -155,7 +155,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "torchsight-*" -o -name "TorchSight-*" \) -exec cp {} release/ \;
+          find artifacts -type f \( -name "torchsight-*" -o -name "TorchSight*" \) -exec cp {} release/ \;
           ls -la release/
 
       - name: Create Release
