@@ -1,18 +1,20 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { VERSION } from '../version';
 
-const version = 'v1.0.0-rc5';
+const version = VERSION;
 const repo = 'https://github.com/IvanDobrovolsky/torchsight/releases/download';
+const v = version.replace('v', '');
 const dl = {
-  macos: `${repo}/${version}/TorchSight_1.0.0-rc2_aarch64.dmg`,
-  linux: `${repo}/${version}/TorchSight_1.0.0-rc2_amd64.AppImage`,
-  linuxDeb: `${repo}/${version}/TorchSight_1.0.0-rc2_amd64.deb`,
-  windows: `${repo}/${version}/TorchSight_1.0.0-rc2_x64-setup.exe`,
+  macos: `${repo}/${version}/TorchSight_${v}_aarch64.dmg`,
+  linux: `${repo}/${version}/TorchSight_${v}_amd64.AppImage`,
+  linuxDeb: `${repo}/${version}/TorchSight_${v}_amd64.deb`,
+  windows: `${repo}/${version}/TorchSight_${v}_x64-setup.exe`,
 };
 ---
 
 <Layout title="Desktop — TorchSight">
-  <main class="max-w-2xl mx-auto px-6 py-14">
+  <main class="max-w-4xl mx-auto px-6 py-14">
     <div class="flex justify-center mb-6 select-none">
       <img src="/ascii-logo.svg" alt="torchsight" class="w-full max-w-lg" />
     </div>
@@ -77,11 +79,11 @@ const dl = {
 
   if (ua.includes('win') && btn && desc) {
     btn.textContent = 'Download for Windows';
-    btn.href = btn.href.replace(/TorchSight.*\.dmg/, 'TorchSight_1.0.0-rc2_x64-setup.exe');
+    btn.href = btn.href.replace(/TorchSight.*\.dmg/, btn.href.replace(/.*\//, '').replace('aarch64.dmg', 'x64-setup.exe'));
     desc.textContent = 'Windows 10+ installer (.exe)';
   } else if (ua.includes('linux') && btn && desc) {
     btn.textContent = 'Download for Linux';
-    btn.href = btn.href.replace(/TorchSight.*\.dmg/, 'TorchSight_1.0.0-rc2_amd64.AppImage');
+    btn.href = btn.href.replace(/TorchSight.*\.dmg/, btn.href.replace(/.*\//, '').replace('aarch64.dmg', 'amd64.AppImage'));
     desc.textContent = 'x86_64 AppImage';
   }
 </script>

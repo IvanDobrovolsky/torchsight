@@ -1,0 +1,63 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Privacy Policy — TorchSight">
+  <main class="max-w-4xl mx-auto px-6 py-14">
+    <h1 class="text-2xl font-mono text-text-primary mb-2">Privacy Policy</h1>
+    <p class="text-text-dim text-xs font-mono mb-10">Last updated: March 2026</p>
+
+    <div class="space-y-8 text-sm text-text-secondary leading-relaxed">
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Data Collection</h2>
+        <p class="mb-2"><strong class="text-text-primary">TorchSight collects zero data.</strong></p>
+        <p>The TorchSight application (CLI and Desktop) makes no network connections during operation. All file scanning, classification, and report generation happens entirely on your local machine. No telemetry, analytics, crash reports, usage statistics, or file contents are transmitted anywhere.</p>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">How It Works</h2>
+        <ul class="space-y-2 list-disc list-inside text-text-muted">
+          <li>The Beam classification model runs locally via <a href="https://ollama.com" class="text-cyan-400 hover:text-cyan-300">Ollama</a> on your machine</li>
+          <li>OCR text extraction runs locally via Tesseract</li>
+          <li>Image analysis runs locally via Llama 3.2 Vision</li>
+          <li>All reports are written to local disk only</li>
+          <li>The application binary contains no HTTP client, telemetry SDK, or update checker</li>
+          <li>No account, registration, or API key is required</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Network Connections</h2>
+        <p>The only network activity is between TorchSight and Ollama's local HTTP server (<code class="font-mono text-text-dim">localhost:11434</code>). This is a loopback connection that never leaves your machine. No external servers are contacted.</p>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Website</h2>
+        <p>This website (<code class="font-mono text-text-dim">torchsight.io</code>) is hosted on Cloudflare Workers. Cloudflare may collect standard web server logs (IP address, user agent, page visited) as part of their infrastructure. We do not use cookies, analytics, tracking pixels, or third-party scripts. No personal information is collected through this website.</p>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Third-Party Services</h2>
+        <p>TorchSight does not integrate with, send data to, or receive data from any third-party service. The application is fully self-contained and operates entirely offline.</p>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Open Source Verification</h2>
+        <p>TorchSight is open source under the Apache 2.0 license. You can verify every claim in this policy by inspecting the source code at <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">github.com/IvanDobrovolsky/torchsight</a>. This is not a policy guarantee — it is a technical guarantee verifiable in the codebase.</p>
+      </section>
+
+      <section>
+        <h2 class="text-sm font-mono text-violet-400 mb-3">Contact</h2>
+        <p>For questions about this policy: <a href="https://github.com/IvanDobrovolsky/torchsight/issues" class="text-cyan-400 hover:text-cyan-300">Open an issue on GitHub</a></p>
+      </section>
+
+    </div>
+
+    <footer class="pb-10 text-center border-t border-border-subtle pt-8 mt-14">
+      <p class="text-text-dim text-xs font-mono">
+        Apache 2.0 &middot; <a href="https://github.com/IvanDobrovolsky/torchsight" class="text-cyan-400 hover:text-cyan-300">GitHub</a>
+      </p>
+    </footer>
+  </main>
+</Layout>
