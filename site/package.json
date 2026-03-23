@@ -1,10 +1,11 @@
 {
   "name": "site",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0-rc6",
   "scripts": {
+    "prebuild": "node scripts/sync-version.mjs",
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/sync-version.mjs && astro build",
     "preview": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "astro": "astro",
