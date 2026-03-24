@@ -20,9 +20,6 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             name: torchsight-macos-arm64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            name: torchsight-macos-x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             name: torchsight-linux-x86_64
@@ -57,6 +54,43 @@ jobs:
             chmod +x ${{ matrix.name }}
           fi
 
+      # macOS: sign CLI binary with Developer ID
+      - name: Sign macOS binary
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+            security create-keychain -p actions build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p actions build.keychain
+            security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+            codesign --force --options runtime --sign "$APPLE_SIGNING_IDENTITY" ${{ matrix.name }}
+          else
+            echo "⚠ No signing certificate configured — skipping code signing"
+          fi
+
+      # Windows: sign CLI binary with Authenticode
+      - name: Sign Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ($env:WINDOWS_CERTIFICATE) {
+            $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+            [IO.File]::WriteAllBytes("certificate.pfx", $certBytes)
+            & signtool sign /f certificate.pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 "${{ matrix.name }}"
+            Remove-Item certificate.pfx
+          } else {
+            Write-Host "⚠ No signing certificate configured — skipping code signing"
+          }
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -79,6 +113,17 @@ jobs:
             name: TorchSight-windows-x86_64
 
     runs-on: ${{ matrix.os }}
+    env:
+      # macOS signing — Tauri reads these automatically
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # Windows signing
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -101,6 +146,26 @@ jobs:
         with:
           key: desktop-${{ matrix.target }}
 
+      # macOS: import signing certificate into keychain
+      - name: Import macOS signing certificate
+        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE != ''
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+
+      # Windows: write certificate to disk for signtool
+      - name: Import Windows signing certificate
+        if: runner.os == 'Windows' && env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\certificate.pfx", $certBytes)
+          echo "TAURI_SIGNING_CERTIFICATE=$env:RUNNER_TEMP\certificate.pfx" >> $env:GITHUB_ENV
+
       - name: Install desktop deps
         working-directory: desktop
         run: npm install
@@ -108,6 +173,30 @@ jobs:
       - name: Build desktop app
         working-directory: desktop
         run: npm run tauri build
+
+      # macOS: notarize the DMG
+      - name: Notarize macOS DMG
+        if: runner.os == 'macOS' && env.APPLE_ID != ''
+        run: |
+          DMG=$(find desktop/src-tauri/target/release/bundle/dmg -name '*.dmg' | head -1)
+          if [ -n "$DMG" ]; then
+            xcrun notarytool submit "$DMG" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple "$DMG"
+          fi
+
+      # Windows: sign the NSIS installer
+      - name: Sign Windows installer
+        if: runner.os == 'Windows' && env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "desktop\src-tauri\target\release\bundle\nsis\*.exe" | Select-Object -First 1
+          if ($exe) {
+            & signtool sign /f "$env:RUNNER_TEMP\certificate.pfx" /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe.FullName
+          }
 
       # macOS → .dmg
       - name: Upload DMG
