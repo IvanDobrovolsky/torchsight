@@ -4556,7 +4556,7 @@ checksum = "ab16f14aed21ee8bfd8ec22513f7287cd4a91aa92e44edfe2c17ddd004e92607"
 
 [[package]]
 name = "torchsight-desktop"
-version = "1.0.0-rc6"
+version = "1.0.0-rc7"
 dependencies = [
  "chrono",
  "dirs",
