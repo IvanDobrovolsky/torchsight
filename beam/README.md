@@ -120,27 +120,25 @@ With the full TorchSight pipeline (Beam + Vision + OCR + regex safety net), accu
 
 ### Sources (78,358 samples after rebalancing)
 
-| Source | Samples | License | Provides |
-|--------|---------|---------|----------|
-| NVD (CVEs 1988-2026) | 50,000 | Public Domain (US Gov) | Vulnerability descriptions mapped to exploit taxonomy |
-| AI4Privacy | 5,000 | Apache 2.0 | Synthetic PII across 54 PII classes |
-| OSSF Malicious Packages | 5,000 | Apache 2.0 | npm/pypi supply chain attacks |
-| Fenrir v2.0 | 5,000 | Apache 2.0 | OWASP Top 10 + ATT&CK + NIST CSF coverage |
-| SecLists | 3,229 | MIT | XSS, SQLi, command injection, XXE payloads |
-| GHSA (GitHub Advisories) | 3,000 | CC-BY 4.0 | Security advisories with CWE mapping |
-| SEC EDGAR | 3,000 | Apache 2.0 / Public Domain | Financial filings, corporate disclosures |
-| NIST Training | 3,000 | Public Domain (US Gov) | NIST cybersecurity publications |
-| Phishing Dataset | 3,000 | Apache 2.0 | Phishing and legitimate email classification |
-| Enron Emails | 2,000 | Public Domain (FERC) | Real corporate email with PII, credentials, financial data |
-| MITRE ATT&CK | 1,620 | Royalty-free | Attack techniques, malware profiles |
-| Loghub | 1,280 | Free for research | System logs from 16 sources |
-| deepset Prompt Injection | 263 | Apache 2.0 | Prompt injection attacks in context |
-| PayloadsAllTheThings | 170 | MIT | Web attack payloads |
-| CRS Reports | 157 | Public Domain (US Gov) | Congressional defense/military/nuclear analysis |
-| CIA FOIA | ~100 | Public Domain (US Gov) | Declassified intelligence with classification markings |
-| Army Doctrine (ADP/FM) | 4 | Public Domain (US Gov) | OPORD format, tactical terminology, coordinate systems |
-| **Synthetic** | **~33,100** | Generated | All categories (see breakdown below) |
-| **Hard Negatives** | **~6,400** | Generated | Boundary cases, safe-looking-dangerous and vice versa |
+Raw data (116,956 samples from 15 sources) is rebalanced by capping per-subcategory at 5,000 and augmenting underrepresented categories with synthetic data.
+
+| Source | Raw | Balanced | License | Provides |
+|--------|-----|----------|---------|----------|
+| NVD (CVEs 1988-2026) | 50,000 | 8,475 | Public Domain (US Gov) | Vulnerability descriptions mapped to exploit taxonomy |
+| AI4Privacy | 5,000 | 4,851 | Apache 2.0 | Synthetic PII across 54 PII classes |
+| Fenrir v2.0 | 5,000 | 4,573 | Apache 2.0 | OWASP Top 10 + ATT&CK + NIST CSF coverage |
+| SEC EDGAR | 3,000 | 3,000 | Public Domain | Financial filings, corporate disclosures |
+| SecLists | 3,229 | 1,708 | MIT | XSS, SQLi, command injection, XXE payloads |
+| Phishing Dataset | 3,000 | 2,796 | Apache 2.0 | Phishing and legitimate email classification |
+| NIST Training | 3,000 | 2,761 | Public Domain (US Gov) | NIST cybersecurity publications |
+| Enron Emails | 2,000 | 1,902 | Public Domain (FERC) | Real corporate email with PII, credentials, financial data |
+| MITRE ATT&CK | 1,620 | 871 | Royalty-free | Attack techniques, malware profiles |
+| Loghub | 1,280 | 1,280 | Free for research | System logs from 16 sources |
+| CRS Reports | 157 | 157 | Public Domain (US Gov) | Congressional defense/military/nuclear analysis |
+| PayloadsAllTheThings | 170 | 96 | MIT | Web attack payloads |
+| **Synthetic** | **33,100** | **39,754** | Generated | All categories (augmented during rebalancing) |
+| **Hard Negatives** | **6,400** | **6,134** | Generated | Boundary cases, safe-looking-dangerous and vice versa |
+| **Total** | **116,956** | **78,358** | | |
 
 ### Synthetic Breakdown
 
