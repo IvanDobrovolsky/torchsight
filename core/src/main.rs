@@ -46,39 +46,6 @@ struct Args {
     #[arg(long)]
     diff: Option<String>,
 
-    /// Policy file path (default: .torchsight/policy.yml)
-    #[arg(long)]
-    policy: Option<String>,
-
-    #[command(subcommand)]
-    command: Option<SubCommand>,
-}
-
-#[derive(clap::Subcommand)]
-enum SubCommand {
-    /// Install or manage git pre-commit hook
-    GitHook {
-        #[command(subcommand)]
-        action: GitHookAction,
-    },
-    /// Watch a directory for changes and scan new/modified files
-    Watch {
-        /// Path to watch
-        path: String,
-        /// Debounce interval (e.g. 5s, 10s)
-        #[arg(long, default_value = "5s")]
-        interval: String,
-    },
-}
-
-#[derive(clap::Subcommand)]
-enum GitHookAction {
-    /// Install pre-commit hook in the current git repo
-    Install,
-    /// Uninstall pre-commit hook
-    Uninstall,
-    /// Scan staged files (called by the hook)
-    Scan,
 }
 
 #[tokio::main]
@@ -106,17 +73,6 @@ async fn main() -> Result<()> {
             style("on-premise security scanner").dim(),
             env!("CARGO_PKG_VERSION")
         );
-    }
-
-    // Handle subcommands that don't need full setup
-    if let Some(SubCommand::GitHook { action }) = &args.command {
-        match action {
-            GitHookAction::Install => return cli::git_hook::install(),
-            GitHookAction::Uninstall => return cli::git_hook::uninstall(),
-            GitHookAction::Scan => {
-                return cli::git_hook::scan_staged(&args.ollama_url, &args.text_model, &args.vision_model).await;
-            }
-        }
     }
 
     // Load config file (CLI args override config)
@@ -203,15 +159,6 @@ async fn main() -> Result<()> {
         quiet,
     };
 
-    // Handle watch mode
-    if let Some(SubCommand::Watch { path, interval }) = args.command {
-        let secs = parse_duration(&interval);
-        return cli::watch::watch_directory(&path, &config, &ollama, secs).await;
-    }
-
-    // Load policy
-    let policy = cli::policy::Policy::load(args.policy.as_deref());
-
     // For stdin/diff: use explicit --format if provided, else default to terminal
     let pipe_format = if format_was_explicit { &config.format } else { "terminal" };
 
@@ -220,7 +167,7 @@ async fn main() -> Result<()> {
         let report = cli::stdin::scan_stdin(&config, &ollama).await?;
         let output = report::format_report(&report, pipe_format)?;
         println!("{output}");
-        return check_policy_and_exit(&report, fail_on.as_ref(), &policy);
+        return check_fail_on(&report, fail_on.as_ref());
     }
 
     // Handle diff mode
@@ -228,62 +175,29 @@ async fn main() -> Result<()> {
         let report = cli::stdin::scan_diff(git_ref, &config, &ollama).await?;
         let output = report::format_report(&report, pipe_format)?;
         println!("{output}");
-        return check_policy_and_exit(&report, fail_on.as_ref(), &policy);
+        return check_fail_on(&report, fail_on.as_ref());
     }
 
     let report = cli::repl::run(config, ollama, args.path).await?;
 
-    // Check --fail-on threshold and policy
+    // Check --fail-on threshold
     if let Some(ref report) = report {
-        check_policy_and_exit(report, fail_on.as_ref(), &policy)?;
+        check_fail_on(report, fail_on.as_ref())?;
     }
 
     Ok(())
 }
 
-fn check_policy_and_exit(
+fn check_fail_on(
     report: &report::ScanReport,
     fail_on: Option<&report::Severity>,
-    policy: &cli::policy::Policy,
 ) -> Result<()> {
-    // Check policy blocks
-    let blocked = policy.check_blocked(report);
-    if !blocked.is_empty() {
-        println!(
-            "\n  {} Policy violations ({}):",
-            style("[BLOCKED]").red().bold(),
-            blocked.len()
-        );
-        for msg in &blocked {
-            println!("    - {}", msg);
-        }
-        println!();
-        std::process::exit(1);
-    }
-
-    // Check --fail-on
     if let Some(threshold) = fail_on
         && report.has_severity_at_or_above(threshold)
     {
         std::process::exit(1);
     }
-
     Ok(())
-}
-
-fn parse_duration(s: &str) -> std::time::Duration {
-    let s = s.trim();
-    if let Some(secs) = s.strip_suffix('s')
-        && let Ok(n) = secs.parse::<u64>()
-    {
-        return std::time::Duration::from_secs(n);
-    }
-    if let Some(mins) = s.strip_suffix('m')
-        && let Ok(n) = mins.parse::<u64>()
-    {
-        return std::time::Duration::from_secs(n * 60);
-    }
-    std::time::Duration::from_secs(5)
 }
 
 fn parse_severity(s: &str) -> Option<report::Severity> {

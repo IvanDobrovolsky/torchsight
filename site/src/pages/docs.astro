@@ -69,9 +69,6 @@ import Layout from '../layouts/Layout.astro';
   with:
     sarif_file: torchsight_report.sarif
 
-<span class="text-text-muted"># Pre-commit hook</span>
-<span class="text-cyan-400">$</span> torchsight git-hook install
-
 <span class="text-text-muted"># Scan git diff</span>
 <span class="text-cyan-400">$</span> torchsight --diff HEAD~1 --fail-on medium</code></pre>
     </div>
