@@ -69,7 +69,7 @@
           </svg>
         </div>
         <h1>TorchSight</h1>
-        <div class="version">v1.0.0-rc13 &middot; desktop</div>
+        <div class="version">v1.0.0-rc14 &middot; desktop</div>
         <div class="tagline">Open-source security scanner and document classifier powered by local LLMs.</div>
       </div>
 
@@ -273,30 +273,49 @@
     </div>
   </div>
 
-  <!-- Blocking setup overlay: hidden by main.js once Ollama + beam model are ready -->
+  <!-- Blocking setup overlay: hidden by main.js once everything is ready -->
   <div id="setup-overlay" class="setup-overlay" hidden>
     <div class="setup-card">
       <div class="setup-spinner" aria-hidden="true"></div>
       <h1>Setting up TorchSight</h1>
-      <p class="setup-subtitle">A separate window is downloading and installing the local LLM components. Keep it running — closing it will pause setup. This screen will dismiss automatically when everything is ready.</p>
-      <ul class="setup-checklist">
-        <li id="setup-step-ollama">
-          <span class="setup-status setup-status-pending">…</span>
-          <span class="setup-label">Ollama service</span>
-          <span class="setup-detail" data-detail></span>
+      <p class="setup-subtitle">First-time install only. TorchSight is downloading and configuring the local LLM components in the background. Keep this window open until it finishes.</p>
+      <ol class="setup-steps">
+        <li id="setup-step-ollama" class="setup-step">
+          <div class="setup-step-head">
+            <span class="setup-step-num">1</span>
+            <span class="setup-step-label">Install Ollama</span>
+            <span class="setup-step-state" data-state>queued</span>
+          </div>
+          <div class="setup-step-progress" data-progress hidden>
+            <div class="setup-progress-bar"><div class="setup-progress-fill" data-fill></div></div>
+            <div class="setup-progress-text" data-progress-text></div>
+          </div>
         </li>
-        <li id="setup-step-beam">
-          <span class="setup-status setup-status-pending">…</span>
-          <span class="setup-label">Beam model <code>torchsight/beam</code> (~17 GB, one-time)</span>
-          <span class="setup-detail" data-detail></span>
+        <li id="setup-step-tesseract" class="setup-step">
+          <div class="setup-step-head">
+            <span class="setup-step-num">2</span>
+            <span class="setup-step-label">Install Tesseract OCR <span class="setup-optional">(optional — for image scans)</span></span>
+            <span class="setup-step-state" data-state>queued</span>
+          </div>
+          <div class="setup-step-progress" data-progress hidden>
+            <div class="setup-progress-bar"><div class="setup-progress-fill" data-fill></div></div>
+            <div class="setup-progress-text" data-progress-text></div>
+          </div>
         </li>
-        <li id="setup-step-tesseract">
-          <span class="setup-status setup-status-pending">…</span>
-          <span class="setup-label">Tesseract OCR <span class="setup-optional">(optional — for image scans)</span></span>
-          <span class="setup-detail" data-detail></span>
+        <li id="setup-step-beam" class="setup-step">
+          <div class="setup-step-head">
+            <span class="setup-step-num">3</span>
+            <span class="setup-step-label">Pull beam model <code>torchsight/beam</code> (~17 GB)</span>
+            <span class="setup-step-state" data-state>queued</span>
+          </div>
+          <div class="setup-step-progress" data-progress hidden>
+            <div class="setup-progress-bar"><div class="setup-progress-fill" data-fill></div></div>
+            <div class="setup-progress-text" data-progress-text></div>
+          </div>
         </li>
-      </ul>
-      <p class="setup-note">Required: Ollama + beam model. Tesseract is checked but won't block.</p>
+      </ol>
+      <p class="setup-error" id="setup-error" hidden></p>
+      <p class="setup-note">Required: Ollama + beam model. Tesseract is optional — text/PDF scans work without it.</p>
     </div>
   </div>
 </body>

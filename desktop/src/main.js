@@ -20,56 +20,183 @@ window.addEventListener("DOMContentLoaded", async () => {
   await checkOllama();
 });
 
-// ── Setup readiness gate ──
-// Blocks the GUI behind an overlay until Ollama is running AND the beam
-// model is pulled. The post-install bootstrap script does the heavy lifting;
-// this just polls `list_models` and dismisses the overlay when ready.
+// ── Setup orchestrator ──
+// First-launch flow: runs Ollama install → Tesseract install → beam pull,
+// driven entirely from inside the app with live progress in the overlay.
+// Skips any step that's already done. Required steps gate the GUI; Tesseract
+// is best-effort and won't block.
 async function gateUntilReady() {
   const overlay = document.getElementById("setup-overlay");
   if (!overlay) return;
 
-  const setStatus = (id, state, detail) => {
-    const li = document.getElementById(id);
-    if (!li) return;
-    const dot = li.querySelector(".setup-status");
-    const det = li.querySelector("[data-detail]");
-    dot.textContent = state === "ok" ? "✓" : state === "fail" ? "✗" : "…";
-    dot.classList.remove("setup-status-pending", "setup-status-ok", "setup-status-fail");
-    dot.classList.add(`setup-status-${state}`);
-    if (det && detail !== undefined) det.textContent = detail;
+  // Bytes humaniser — used for download progress text.
+  const fmtBytes = (n) => {
+    if (!n || n < 0) return "";
+    const units = ["B", "KB", "MB", "GB"];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
   };
 
-  while (true) {
-    let ollamaOk = false;
-    let beamOk = false;
-    let tessOk = false;
+  const setState = (id, state, label) => {
+    const li = document.getElementById(id);
+    if (!li) return;
+    li.classList.remove("is-active", "is-done", "is-failed");
+    if (state === "active") li.classList.add("is-active");
+    if (state === "done") li.classList.add("is-done");
+    if (state === "failed") li.classList.add("is-failed");
+    li.querySelector("[data-state]").textContent = label;
+  };
 
-    try { ollamaOk = await invoke("check_ollama", { url: ollamaUrl }); } catch {}
-    setStatus("setup-step-ollama", ollamaOk ? "ok" : "pending", ollamaOk ? "" : "Waiting for Ollama service...");
-
-    if (ollamaOk) {
-      try {
-        const models = await invoke("list_models", { url: ollamaUrl });
-        beamOk = models.some((m) => m.startsWith("torchsight/beam"));
-        setStatus("setup-step-beam", beamOk ? "ok" : "pending", beamOk ? "" : "Downloading... watch the bootstrap window for progress.");
-      } catch {
-        setStatus("setup-step-beam", "pending", "Could not query models yet.");
-      }
+  const setProgress = (id, { percent, text, indeterminate, hidden }) => {
+    const li = document.getElementById(id);
+    if (!li) return;
+    const wrap = li.querySelector("[data-progress]");
+    const fill = li.querySelector("[data-fill]");
+    const pt   = li.querySelector("[data-progress-text]");
+    if (hidden) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    if (indeterminate) {
+      fill.classList.add("indeterminate");
+      fill.style.width = "";
     } else {
-      setStatus("setup-step-beam", "pending", "Waiting for Ollama.");
+      fill.classList.remove("indeterminate");
+      fill.style.width = `${Math.max(0, Math.min(100, percent ?? 0))}%`;
     }
+    if (text !== undefined) pt.textContent = text;
+  };
 
-    try { tessOk = await invoke("check_tesseract"); } catch {}
-    setStatus("setup-step-tesseract", tessOk ? "ok" : "fail", tessOk ? "" : "Not detected — image scans will fall back to vision-only.");
+  const showError = (msg) => {
+    const el = document.getElementById("setup-error");
+    if (!el) return;
+    el.textContent = msg;
+    el.hidden = false;
+  };
 
-    if (ollamaOk && beamOk) {
-      overlay.hidden = true;
+  // Live progress from Rust events.
+  await listen("ollama-download-progress", (e) => {
+    const p = e.payload || {};
+    setProgress("setup-step-ollama", {
+      percent: p.percent,
+      text: `Downloading Ollama — ${fmtBytes(p.downloaded)}${p.total ? " / " + fmtBytes(p.total) : ""}`,
+    });
+  });
+  await listen("ollama-install-status", () => {
+    setProgress("setup-step-ollama", { indeterminate: true, text: "Running Ollama installer..." });
+  });
+  await listen("tesseract-download-progress", (e) => {
+    const p = e.payload || {};
+    setProgress("setup-step-tesseract", {
+      percent: p.percent,
+      text: `Downloading Tesseract — ${fmtBytes(p.downloaded)}${p.total ? " / " + fmtBytes(p.total) : ""}`,
+    });
+  });
+  await listen("tesseract-install-status", () => {
+    setProgress("setup-step-tesseract", { indeterminate: true, text: "Running Tesseract installer..." });
+  });
+  await listen("model-pull-progress", (e) => {
+    const p = e.payload || {};
+    if (p.total && p.completed != null) {
+      const pct = (p.completed / p.total) * 100;
+      setProgress("setup-step-beam", {
+        percent: pct,
+        text: `${p.status || "Downloading"} — ${fmtBytes(p.completed)} / ${fmtBytes(p.total)} (${pct.toFixed(1)}%)`,
+      });
+    } else if (p.status) {
+      setProgress("setup-step-beam", { indeterminate: true, text: p.status });
+    }
+  });
+
+  // Gather initial state.
+  const isWindows = navigator.userAgent.toLowerCase().includes("win");
+  let ollamaRunning = false;
+  try { ollamaRunning = await invoke("check_ollama", { url: ollamaUrl }); } catch {}
+  let tessInstalled = false;
+  try { tessInstalled = await invoke("check_tesseract"); } catch {}
+
+  overlay.hidden = false;
+
+  // ── Step 1: Ollama (install + start service) ────────────────────────────
+  if (!ollamaRunning) {
+    setState("setup-step-ollama", "active", "installing");
+    setProgress("setup-step-ollama", { indeterminate: true, text: "Starting..." });
+    try {
+      if (isWindows) await invoke("install_ollama");
+      try { await invoke("start_ollama_service"); } catch {}
+      // Wait for the service to come up.
+      const t0 = Date.now();
+      while (Date.now() - t0 < 60_000) {
+        try { ollamaRunning = await invoke("check_ollama", { url: ollamaUrl }); } catch {}
+        if (ollamaRunning) break;
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (!ollamaRunning) throw new Error("Ollama service did not come online within 60 s");
+      setState("setup-step-ollama", "done", "ready");
+      setProgress("setup-step-ollama", { hidden: true });
+    } catch (err) {
+      setState("setup-step-ollama", "failed", "failed");
+      setProgress("setup-step-ollama", { hidden: true });
+      showError(`Ollama install failed: ${err}. Install manually from ollama.com and restart TorchSight.`);
+      return; // can't continue without Ollama
+    }
+  } else {
+    setState("setup-step-ollama", "done", "ready");
+    setProgress("setup-step-ollama", { hidden: true });
+  }
+
+  // ── Step 2: Tesseract (best-effort, optional) ───────────────────────────
+  if (!tessInstalled && isWindows) {
+    setState("setup-step-tesseract", "active", "installing");
+    setProgress("setup-step-tesseract", { indeterminate: true, text: "Starting..." });
+    try {
+      await invoke("install_tesseract");
+      tessInstalled = await invoke("check_tesseract").catch(() => false);
+      if (tessInstalled) {
+        setState("setup-step-tesseract", "done", "ready");
+      } else {
+        setState("setup-step-tesseract", "failed", "skipped");
+      }
+      setProgress("setup-step-tesseract", { hidden: true });
+    } catch (err) {
+      setState("setup-step-tesseract", "failed", "skipped");
+      setProgress("setup-step-tesseract", { hidden: true, text: `${err}` });
+    }
+  } else if (tessInstalled) {
+    setState("setup-step-tesseract", "done", "ready");
+    setProgress("setup-step-tesseract", { hidden: true });
+  } else {
+    setState("setup-step-tesseract", "failed", "skipped");
+    setProgress("setup-step-tesseract", { hidden: true });
+  }
+
+  // ── Step 3: Beam model pull ─────────────────────────────────────────────
+  let beamLoaded = false;
+  try {
+    const models = await invoke("list_models", { url: ollamaUrl });
+    beamLoaded = models.some((m) => m.startsWith("torchsight/beam"));
+  } catch {}
+
+  if (!beamLoaded) {
+    setState("setup-step-beam", "active", "pulling");
+    setProgress("setup-step-beam", { indeterminate: true, text: "Connecting to Ollama..." });
+    try {
+      await invoke("pull_model", { model: "torchsight/beam" });
+      setState("setup-step-beam", "done", "ready");
+      setProgress("setup-step-beam", { hidden: true });
+    } catch (err) {
+      setState("setup-step-beam", "failed", "failed");
+      setProgress("setup-step-beam", { hidden: true });
+      showError(`Beam model pull failed: ${err}. Try restarting TorchSight or run \`ollama pull torchsight/beam\` manually.`);
       return;
     }
-
-    overlay.hidden = false;
-    await new Promise((r) => setTimeout(r, 5000));
+  } else {
+    setState("setup-step-beam", "done", "ready");
+    setProgress("setup-step-beam", { hidden: true });
   }
+
+  // All required steps done.
+  overlay.hidden = true;
 }
 
 // ── Navigation ──

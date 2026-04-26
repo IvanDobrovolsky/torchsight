@@ -182,6 +182,175 @@ fn check_tesseract() -> bool {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn ollama_path() -> std::path::PathBuf {
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let p = std::path::PathBuf::from(local).join("Programs").join("Ollama").join("ollama.exe");
+        if p.exists() { return p; }
+    }
+    std::path::PathBuf::from("ollama.exe")
+}
+
+async fn download_with_progress(
+    url: &str,
+    dest: &std::path::Path,
+    app: &tauri::AppHandle,
+    event: &str,
+) -> Result<(), String> {
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let resp = reqwest::Client::new()
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("download request failed: {e}"))?
+        .error_for_status()
+        .map_err(|e| format!("download HTTP error: {e}"))?;
+    let total = resp.content_length().unwrap_or(0);
+    let mut stream = resp.bytes_stream();
+    let mut file = tokio::fs::File::create(dest)
+        .await
+        .map_err(|e| format!("create file failed: {e}"))?;
+    let mut downloaded: u64 = 0;
+    let mut last_pct: i32 = -1;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("download chunk failed: {e}"))?;
+        file.write_all(&chunk).await.map_err(|e| format!("write failed: {e}"))?;
+        downloaded += chunk.len() as u64;
+        let pct = if total > 0 { ((downloaded * 100) / total) as i32 } else { -1 };
+        if pct != last_pct {
+            last_pct = pct;
+            let _ = app.emit(event, serde_json::json!({
+                "downloaded": downloaded,
+                "total": total,
+                "percent": pct,
+            }));
+        }
+    }
+    file.flush().await.ok();
+    Ok(())
+}
+
+#[tauri::command]
+async fn install_ollama(app_handle: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    { let _ = app_handle; return Err("Auto-install only supported on Windows. Install Ollama manually from https://ollama.com".into()); }
+
+    #[cfg(target_os = "windows")]
+    {
+        let url = "https://ollama.com/download/OllamaSetup.exe";
+        let tmp = std::env::temp_dir().join("OllamaSetup.exe");
+        download_with_progress(url, &tmp, &app_handle, "ollama-download-progress").await?;
+        let _ = app_handle.emit("ollama-install-status", "running");
+        let status = tokio::task::spawn_blocking({
+            let tmp = tmp.clone();
+            move || Command::new(&tmp).arg("/S").no_window().status()
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("Ollama installer failed to launch: {e}"))?;
+        let _ = std::fs::remove_file(&tmp);
+        if !status.success() {
+            return Err(format!("Ollama installer exited with status {status}"));
+        }
+        Ok(())
+    }
+}
+
+#[tauri::command]
+async fn install_tesseract(app_handle: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(not(target_os = "windows"))]
+    { let _ = app_handle; return Err("Auto-install only supported on Windows.".into()); }
+
+    #[cfg(target_os = "windows")]
+    {
+        let url = "https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-setup-5.4.0.20240606.exe";
+        let tmp = std::env::temp_dir().join("TesseractSetup.exe");
+        download_with_progress(url, &tmp, &app_handle, "tesseract-download-progress").await?;
+        let _ = app_handle.emit("tesseract-install-status", "running");
+        let status = tokio::task::spawn_blocking({
+            let tmp = tmp.clone();
+            move || Command::new(&tmp)
+                .args(["/VERYSILENT", "/NORESTART", "/SUPPRESSMSGBOXES"])
+                .no_window()
+                .status()
+        })
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("Tesseract installer failed to launch: {e}"))?;
+        let _ = std::fs::remove_file(&tmp);
+        if !status.success() {
+            return Err(format!("Tesseract installer exited with status {status}"));
+        }
+        Ok(())
+    }
+}
+
+#[tauri::command]
+fn start_ollama_service() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let path = ollama_path();
+        Command::new(&path)
+            .arg("serve")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .stdin(std::process::Stdio::null())
+            .no_window()
+            .spawn()
+            .map_err(|e| format!("Failed to start Ollama service: {e}"))?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new("ollama")
+            .arg("serve")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .stdin(std::process::Stdio::null())
+            .spawn()
+            .map_err(|e| format!("Failed to start Ollama service: {e}"))?;
+        Ok(())
+    }
+}
+
+#[tauri::command]
+async fn pull_model(model: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+    use futures_util::StreamExt;
+
+    let resp = reqwest::Client::new()
+        .post("http://127.0.0.1:11434/api/pull")
+        .json(&serde_json::json!({"name": model, "stream": true}))
+        .send()
+        .await
+        .map_err(|e| format!("pull request failed: {e}"))?
+        .error_for_status()
+        .map_err(|e| format!("pull HTTP error: {e}"))?;
+
+    let mut stream = resp.bytes_stream();
+    let mut buffer = String::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("pull stream error: {e}"))?;
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+        while let Some(idx) = buffer.find('\n') {
+            let line: String = buffer.drain(..=idx).collect();
+            let line = line.trim();
+            if line.is_empty() { continue; }
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                let _ = app_handle.emit("model-pull-progress", &json);
+                if json.get("status").and_then(|v| v.as_str()) == Some("success") {
+                    return Ok(());
+                }
+                if let Some(err) = json.get("error").and_then(|v| v.as_str()) {
+                    return Err(err.to_string());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn list_models(url: String) -> Result<Vec<String>, String> {
     let client = reqwest::Client::new();
@@ -776,6 +945,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             check_ollama, check_tesseract, list_models, list_files, get_system_stats, scan_path, export_report,
+            install_ollama, install_tesseract, start_ollama_service, pull_model,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TorchSight desktop");
