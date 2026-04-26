@@ -114,19 +114,20 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     env:
-      # macOS signing — Tauri reads these automatically.
-      # APPLE_CERTIFICATE is intentionally NOT here: Tauri's bundler does its own
-      # `security import` if it sees that env var, which conflicts with the manual
-      # keychain we set up below. We import the cert ourselves and let Tauri sign
-      # against the existing keychain via APPLE_SIGNING_IDENTITY only.
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      # Notarization (used only by the conditional notarize step).
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      # Windows signing
+      # Windows signing (Tauri reads TAURI_SIGNING_CERTIFICATE; gated below).
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      # NOTE: APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY
+      # are intentionally NOT in job env. Tauri's macOS bundler reads
+      # APPLE_SIGNING_IDENTITY automatically, and GitHub Actions sets the variable
+      # to "" when the underlying secret is missing — which makes Tauri try to
+      # sign with empty identity and fail. With these unset, Tauri falls back to
+      # tauri.conf.json's `signingIdentity: "-"` (ad-hoc signing). Real Developer ID
+      # signing requires setting these as step-scoped env on the build step.
     steps:
       - uses: actions/checkout@v4
 
@@ -155,6 +156,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
           if [ -z "$APPLE_CERTIFICATE" ]; then exit 0; fi
           echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
