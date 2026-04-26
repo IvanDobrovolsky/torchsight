@@ -111,18 +111,29 @@ async function gateUntilReady() {
   // Gather initial state.
   const isWindows = navigator.userAgent.toLowerCase().includes("win");
   let ollamaRunning = false;
+  let ollamaInstalled = false;
   try { ollamaRunning = await invoke("check_ollama", { url: ollamaUrl }); } catch {}
+  try { ollamaInstalled = await invoke("check_ollama_installed"); } catch {}
   let tessInstalled = false;
   try { tessInstalled = await invoke("check_tesseract"); } catch {}
 
   overlay.hidden = false;
 
-  // ── Step 1: Ollama (install + start service) ────────────────────────────
+  // ── Step 1: Ollama ──────────────────────────────────────────────────────
+  // Three cases:
+  //   - running already: nothing to do
+  //   - installed but not running: just start the service (no re-download)
+  //   - not installed: download + install + start
   if (!ollamaRunning) {
-    setState("setup-step-ollama", "active", "installing");
-    setProgress("setup-step-ollama", { indeterminate: true, text: "Starting..." });
+    setState("setup-step-ollama", "active", ollamaInstalled ? "starting" : "installing");
+    setProgress("setup-step-ollama", {
+      indeterminate: true,
+      text: ollamaInstalled ? "Starting Ollama service..." : "Starting...",
+    });
     try {
-      if (isWindows) await invoke("install_ollama");
+      if (!ollamaInstalled && isWindows) {
+        await invoke("install_ollama");
+      }
       try { await invoke("start_ollama_service"); } catch {}
       // Wait for the service to come up.
       const t0 = Date.now();
@@ -131,14 +142,14 @@ async function gateUntilReady() {
         if (ollamaRunning) break;
         await new Promise((r) => setTimeout(r, 1500));
       }
-      if (!ollamaRunning) throw new Error("Ollama service did not come online within 60 s");
+      if (!ollamaRunning) throw new Error("Ollama did not come online within 60 s");
       setState("setup-step-ollama", "done", "ready");
       setProgress("setup-step-ollama", { hidden: true });
     } catch (err) {
       setState("setup-step-ollama", "failed", "failed");
       setProgress("setup-step-ollama", { hidden: true });
-      showError(`Ollama install failed: ${err}. Install manually from ollama.com and restart TorchSight.`);
-      return; // can't continue without Ollama
+      showError(`Ollama setup failed: ${err}. Install manually from ollama.com and restart TorchSight.`);
+      return;
     }
   } else {
     setState("setup-step-ollama", "done", "ready");

@@ -191,6 +191,26 @@ fn ollama_path() -> std::path::PathBuf {
     std::path::PathBuf::from("ollama.exe")
 }
 
+#[tauri::command]
+fn check_ollama_installed() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            let p = std::path::PathBuf::from(local).join("Programs").join("Ollama").join("ollama.exe");
+            if p.exists() { return true; }
+        }
+        Command::new("where").arg("ollama").no_window().output()
+            .map(|o| o.status.success() && !o.stdout.is_empty())
+            .unwrap_or(false)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new("which").arg("ollama").output()
+            .map(|o| o.status.success() && !o.stdout.is_empty())
+            .unwrap_or(false)
+    }
+}
+
 async fn download_with_progress(
     url: &str,
     dest: &std::path::Path,
@@ -289,11 +309,17 @@ async fn install_tesseract(app_handle: tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn start_ollama_service() -> Result<(), String> {
+    // Spawn detached so the Ollama service survives our process exit. Without
+    // this, killing TorchSight (or it crashing) would tear down Ollama with it,
+    // and the next launch would re-trigger the full setup orchestrator.
     #[cfg(target_os = "windows")]
     {
         let path = ollama_path();
-        Command::new(&path)
-            .arg("serve")
+        // `cmd /c start "" /B <exe> serve` invokes ShellExecute under the hood,
+        // which detaches the spawned process from this cmd. The cmd itself exits
+        // immediately, leaving ollama.exe running as a top-level process.
+        Command::new("cmd")
+            .args(["/c", "start", "", "/B", &path.to_string_lossy(), "serve"])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .stdin(std::process::Stdio::null())
@@ -304,6 +330,8 @@ fn start_ollama_service() -> Result<(), String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
+        // Unix: spawning detached is rarely needed (Ollama runs as a system
+        // service on macOS/Linux). Plain spawn is fine for the fallback.
         Command::new("ollama")
             .arg("serve")
             .stdout(std::process::Stdio::null())
@@ -395,100 +423,43 @@ async fn list_files(path: String) -> Result<Vec<FileEntry>, String> {
     .map_err(|e| e.to_string())?
 }
 
+// sysinfo handle is global so CPU usage can be sampled correctly (the first
+// refresh after construction reports zero — subsequent refreshes report deltas).
+static SYS: std::sync::OnceLock<std::sync::Mutex<sysinfo::System>> = std::sync::OnceLock::new();
+
 #[tauri::command]
 async fn get_system_stats() -> Result<SystemStats, String> {
     tokio::task::spawn_blocking(|| {
-        #[cfg(target_os = "macos")]
-        {
-            // RAM
-            let mem_total = run_cmd("sysctl", &["-n", "hw.memsize"])
-                .and_then(|s| s.trim().parse::<f64>().ok())
-                .unwrap_or(0.0);
-            let vm = run_cmd("vm_stat", &[]).unwrap_or_default();
-            let page_size = 16384.0_f64;
-            let free = (parse_vm_stat(&vm, "Pages free")
-                + parse_vm_stat(&vm, "Pages inactive")
-                + parse_vm_stat(&vm, "Pages speculative")) * page_size;
-            let used = mem_total - free;
+        let sys_lock = SYS.get_or_init(|| std::sync::Mutex::new(sysinfo::System::new()));
+        let mut sys = sys_lock.lock().map_err(|e| e.to_string())?;
+        // CPU usage requires a refresh + delta; refresh_cpu_all updates per-core load.
+        sys.refresh_cpu_all();
+        // Sleep briefly to let CPU counters tick — sysinfo needs >= MINIMUM_CPU_UPDATE_INTERVAL.
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        sys.refresh_cpu_all();
+        sys.refresh_memory();
 
-            // CPU
-            let cpu = run_cmd("ps", &["-A", "-o", "%cpu"])
-                .map(|s| s.lines().skip(1).filter_map(|l| l.trim().parse::<f64>().ok()).sum::<f64>())
-                .unwrap_or(0.0);
-            let ncpu = run_cmd("sysctl", &["-n", "hw.logicalcpu"])
-                .and_then(|s| s.trim().parse::<f64>().ok())
-                .unwrap_or(1.0);
+        let cpu_percent = sys.global_cpu_usage() as f64;
+        let total = sys.total_memory() as f64;
+        let used  = sys.used_memory() as f64;
+        let gb = 1024.0 * 1024.0 * 1024.0;
 
-            // GPU — via ioreg PerformanceStatistics (Apple Silicon)
-            let (gpu_pct, gpu_used, gpu_total) = get_gpu_stats_macos();
+        // GPU stats stay platform-specific (sysinfo doesn't cover GPUs).
+        let (gpu_pct, gpu_used, gpu_total) = {
+            #[cfg(target_os = "macos")] { get_gpu_stats_macos() }
+            #[cfg(target_os = "linux")] { get_gpu_stats_linux() }
+            #[cfg(target_os = "windows")] { get_gpu_stats_windows() }
+        };
 
-            Ok(SystemStats {
-                cpu_percent: (cpu / ncpu).min(100.0),
-                memory_used_gb: used / (1024.0 * 1024.0 * 1024.0),
-                memory_total_gb: mem_total / (1024.0 * 1024.0 * 1024.0),
-                memory_percent: if mem_total > 0.0 { (used / mem_total) * 100.0 } else { 0.0 },
-                gpu_percent: gpu_pct,
-                gpu_mem_used_gb: gpu_used,
-                gpu_mem_total_gb: gpu_total,
-            })
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            let meminfo = std::fs::read_to_string("/proc/meminfo").unwrap_or_default();
-            let total = parse_meminfo(&meminfo, "MemTotal");
-            let available = parse_meminfo(&meminfo, "MemAvailable");
-            let used = total - available;
-            let loadavg = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-            let load1 = loadavg.split_whitespace().next()
-                .and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
-            // Try nvidia-smi for GPU
-            let (gpu_pct, gpu_used, gpu_total) = get_gpu_stats_linux();
-
-            Ok(SystemStats {
-                cpu_percent: (load1 * 100.0 / 4.0).min(100.0), // rough estimate
-                memory_used_gb: used / (1024.0 * 1024.0),
-                memory_total_gb: total / (1024.0 * 1024.0),
-                memory_percent: if total > 0.0 { (used / total) * 100.0 } else { 0.0 },
-                gpu_percent: gpu_pct,
-                gpu_mem_used_gb: gpu_used,
-                gpu_mem_total_gb: gpu_total,
-            })
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            // RAM via wmic
-            let total_kb = run_cmd_win("wmic", &["ComputerSystem", "get", "TotalPhysicalMemory", "/value"])
-                .and_then(|s| s.lines().find(|l| l.starts_with("TotalPhysicalMemory="))
-                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
-                .unwrap_or(0.0);
-            let avail = run_cmd_win("wmic", &["OS", "get", "FreePhysicalMemory", "/value"])
-                .and_then(|s| s.lines().find(|l| l.starts_with("FreePhysicalMemory="))
-                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
-                .unwrap_or(0.0) * 1024.0; // KB to bytes
-            let gb = 1024.0 * 1024.0 * 1024.0;
-            let used = total_kb - avail;
-
-            // CPU via wmic
-            let cpu = run_cmd_win("wmic", &["cpu", "get", "LoadPercentage", "/value"])
-                .and_then(|s| s.lines().find(|l| l.starts_with("LoadPercentage="))
-                    .and_then(|l| l.split('=').nth(1).and_then(|v| v.trim().parse::<f64>().ok())))
-                .unwrap_or(0.0);
-
-            // GPU via nvidia-smi
-            let (gpu_pct, gpu_used, gpu_total) = get_gpu_stats_windows();
-
-            Ok(SystemStats {
-                cpu_percent: cpu,
-                memory_used_gb: used / gb,
-                memory_total_gb: total_kb / gb,
-                memory_percent: if total_kb > 0.0 { (used / total_kb) * 100.0 } else { 0.0 },
-                gpu_percent: gpu_pct,
-                gpu_mem_used_gb: gpu_used,
-                gpu_mem_total_gb: gpu_total,
-            })
-        }
+        Ok(SystemStats {
+            cpu_percent,
+            memory_used_gb: used / gb,
+            memory_total_gb: total / gb,
+            memory_percent: if total > 0.0 { (used / total) * 100.0 } else { 0.0 },
+            gpu_percent: gpu_pct,
+            gpu_mem_used_gb: gpu_used,
+            gpu_mem_total_gb: gpu_total,
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -944,7 +915,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            check_ollama, check_tesseract, list_models, list_files, get_system_stats, scan_path, export_report,
+            check_ollama, check_ollama_installed, check_tesseract, list_models, list_files, get_system_stats, scan_path, export_report,
             install_ollama, install_tesseract, start_ollama_service, pull_model,
         ])
         .run(tauri::generate_context!())
