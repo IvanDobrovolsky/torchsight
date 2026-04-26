@@ -114,20 +114,17 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     env:
-      # Notarization (used only by the conditional notarize step).
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       # Windows signing (Tauri reads TAURI_SIGNING_CERTIFICATE; gated below).
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
       WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-      # NOTE: APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY
-      # are intentionally NOT in job env. Tauri's macOS bundler reads
-      # APPLE_SIGNING_IDENTITY automatically, and GitHub Actions sets the variable
-      # to "" when the underlying secret is missing — which makes Tauri try to
-      # sign with empty identity and fail. With these unset, Tauri falls back to
-      # tauri.conf.json's `signingIdentity: "-"` (ad-hoc signing). Real Developer ID
-      # signing requires setting these as step-scoped env on the build step.
+      # NOTE: All Apple secrets are intentionally NOT in job env. Tauri's macOS
+      # bundler auto-reads APPLE_SIGNING_IDENTITY (signing) and APPLE_ID +
+      # APPLE_TEAM_ID + APPLE_PASSWORD (notarization). GitHub Actions sets each
+      # variable to "" when its secret is missing, which makes Tauri attempt
+      # signing/notarization with empty values and fail. With these unset, Tauri
+      # falls back to tauri.conf.json's `signingIdentity: "-"` (ad-hoc) and
+      # skips notarization. Real Developer ID + notarization requires scoping
+      # these onto specific steps once the secrets are configured.
     steps:
       - uses: actions/checkout@v4
 
@@ -184,10 +181,18 @@ jobs:
         working-directory: desktop
         run: npm run tauri build
 
-      # macOS: notarize the DMG
+      # macOS: notarize the DMG (no-op when secrets are unset)
       - name: Notarize macOS DMG
-        if: runner.os == 'macOS' && env.APPLE_ID != ''
+        if: runner.os == 'macOS'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          if [ -z "$APPLE_ID" ]; then
+            echo "APPLE_ID not set — skipping notarization."
+            exit 0
+          fi
           DMG=$(find desktop/src-tauri/target/release/bundle/dmg -name '*.dmg' | head -1)
           if [ -n "$DMG" ]; then
             xcrun notarytool submit "$DMG" \
