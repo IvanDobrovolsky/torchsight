@@ -114,8 +114,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     env:
-      # macOS signing — Tauri reads these automatically
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      # macOS signing — Tauri reads these automatically.
+      # APPLE_CERTIFICATE is intentionally NOT here: Tauri's bundler does its own
+      # `security import` if it sees that env var, which conflicts with the manual
+      # keychain we set up below. We import the cert ourselves and let Tauri sign
+      # against the existing keychain via APPLE_SIGNING_IDENTITY only.
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -146,16 +149,21 @@ jobs:
         with:
           key: desktop-${{ matrix.target }}
 
-      # macOS: import signing certificate into keychain
+      # macOS: import signing certificate into keychain (scoped step env so
+      # APPLE_CERTIFICATE is not visible to the Tauri build step).
       - name: Import macOS signing certificate
-        if: runner.os == 'macOS' && env.APPLE_CERTIFICATE != ''
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
         run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then exit 0; fi
           echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
           security create-keychain -p actions build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p actions build.keychain
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+          rm certificate.p12
 
       # Windows: write certificate to disk for signtool
       - name: Import Windows signing certificate
@@ -232,8 +240,64 @@ jobs:
           path: desktop/src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: ignore
 
+  build-windows-installer:
+    needs: build-cli
+    runs-on: windows-latest
+    env:
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Download signed CLI exe
+        uses: actions/download-artifact@v4
+        with:
+          name: torchsight-windows-x86_64.exe
+          path: cli-artifact
+
+      - name: Stage CLI exe for installer
+        shell: pwsh
+        run: |
+          $dst = "target\x86_64-pc-windows-msvc\release"
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          Copy-Item cli-artifact\torchsight-windows-x86_64.exe (Join-Path $dst "torchsight.exe")
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        working-directory: installer/windows
+        run: .\build.ps1 -Version "${{ steps.ver.outputs.version }}" -SkipCargo
+
+      - name: Sign installer
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $pfx = Join-Path $env:RUNNER_TEMP "certificate.pfx"
+          [IO.File]::WriteAllBytes($pfx, $certBytes)
+          $exe = "installer\windows\dist\TorchSight-Setup-${{ steps.ver.outputs.version }}.exe"
+          & signtool sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Remove-Item $pfx
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: TorchSight-Setup
+          path: installer/windows/dist/TorchSight-Setup-*.exe
+
   release:
-    needs: [build-cli, build-desktop]
+    needs: [build-cli, build-desktop, build-windows-installer]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts

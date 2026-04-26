@@ -9,7 +9,7 @@ const dl = {
   macos: `${repo}/${version}/TorchSight_${v}_aarch64.dmg`,
   linux: `${repo}/${version}/TorchSight_${v}_amd64.AppImage`,
   linuxDeb: `${repo}/${version}/TorchSight_${v}_amd64.deb`,
-  windows: `${repo}/${version}/TorchSight_${v}_x64-setup.exe`,
+  windows: `${repo}/${version}/TorchSight-Setup-${v}.exe`,
 };
 ---
 
@@ -79,11 +79,11 @@ const dl = {
 
   if (ua.includes('win') && btn && desc) {
     btn.textContent = 'Download for Windows';
-    btn.href = btn.href.replace(/TorchSight.*\.dmg/, btn.href.replace(/.*\//, '').replace('aarch64.dmg', 'x64-setup.exe'));
-    desc.textContent = 'Windows 10+ installer (.exe)';
+    btn.href = btn.href.replace(/TorchSight_([^/]+)_aarch64\.dmg$/, 'TorchSight-Setup-$1.exe');
+    desc.textContent = 'Windows 10+ installer — bundles Ollama, Tesseract, models';
   } else if (ua.includes('linux') && btn && desc) {
     btn.textContent = 'Download for Linux';
-    btn.href = btn.href.replace(/TorchSight.*\.dmg/, btn.href.replace(/.*\//, '').replace('aarch64.dmg', 'amd64.AppImage'));
+    btn.href = btn.href.replace(/aarch64\.dmg$/, 'amd64.AppImage');
     desc.textContent = 'x86_64 AppImage';
   }
 </script>
