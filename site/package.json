@@ -1,7 +1,7 @@
 {
   "name": "site",
   "type": "module",
-  "version": "1.0.0-rc11",
+  "version": "1.0.0-rc12",
   "scripts": {
     "prebuild": "node scripts/sync-version.mjs",
     "dev": "astro dev",
