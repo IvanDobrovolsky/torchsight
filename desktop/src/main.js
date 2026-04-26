@@ -16,8 +16,61 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupNavigation();
   setupScanControls();
   setupSettings();
+  await gateUntilReady();
   await checkOllama();
 });
+
+// ── Setup readiness gate ──
+// Blocks the GUI behind an overlay until Ollama is running AND the beam
+// model is pulled. The post-install bootstrap script does the heavy lifting;
+// this just polls `list_models` and dismisses the overlay when ready.
+async function gateUntilReady() {
+  const overlay = document.getElementById("setup-overlay");
+  if (!overlay) return;
+
+  const setStatus = (id, state, detail) => {
+    const li = document.getElementById(id);
+    if (!li) return;
+    const dot = li.querySelector(".setup-status");
+    const det = li.querySelector("[data-detail]");
+    dot.textContent = state === "ok" ? "✓" : state === "fail" ? "✗" : "…";
+    dot.classList.remove("setup-status-pending", "setup-status-ok", "setup-status-fail");
+    dot.classList.add(`setup-status-${state}`);
+    if (det && detail !== undefined) det.textContent = detail;
+  };
+
+  while (true) {
+    let ollamaOk = false;
+    let beamOk = false;
+    let tessOk = false;
+
+    try { ollamaOk = await invoke("check_ollama", { url: ollamaUrl }); } catch {}
+    setStatus("setup-step-ollama", ollamaOk ? "ok" : "pending", ollamaOk ? "" : "Waiting for Ollama service...");
+
+    if (ollamaOk) {
+      try {
+        const models = await invoke("list_models", { url: ollamaUrl });
+        beamOk = models.some((m) => m.startsWith("torchsight/beam"));
+        setStatus("setup-step-beam", beamOk ? "ok" : "pending", beamOk ? "" : "Downloading... watch the bootstrap window for progress.");
+      } catch {
+        setStatus("setup-step-beam", "pending", "Could not query models yet.");
+      }
+    } else {
+      setStatus("setup-step-beam", "pending", "Waiting for Ollama.");
+    }
+
+    try { tessOk = await invoke("check_tesseract"); } catch {}
+    setStatus("setup-step-tesseract", tessOk ? "ok" : "fail", tessOk ? "" : "Not detected — image scans will fall back to vision-only.");
+
+    if (ollamaOk && beamOk) {
+      overlay.hidden = true;
+      return;
+    }
+
+    overlay.hidden = false;
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+}
 
 // ── Navigation ──
 function setupNavigation() {

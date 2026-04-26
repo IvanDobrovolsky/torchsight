@@ -1287,3 +1287,115 @@ body {
     margin: 1.5cm;
   }
 }
+
+/* ── Setup overlay (gates GUI until Ollama + beam model are ready) ─────── */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 14, 23, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.setup-overlay[hidden] {
+  display: none;
+}
+
+.setup-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: 12px;
+  padding: 36px 40px;
+  max-width: 560px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.setup-card h1 {
+  margin: 18px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.setup-subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 22px;
+}
+
+.setup-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(124, 58, 237, 0.2);
+  border-top-color: var(--violet);
+  border-radius: 50%;
+  animation: setup-spin 0.9s linear infinite;
+}
+
+@keyframes setup-spin {
+  to { transform: rotate(360deg); }
+}
+
+.setup-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-checklist li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.setup-checklist li code {
+  background: var(--bg-surface);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.setup-status {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  text-align: center;
+}
+
+.setup-status-pending { color: var(--text-muted); }
+.setup-status-ok      { color: #10b981; }
+.setup-status-fail    { color: #ef4444; }
+
+.setup-detail {
+  display: block;
+  grid-column: 2;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.setup-detail:empty { display: none; }
+
+.setup-optional {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.setup-note {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(124, 58, 237, 0.15);
+}

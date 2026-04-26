@@ -160,6 +160,29 @@ async fn check_ollama(url: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
+fn check_tesseract() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        if Command::new("where").arg("tesseract").no_window().output()
+            .map(|o| o.status.success() && !o.stdout.is_empty())
+            .unwrap_or(false) { return true; }
+        for path in [
+            "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
+            "C:\\Program Files (x86)\\Tesseract-OCR\\tesseract.exe",
+        ] {
+            if std::path::Path::new(path).exists() { return true; }
+        }
+        false
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new("which").arg("tesseract").output()
+            .map(|o| o.status.success() && !o.stdout.is_empty())
+            .unwrap_or(false)
+    }
+}
+
+#[tauri::command]
 async fn list_models(url: String) -> Result<Vec<String>, String> {
     let client = reqwest::Client::new();
     let resp = client
@@ -752,7 +775,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            check_ollama, list_models, list_files, get_system_stats, scan_path, export_report,
+            check_ollama, check_tesseract, list_models, list_files, get_system_stats, scan_path, export_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running TorchSight desktop");
