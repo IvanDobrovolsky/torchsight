@@ -3,6 +3,22 @@ use std::path::PathBuf;
 use std::process::Command;
 use tauri::Emitter;
 
+trait CommandNoWindowExt {
+    fn no_window(&mut self) -> &mut Self;
+}
+
+impl CommandNoWindowExt for Command {
+    fn no_window(&mut self) -> &mut Self {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            self.creation_flags(CREATE_NO_WINDOW);
+        }
+        self
+    }
+}
+
 // ── Structs matching the actual CLI JSON report format ──
 
 #[derive(Deserialize, Clone)]
@@ -303,6 +319,7 @@ async fn scan_path(path: String, app_handle: tauri::AppHandle) -> Result<ScanRes
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(&report_dir_clone)
+            .no_window()
             .spawn()
             .map_err(|e| format!("Failed to run torchsight: {}", e))?;
 
@@ -600,7 +617,7 @@ fn find_torchsight_binary() -> Result<PathBuf, String> {
             if c.exists() { return Ok(c.clone()); }
         }
         // Try PATH via `where`
-        if let Ok(output) = Command::new("where").arg("torchsight").output() {
+        if let Ok(output) = Command::new("where").arg("torchsight").no_window().output() {
             let path = String::from_utf8_lossy(&output.stdout).lines().next().unwrap_or("").trim().to_string();
             if !path.is_empty() {
                 let p = PathBuf::from(&path);
@@ -705,7 +722,7 @@ fn get_gpu_stats_linux() -> (f64, f64, f64) {
 
 #[cfg(target_os = "windows")]
 fn run_cmd_win(cmd: &str, args: &[&str]) -> Option<String> {
-    Command::new(cmd).args(args).output().ok()
+    Command::new(cmd).args(args).no_window().output().ok()
         .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
 }
 
@@ -713,6 +730,7 @@ fn run_cmd_win(cmd: &str, args: &[&str]) -> Option<String> {
 fn get_gpu_stats_windows() -> (f64, f64, f64) {
     if let Some(output) = Command::new("nvidia-smi")
         .args(["--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"])
+        .no_window()
         .output().ok()
     {
         let s = String::from_utf8_lossy(&output.stdout);

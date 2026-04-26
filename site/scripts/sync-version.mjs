@@ -50,3 +50,14 @@ for (const rel of ['Cargo.toml', 'desktop/src-tauri/Cargo.toml']) {
     writeFileSync(path, content);
   } catch {}
 }
+
+// 5. desktop/src/index.html — sidebar version label
+try {
+  const htmlPath = join(root, 'desktop', 'src', 'index.html');
+  let html = readFileSync(htmlPath, 'utf-8');
+  html = html.replace(
+    /<div class="version">v\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?\s*&middot;\s*desktop<\/div>/,
+    `<div class="version">v${version} &middot; desktop</div>`
+  );
+  writeFileSync(htmlPath, html);
+} catch {}
