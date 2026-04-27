@@ -79,11 +79,16 @@ fn collect_email_files(dir: &Path, emails: &mut Vec<ExtractedEmail>) -> Result<(
                 .to_string_lossy()
                 .to_string();
 
-            // Read the email content (readpst outputs plain text or MIME)
-            if let Ok(content) = std::fs::read_to_string(&path)
-                && !content.trim().is_empty()
-            {
-                emails.push(ExtractedEmail { filename, content });
+            // Read raw bytes and decode lossily so emails with non-UTF-8 charsets
+            // (Windows-1252, ISO-8859-1 — common in older Outlook archives) are
+            // not silently dropped. read_to_string errors on the first invalid
+            // UTF-8 byte, which would skip messages containing a single curly
+            // apostrophe or any 8-bit char.
+            if let Ok(bytes) = std::fs::read(&path) {
+                let content = String::from_utf8_lossy(&bytes).into_owned();
+                if !content.trim().is_empty() {
+                    emails.push(ExtractedEmail { filename, content });
+                }
             }
         }
     }
