@@ -19,3 +19,4 @@ site/dist/
 site/.astro/
 report/.venv/
 CLAUDE.md
+.claude/
