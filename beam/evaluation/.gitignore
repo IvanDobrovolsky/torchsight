@@ -1,0 +1,10 @@
+# Benchmark data — regenerate via scripts/{generate_eval_1000,build_external_benchmark}.py
+data/eval-1000-synthetic/
+data/eval-500-external/
+
+# Eval result JSONs — regenerate via scripts/eval_*.py
+results/
+
+# Local caches
+__pycache__/
+*.pyc
