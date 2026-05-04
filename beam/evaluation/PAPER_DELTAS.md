@@ -123,6 +123,48 @@ New:
 
 (Appears in 4 places in the docx)
 
+### External "Overall" table row — 5th column
+
+Old:
+> Overall | 500 | 90.6% | 86.4% | 82.0% | 65.8% | 37.6%
+
+New (assumes 5th column is regex-external; verify column header):
+> Overall | 500 | 93.8% | 86.4% | 82.0% | 65.8% | 29.6%
+
+Whatever 37.6% was, it doesn't match any model's actual external
+accuracy. Beam q4 = 93.8, Claude S4 = 86.4, Gemini = 82.0, GPT-5 = 65.8,
+regex = 29.6. The 37.6 is stale.
+
+### External narrative — phishing/MTSamples/Enron
+
+Old:
+> All models achieve 99–100% on MTSamples – medical transcriptions that
+> Beam never encountered during training. ... The largest model
+> divergence appears on phishing emails (Beam 80%, Claude 55%, Gemini
+> 45%, GPT-5 28.3%) and NVD vulnerability descriptions (Beam 100%,
+> GPT-5 51%). Claude outperforms Beam on Enron corporate emails (87.5%
+> vs. 76.2%)...
+
+New:
+> Claude, Gemini, and GPT-5 all reach 100% on MTSamples — medical
+> transcriptions that Beam never encountered during training. Beam
+> achieves 82% on the same subset. The 18 misses route to `pii` rather
+> than `medical`: the model correctly recognizes the PHI but assigns
+> a different label, with explanations that explicitly cite HIPAA. The
+> largest model divergence appears on phishing emails (Beam 100%,
+> Claude 55%, Gemini 45%, GPT-5 28.3%) and NVD vulnerability
+> descriptions (Beam 100%, GPT-5 51%). Claude slightly outperforms
+> Beam on Enron corporate emails (87.5% vs. 83.8%), reflecting the
+> PII/confidential boundary ambiguity in mixed corporate
+> communication.
+
+### Claude Opus 4 false positive rate
+
+Old: 17.4%
+New: 16.4% (41/250 non-safe predictions on safe samples)
+Note: minor; depends on FP definition with errors. If you keep 17.4%,
+add a footnote explaining the convention. Either way, document.
+
 ### Beam vs base Qwen ablation (§6, near "+52 pp from LoRA")
 
 Old:
