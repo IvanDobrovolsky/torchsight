@@ -2,8 +2,10 @@
 data/eval-1000-synthetic/
 data/eval-500-external/
 
-# Eval result JSONs — regenerate via scripts/eval_*.py
-results/
+# Eval result intermediates and reports — regenerable
+results/*.html
+results/*.pdf
+results/*.tar.gz
 
 # Local caches
 __pycache__/
