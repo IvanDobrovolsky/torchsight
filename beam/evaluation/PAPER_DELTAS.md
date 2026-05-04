@@ -18,7 +18,7 @@ Replace by hand in Word. No build_docx.py pipeline — that's been removed.
 | 6 | Beam generalization gap | −4.5 pp | **−1.3 pp** (95.1% → 93.8%) | major |
 | 7 | Beam q8_0 external | "running" | **91.2%** [88.4, 93.4] | fill-in |
 | 8 | Beam f16 external | "running" | **91.0%** [88.2, 93.2] | fill-in |
-| 9 | Qwen 27B base external | "running" | **TBD** (rerun in progress) | fill-in |
+| 9 | Qwen 27B base external | "running" | **28.0%** [24.2, 32.1] (140/500) | fill-in |
 | 10 | Regex baseline primary | 50.5% [47.4, 53.6] | **52.7%** [49.6, 55.7] | minor (4 places) |
 | 11 | Regex pattern count | 35 patterns | **49 patterns** | minor |
 | 12 | External Overall row, col 5 | 37.6% | **29.6%** (regex external) | bug |
@@ -197,12 +197,18 @@ add a footnote explaining the convention. Either way, document.
 Old:
 > The fine-tuning delta over the base Qwen 3.5 27B is +52 pp.
 
-New (after qwen rerun completes — placeholder):
-> The fine-tuning delta over the base Qwen 3.5 27B is +TBD pp on
-> primary (95.1% − 43.3%) and +TBD pp on external (93.8% − TBD%).
-> The external delta is the more revealing comparison: both models
-> see truly held-out data with the identical prompt, so the gap
-> isolates LoRA's contribution from any synthetic-benchmark artifacts.
+New:
+> The fine-tuning delta over the base Qwen 3.5 27B is +51.8 pp on the
+> primary benchmark (95.1% vs. 43.3%) and **+65.8 pp on the external
+> benchmark** (93.8% vs. 28.0%). The external delta is the more
+> revealing comparison: both models see truly held-out data with the
+> identical alpaca prompt, so the gap isolates LoRA's contribution
+> from any synthetic-benchmark artifacts. The unmodified Qwen 3.5
+> 27B labels almost every external sample `safe` (140/500 correct
+> = 28%), with its 100% accuracy on NIST and Phishing reflecting only
+> the cases where `safe` is an accepted label. This rules out the
+> possibility that Beam's accuracy is driven by the prompt template
+> alone — domain-specific fine-tuning is the lever.
 
 ## Figure regen
 
