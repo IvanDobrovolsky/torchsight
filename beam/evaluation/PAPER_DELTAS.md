@@ -6,6 +6,33 @@ prompt + parser + alt_category-aware scorer).
 
 Replace by hand in Word. No build_docx.py pipeline — that's been removed.
 
+## Quick-reference change table
+
+| # | What | In docx | Replace with | Severity |
+|---|---|---|---|---|
+| 1 | Beam q4_K_M external overall | 90.6% | **93.8%** [91.3, 95.6] | major (6 places) |
+| 2 | Beam MTSamples external | 99.0% | **82.0%** (82/100) | major |
+| 3 | Beam AI4Privacy external | 81.2% | **100.0%** (80/80) | major |
+| 4 | Beam Phishing external | 80% | **100.0%** (60/60) | major |
+| 5 | Beam Enron external | 76.2% | **83.8%** (67/80) | medium |
+| 6 | Beam generalization gap | −4.5 pp | **−1.3 pp** (95.1% → 93.8%) | major |
+| 7 | Beam q8_0 external | "running" | **91.2%** [88.4, 93.4] | fill-in |
+| 8 | Beam f16 external | "running" | **91.0%** [88.2, 93.2] | fill-in |
+| 9 | Qwen 27B base external | "running" | **TBD** (rerun in progress) | fill-in |
+| 10 | Regex baseline primary | 50.5% [47.4, 53.6] | **52.7%** [49.6, 55.7] | minor (4 places) |
+| 11 | Regex pattern count | 35 patterns | **49 patterns** | minor |
+| 12 | External Overall row, col 5 | 37.6% | **29.6%** (regex external) | bug |
+| 13 | Claude Opus 4 FP rate | 17.4% | **16.4%** (or document FP-w-errors) | trivial |
+| 14 | Beam vs commercial external gap | "narrows to 4.2 pp" | **"widens to 7.4 pp"** | major narrative |
+
+**Verified correct (no change)**: every primary accuracy (q4 95.1, q8 92.7,
+f16 93.0, Sonnet 79.9, Opus 79.9, Gemini 75.4, GPT-5 76.9, Qwen base 43.3,
+regex 52.7), all primary subcategory accuracies, macro P/R/F1 (95.5/93.9/94.2),
+medical recall 67%, Beam FP 2.0%, Sonnet FP 33.2%, GPT-5 FP 48.8%, Gemini FP
+63.2%, training sample count 78,358, all commercial external accuracies
+(86.4/82.0/65.8), regex external 29.6%, all per-source numbers for
+Claude/Gemini/GPT-5 (NVD, NIST, MTSamples, AI4Privacy, Phishing, Enron).
+
 ## Defending the prompt choice (new §6 limitation paragraph)
 
 A reviewer will ask: "could a different prompt make the commercial
