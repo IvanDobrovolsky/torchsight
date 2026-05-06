@@ -20,7 +20,7 @@ Replace by hand in Word. No build_docx.py pipeline — that's been removed.
 | 8 | Beam f16 external | "running" | **91.0%** [88.2, 93.2] | fill-in |
 | 9 | Qwen 27B base external | "running" | **28.0%** [24.2, 32.1] (140/500) | fill-in |
 | 10 | Regex baseline primary | 50.5% [47.4, 53.6] | **52.7%** [49.6, 55.7] | minor (4 places) |
-| 11 | Regex pattern count | 35 patterns | **49 patterns** | minor |
+| 11 | Regex pattern count | 35 patterns | **48 patterns** | minor |
 | 12 | External Overall row, col 5 | 37.6% | **29.6%** (regex external) | bug |
 | 13 | Claude Opus 4 FP rate | 17.4% | **16.4%** (or document FP-w-errors) | trivial |
 | 14 | Beam vs commercial external gap | "narrows to 4.2 pp" | **"widens to 7.4 pp"** | major narrative |
@@ -146,7 +146,7 @@ Old:
 > A regex-only baseline with 35 compiled patterns achieves 50.5% [47.4, 53.6]
 
 New:
-> A regex-only baseline with 49 compiled patterns achieves 52.7% [49.6, 55.7]
+> A regex-only baseline with 48 compiled patterns achieves 52.7% [49.6, 55.7]
 
 (Appears in 4 places in the docx)
 

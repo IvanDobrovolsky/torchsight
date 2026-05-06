@@ -56,20 +56,41 @@ def check_ollama(model_name: str):
 
 
 def query_beam(text: str, model_name: str) -> str:
-    """Send text to beam model via /api/generate with alpaca format (matching training)."""
-    prompt = f"### Instruction:\n{INSTRUCTION}\n\n### Input:\n{text}\n\n### Response:\n"
+    is_beam = "torchsight/beam" in model_name
+    if is_beam:
+        prompt = f"### Instruction:\n{INSTRUCTION}\n\n### Input:\n{text}\n\n### Response:\n"
+        payload = {
+            "model": model_name,
+            "prompt": prompt,
+            "system": SYSTEM_PROMPT,
+            "stream": False,
+            "options": {
+                "num_predict": 2048,
+                "temperature": 0,
+                "top_p": 1.0,
+                "stop": ["\n\n\n"],
+            },
+        }
+        r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=600)
+        r.raise_for_status()
+        return r.json()["response"]
     payload = {
         "model": model_name,
-        "prompt": prompt,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"{INSTRUCTION}\n\n{text}"},
+        ],
+        "think": False,
         "stream": False,
         "options": {
             "num_predict": 2048,
-            "stop": ["\n\n\n"],
+            "temperature": 0,
+            "top_p": 1.0,
         },
     }
-    r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=600)
+    r = requests.post(f"{OLLAMA_URL}/api/chat", json=payload, timeout=600)
     r.raise_for_status()
-    return r.json()["response"]
+    return r.json()["message"]["content"]
 
 
 def describe_image(image_path: str) -> str:
@@ -100,12 +121,6 @@ KNOWN_CATEGORIES = {"pii", "credentials", "financial", "medical", "confidential"
 
 
 def resolve_category(category: str, subcategory: str) -> str:
-    """Derive correct category from subcategory prefix when they mismatch.
-    Only overrides 'confidential' — the model's main over-predicted catch-all."""
-    if category == "confidential" and subcategory and "." in subcategory:
-        prefix = subcategory.split(".")[0]
-        if prefix in KNOWN_CATEGORIES and prefix != "confidential":
-            return prefix
     return category
 
 
@@ -403,9 +418,14 @@ def run_eval(model_name: str) -> dict:
             print(f"        Got:      {m['predicted_cat']:<15s} ({m.get('predicted_subcat', '?')})")
             print()
 
-    # Save detailed results
-    tag = model_name.split(":")[-1] if ":" in model_name else "latest"
-    output_path = os.path.join(os.path.dirname(__file__), f"eval1000_results_{tag}.json")
+    # Save detailed results — canonical name matches existing eval1000_*.json layout
+    if "torchsight/beam" in model_name:
+        tag = "beam_" + model_name.split(":")[-1]
+    else:
+        tag = model_name.replace("/", "_").replace(":", "_").replace(".", "")
+    results_dir = os.path.join(os.path.dirname(__file__), "..", "results")
+    os.makedirs(results_dir, exist_ok=True)
+    output_path = os.path.join(results_dir, f"eval1000_{tag}.json")
     result_dict = {
         "model": model_name,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),

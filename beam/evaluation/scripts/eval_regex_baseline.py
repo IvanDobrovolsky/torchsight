@@ -2,7 +2,7 @@
 """
 Regex-only baseline evaluation on TorchSight-Eval-1000 and eval-500-external.
 
-Runs TorchSight's 50 regex patterns (NO LLM) against the benchmarks to show
+Runs TorchSight's 48 regex patterns (NO LLM) against the benchmarks to show
 what rule-based detection achieves. This represents the best-case scenario for
 tools like TruffleHog, detect-secrets, and Semgrep on document classification.
 
@@ -25,7 +25,7 @@ EVAL_EXT_GT = os.path.join(SCRIPT_DIR, "..", "data", "eval-500-external", "groun
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "..", "results")
 
 # ============================================================
-# All 50 regex patterns from TorchSight core/src/analyzers/text.rs
+# All 48 regex patterns from TorchSight core/src/analyzers/text.rs
 # Ported directly from Rust to Python
 # ============================================================
 
@@ -110,7 +110,7 @@ COMPILED = [(re.compile(p), cat, subcat) for p, cat, subcat in PATTERNS]
 
 
 def classify_with_regex(text):
-    """Run all 50 regex patterns against text. Return highest-priority category found."""
+    """Run all 48 regex patterns against text. Return highest-priority category found."""
     found_categories = set()
     found_subcategories = set()
 
@@ -147,7 +147,7 @@ def run_eval1000():
     text_samples = [s for s in samples if not s["file"].startswith("images/")]
 
     print(f"\n{'='*80}")
-    print(f"EVAL-1000: Regex-only baseline on {len(text_samples)} text samples (50 patterns)")
+    print(f"EVAL-1000: Regex-only baseline on {len(text_samples)} text samples (48 patterns)")
     print(f"{'='*80}")
 
     results = []
@@ -198,7 +198,7 @@ def run_eval_external():
         samples = json.load(f)
 
     print(f"\n{'='*80}")
-    print(f"EVAL-EXTERNAL: Regex-only baseline on {len(samples)} held-out samples (50 patterns)")
+    print(f"EVAL-EXTERNAL: Regex-only baseline on {len(samples)} held-out samples (48 patterns)")
     print(f"{'='*80}")
 
     eval_ext_dir = os.path.join(SCRIPT_DIR, "..", "data", "eval-500-external")
@@ -270,7 +270,7 @@ def print_results(results, elapsed):
     total = len(results)
     correct = sum(1 for r in results if r["cat_correct"])
 
-    print(f"\nRegex-only (50 patterns): {correct}/{total} = {correct/total*100:.1f}%")
+    print(f"\nRegex-only (48 patterns): {correct}/{total} = {correct/total*100:.1f}%")
     print(f"Time: {elapsed:.2f}s ({elapsed/total*1000:.2f}ms per sample)")
 
     # Per-category

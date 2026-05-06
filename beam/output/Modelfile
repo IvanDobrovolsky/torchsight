@@ -13,6 +13,6 @@ If the text is clean/safe, output a single finding with category "safe".
 
 Respond ONLY with a JSON array of findings."""
 
-PARAMETER temperature 0.1
-PARAMETER top_p 0.9
+PARAMETER temperature 0
+PARAMETER top_p 1.0
 PARAMETER num_predict 2048

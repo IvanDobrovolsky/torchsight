@@ -55,12 +55,12 @@ description is then fed to Beam as text. External has no image samples.
 |---|---|---|
 | `eval_beam.py` | eval-1000-synthetic | Beam quantizations + Qwen 3.5 27B base, via Ollama |
 | `eval_external.py` | eval-500-external | Same Ollama models — imports methodology from `eval_beam.py` |
-| `eval_torchsight.py` | eval-1000-synthetic | Full TorchSight CLI pipeline (Beam + 35-pattern regex safety net) |
+| `eval_torchsight.py` | eval-1000-synthetic | Full TorchSight CLI pipeline (Beam + 48-pattern regex safety net) |
 | `eval_commercial.py` | eval-1000-synthetic | Claude / Gemini / GPT-5 via official APIs |
 | `eval_external_claude.py` | eval-500-external | Anthropic API |
 | `eval_external_gemini.py` | eval-500-external | Google Vertex API |
 | `eval_external_gpt5.py` | eval-500-external | OpenAI API |
-| `eval_regex_baseline.py` | both | 35-pattern regex baseline, no LLM |
+| `eval_regex_baseline.py` | both | 48-pattern regex baseline, no LLM |
 
 Benchmark builders:
 
