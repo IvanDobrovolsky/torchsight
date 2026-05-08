@@ -20,3 +20,4 @@ site/.astro/
 report/.venv/
 CLAUDE.md
 .claude/
+beam/evaluation/results/*.json
