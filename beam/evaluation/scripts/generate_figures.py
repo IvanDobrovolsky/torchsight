@@ -60,15 +60,16 @@ def fig2_fp_rates():
         fp_rates.append(fp / len(safe) * 100)
         labels.append(label)
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(7.5, 4.5))
     ax.bar(labels, fp_rates)
     ax.axhline(10, linestyle="--", linewidth=1)
     ax.set_ylabel("False positive rate (%)")
-    ax.set_title("False positive rate on safe documents")
-    ax.set_ylim(0, 70)
+    ax.set_title("False positive rate on safe documents", pad=14)
+    ax.set_ylim(0, 78)
     for i, v in enumerate(fp_rates):
-        ax.text(i, v + 1, f"{v:.1f}%", ha="center")
+        ax.text(i, v + 1.5, f"{v:.1f}%", ha="center", va="bottom")
     fig.autofmt_xdate(rotation=20)
+    fig.tight_layout()
     save(fig, "fig2_fp_rates")
 
 
@@ -92,6 +93,7 @@ def fig3_confusion_beam_q4():
         norm,
         annot=matrix,
         fmt="d",
+        cmap="Blues",
         xticklabels=CATS,
         yticklabels=CATS,
         ax=ax,
@@ -120,14 +122,15 @@ def fig4_external_by_source():
     accs = [by[s][0] / by[s][1] * 100 for s in order]
     ns = [by[s][1] for s in order]
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(7.5, 4.5))
     ax.bar(labels, accs)
     ax.set_ylabel("Accuracy (%)")
-    ax.set_ylim(0, 105)
-    ax.set_title(f"Beam q4_K_M on Eval-500-External (n={sum(ns)})")
+    ax.set_ylim(0, 118)
+    ax.set_title(f"Beam q4_K_M on Eval-500-External (n={sum(ns)})", pad=14)
     for i, (a, n) in enumerate(zip(accs, ns)):
-        ax.text(i, a + 1, f"{a:.1f}%\n(n={n})", ha="center", fontsize=9)
+        ax.text(i, a + 1.5, f"{a:.1f}%\n(n={n})", ha="center", va="bottom", fontsize=9)
     fig.autofmt_xdate(rotation=20)
+    fig.tight_layout()
     save(fig, "fig4_external_by_source")
 
 
@@ -160,19 +163,20 @@ def fig5_primary_vs_external():
 
     x = np.arange(len(labels))
     width = 0.38
-    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    fig, ax = plt.subplots(figsize=(8, 4.8))
     ax.bar(x - width / 2, primary, width, label="Primary (Eval-1000)")
     ax.bar(x + width / 2, external, width, label="External (Eval-500)")
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
     ax.set_ylabel("Accuracy (%)")
-    ax.set_ylim(0, 105)
-    ax.set_title("Primary vs external benchmark accuracy")
+    ax.set_ylim(0, 115)
+    ax.set_title("Primary vs external benchmark accuracy", pad=14)
     ax.legend(loc="lower left")
     for i, (p, e) in enumerate(zip(primary, external)):
-        ax.text(i - width / 2, p + 1, f"{p:.1f}", ha="center", fontsize=9)
-        ax.text(i + width / 2, e + 1, f"{e:.1f}", ha="center", fontsize=9)
+        ax.text(i - width / 2, p + 1.5, f"{p:.1f}", ha="center", va="bottom", fontsize=9)
+        ax.text(i + width / 2, e + 1.5, f"{e:.1f}", ha="center", va="bottom", fontsize=9)
     fig.autofmt_xdate(rotation=15)
+    fig.tight_layout()
     save(fig, "fig5_primary_vs_external")
 
 
