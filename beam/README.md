@@ -9,11 +9,11 @@ LoRA fine-tuned LLM with adjusted weights built to detect cybersecurity threats,
 | | |
 |---|---|
 | **Name** | `torchsight/beam` |
-| **Base model** | Qwen 3.5 27B (dense) |
+| **Base model** | Qwen 3.5 27B |
 | **Method** | LoRA fine-tuning (r=128, alpha=256) |
 | **Epochs** | 5 |
 | **Training data** | 78,358 balanced samples (74,441 train / 3,917 val) across 51 subcategories |
-| **Training GPU** | H100 80GB PCIe (~55GB VRAM) |
+| **Training GPU** | 8× NVIDIA A100 SXM4 80GB, 10.5 hr |
 | **Output formats** | GGUF q4\_K\_M (~17GB), q8\_0 (~28GB), f16 (~54GB) |
 | **Inference** | temperature=0 (deterministic) |
 | **License** | Apache 2.0 |
@@ -203,7 +203,7 @@ cd beam
 
 Handles everything: venv setup, dependency install, data download, processing, synthetic generation, rebalancing, SFT conversion, LoRA training, and GGUF export. Auto-detects GPU count and VRAM to select the optimal training strategy.
 
-Requires 80GB+ VRAM per GPU. Beam v1.0 was trained on 8x GH200.
+Requires 80GB+ VRAM per GPU. Beam v1.0 was trained on 8× A100 80GB SXM4 (10.5 hours).
 
 ---
 

@@ -12,7 +12,7 @@ Requirements:
     pip install torch transformers peft datasets accelerate bitsandbytes trl
 
 Usage:
-    # Default: Qwen 3.5 27B dense (requires ~55GB VRAM for LoRA, fits H100 80GB)
+    # Default: Qwen 3.5 27B (requires ~55GB VRAM for LoRA on each GPU; we used 8× A100 80GB SXM4 / 10.5 hr)
     python train_lora.py
 
     # QLoRA 4-bit (fits in ~24GB VRAM)
@@ -37,21 +37,21 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SFT_DIR = Path(os.environ.get("TORCHSIGHT_DATA_DIR", SCRIPT_DIR.parent / "data" / "sft"))
 OUTPUT_DIR = Path(os.environ.get("TORCHSIGHT_OUTPUT_DIR", SCRIPT_DIR.parent / "output"))
 
-# Default hyperparameters — tuned for Qwen 3.5 27B on H100 80GB
+# Default hyperparameters — Qwen 3.5 27B on 8× A100 80GB SXM4 (Beam v1.0 production run)
 DEFAULTS = {
     "base_model": "Qwen/Qwen3.5-27B",
     "format": "alpaca",
     "epochs": 5,
     "lr": 2e-5,
-    "batch_size": 4,         # fits H100 80GB with LoRA + gradient checkpointing
-    "grad_accum": 4,         # effective batch = 16
-    "max_seq_length": 2048,  # our outputs are short JSON; saves memory
+    "batch_size": 4,         # per-GPU; fits A100 80GB with LoRA + gradient checkpointing
+    "grad_accum": 4,         # effective batch = 16 per GPU
+    "max_seq_length": 4096,
     "lora_r": 128,           # high rank for maximum adaptation capacity
     "lora_alpha": 256,       # 2x rank (standard ratio)
     "lora_dropout": 0.05,
     "warmup_ratio": 0.10,
     "weight_decay": 0.01,
-    "quantize": None,        # full bf16 — best quality, H100 80GB can handle 27B
+    "quantize": None,        # full bf16 — best quality, A100 80GB handles 27B
     "resume": None,
 }
 
