@@ -122,8 +122,9 @@ def fig4_external_by_source():
     accs = [by[s][0] / by[s][1] * 100 for s in order]
     ns = [by[s][1] for s in order]
 
+    colors = ["tab:green" if lbl == "MTSamples" else "tab:blue" for lbl in labels]
     fig, ax = plt.subplots(figsize=(7.5, 4.5))
-    ax.bar(labels, accs)
+    ax.bar(labels, accs, color=colors)
     ax.set_ylabel("Accuracy (%)")
     ax.set_ylim(0, 118)
     ax.set_title(f"Beam q4_K_M on Eval-500-External (n={sum(ns)})", pad=14)
@@ -149,9 +150,9 @@ def fig5_primary_vs_external():
         ("GPT-5",
          "eval1000_openai_gpt-5.json",
          "eval_external_gpt-5.json"),
-        ("Regex baseline",
-         "eval1000_regex_only.json",
-         "eval_external_regex_only.json"),
+        ("Qwen base",
+         "eval1000_qwen35_27b_base.json",
+         "eval_external_qwen3.5-27b.json"),
     ]
     labels = []
     primary = []
