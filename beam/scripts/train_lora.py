@@ -154,8 +154,22 @@ def main():
     except ImportError as e:
         print(f"\nMissing dependency: {e}")
         print("\nInstall requirements:")
-        print("  pip install torch transformers peft datasets accelerate bitsandbytes trl")
+        print("  pip install -r requirements-training.txt")
         sys.exit(1)
+
+    # Refuse to start without a CUDA GPU. LoRA fine-tuning of a 27B model is
+    # not viable on CPU or MPS — fail fast so the user doesn't sit through
+    # a 10-minute model load before discovering this.
+    if not torch.cuda.is_available():
+        print("\nERROR: No CUDA GPU detected.")
+        print("Beam v1.0 was trained on 8x A100 80GB SXM4. Any single GPU")
+        print("with at least 24 GB VRAM (QLoRA 4-bit) or 55 GB (LoRA bf16) works.")
+        sys.exit(1)
+    n_gpus = torch.cuda.device_count()
+    total_vram_gb = sum(
+        torch.cuda.get_device_properties(i).total_memory for i in range(n_gpus)
+    ) / 1e9
+    print(f"  CUDA: {n_gpus} GPU(s), {total_vram_gb:.0f} GB total VRAM")
 
     # Quantization config
     bnb_config = None

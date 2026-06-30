@@ -1,0 +1,30 @@
+# Beam — base requirements
+#
+# Covers everything except training: dataset download and processing, the
+# evaluation harness (Beam via Ollama + commercial-model drivers), the
+# benchmark-statistics scripts, and figure generation. Runs on any machine
+# with Python 3.10+ — no GPU required.
+#
+# For training (which needs a CUDA GPU), additionally install:
+#   pip install -r requirements-training.txt
+
+# Core scientific
+numpy>=1.26,<3
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.13
+
+# Dataset download / processing
+requests>=2.31
+tqdm>=4.65
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# Hugging Face datasets (only needed for download_ai4privacy.py /
+# download_phishing.py / download_prompt_injection.py)
+datasets>=2.16
+
+# Gemini evaluation (Vertex AI). The other commercial drivers use plain
+# `requests` so they don't need an SDK.
+google-genai>=0.4
+google-cloud-aiplatform>=1.60
