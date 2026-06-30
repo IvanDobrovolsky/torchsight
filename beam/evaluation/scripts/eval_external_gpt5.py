@@ -121,10 +121,11 @@ def main():
             elapsed = time.time() - start
             findings = parse_response(response)
             pred = get_primary_category(findings)
-            ok = pred == sample["category"]
+            exp = sample["category"]; alt = sample.get("alt_category", "")
+            ok = (pred == exp) or (alt and pred == alt)
             print(f" {elapsed:5.1f}s  cat={pred:<14s} [{'OK' if ok else 'MISS':4s}]")
             results.append({"id":sample["id"],"file":sample["file"],"source":sample["source"],
-                "expected_cat":sample["category"],"predicted_cat":pred,"cat_correct":ok,"elapsed":elapsed})
+                "expected_cat":exp,"predicted_cat":pred,"cat_correct":ok,"elapsed":elapsed})
         except Exception as e:
             elapsed = time.time() - start
             print(f" {elapsed:5.1f}s  ERROR: {e}")

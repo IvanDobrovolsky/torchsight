@@ -1,11 +1,11 @@
 # TorchSight benchmark numbers (canonical)
 
-Auto-generated from `evaluation/results/*.json` — single source of truth.
-Re-generate any time with: `python scripts/print_benchmark_numbers.py`.
+Auto-generated from `evaluation/results/*.json`. Single source of truth for the paper.
+Re-generate after any eval rerun: `python scripts/print_benchmark_numbers.py`.
 
 ## Eval-1000 (primary, n=1000)
 
-| model | accuracy | 95% CI | subcat |
+| model | accuracy | 95% Wilson CI | subcategory |
 |---|---:|---|---:|
 | Beam q4_K_M | 95.0% | [93.5, 96.2] | 48.2% |
 | Beam f16 | 93.2% | [91.5, 94.6] | 51.1% |
@@ -19,18 +19,18 @@ Re-generate any time with: `python scripts/print_benchmark_numbers.py`.
 
 ## Eval-500 (external held-out, n=500)
 
-| model | accuracy | 95% CI |
+| model | accuracy | 95% Wilson CI |
 |---|---:|---|
 | Beam q4_K_M | 93.8% | [91.3, 95.6] |
 | Beam f16 | 91.2% | [88.4, 93.4] |
 | Beam q8_0 | 91.2% | [88.4, 93.4] |
 | Sonnet 4 | 86.4% | [83.1, 89.1] |
-| GPT-5 | 65.8% | [61.5, 69.8] |
+| GPT-5 | 74.2% | [70.2, 77.8] |
 | Gemini 2.5 | 82.0% | [78.4, 85.1] |
 | Regex | 29.6% | [25.8, 33.7] |
 | Qwen base | 86.6% | [83.3, 89.3] |
 
-## Per-category (Eval-1000)
+## Per-category accuracy (Eval-1000)
 
 | category | Beam q4_K_M | GPT-5 | Sonnet 4 | Opus 4 | Gemini 2.5 |
 |---|---:|---:|---:|---:|---:|
@@ -55,7 +55,7 @@ Re-generate any time with: `python scripts/print_benchmark_numbers.py`.
 | safe | 97.2% | 98.0% | 97.6% |
 | **macro avg** | **95.5%** | **93.9%** | **94.1%** |
 
-## Regex-only vs Beam q4_K_M (Eval-1000)
+## Regex-only baseline vs Beam q4_K_M (Eval-1000)
 
 | category | regex | beam q4 | gap |
 |---|---:|---:|---:|
@@ -68,21 +68,23 @@ Re-generate any time with: `python scripts/print_benchmark_numbers.py`.
 | medical | 0.0% | 68.0% | +68.0 pp |
 | **Overall** | **52.7%** | **95.0%** | **+42.3 pp** |
 
-## Eval-500 per-source (alt_category-aware scorer)
+## Eval-500 per-source breakdown
+
+Scoring uses the alt_category-aware scorer (see ground-truth `alt_category` field).
 
 | source | n | Beam q4 | Sonnet 4 | Gemini 2.5 | GPT-5 | Qwen base |
 |---|---:|---:|---:|---:|---:|---:|
 | nvd_holdout | 100 | 100.0% | 98.0% | 97.0% | 51.0% | 97.0% |
-| nist_holdout | 80 | 100.0% | 92.5% | 91.2% | 88.8% | 95.0% |
+| nist_holdout | 80 | 100.0% | 92.5% | 91.2% | 92.5% | 95.0% |
 | mtsamples | 100 | 82.0% | 100.0% | 100.0% | 100.0% | 100.0% |
 | ai4privacy_holdout | 80 | 100.0% | 71.2% | 63.7% | 65.0% | 67.5% |
-| phishing_holdout | 60 | 100.0% | 55.0% | 45.0% | 28.3% | 68.3% |
-| enron_holdout | 80 | 83.8% | 87.5% | 77.5% | 47.5% | 81.2% |
-| **Overall** | **500** | **93.8%** | **86.4%** | **82.0%** | **65.8%** | **86.6%** |
+| phishing_holdout | 60 | 100.0% | 55.0% | 45.0% | 45.0% | 68.3% |
+| enron_holdout | 80 | 83.8% | 87.5% | 77.5% | 83.8% | 81.2% |
+| **Overall** | **500** | **93.8%** | **86.4%** | **82.0%** | **74.2%** | **86.6%** |
 
 ## False-positive rates on safe documents (Eval-1000)
 
-Computed as 1 − (safe accuracy). Operationally critical for DLP usability.
+Computed as 1 − safe-category accuracy.
 
 | model | FP rate |
 |---|---:|

@@ -121,6 +121,10 @@ KNOWN_CATEGORIES = {"pii", "credentials", "financial", "medical", "confidential"
 
 
 def resolve_category(category: str, subcategory: str) -> str:
+    if category == "confidential" and subcategory and "." in subcategory:
+        prefix = subcategory.split(".")[0]
+        if prefix in KNOWN_CATEGORIES and prefix != "confidential":
+            return prefix
     return category
 
 
