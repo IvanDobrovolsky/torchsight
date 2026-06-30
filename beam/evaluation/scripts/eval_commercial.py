@@ -198,7 +198,7 @@ def query_google_vertex(api_key, model, content_parts):
     global _vertex_client
     if _vertex_client is None:
         from google import genai
-        project = os.environ.get("GCP_PROJECT", "dehum-research-ml")
+        project = os.environ.get("GCP_PROJECT", "your-gcp-project")
         location = os.environ.get("GCP_LOCATION", "us-central1")
         _vertex_client = genai.Client(vertexai=True, project=project, location=location)
     from google.genai import types
