@@ -26,8 +26,6 @@ PROCESSORS = {
     "nvd": "nvd_processor",
     "crs_reports": "crs_processor",
     "prompt_injection": "prompt_injection_processor",
-    "ghsa": "ghsa_processor",
-    "ossf": "ossf_processor",
     "ai4privacy": "ai4privacy_processor",
     "phishing": "phishing_processor",
     "edgar": "edgar_processor",
